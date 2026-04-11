@@ -1,0 +1,26 @@
+{
+  "entities": {
+    "SellerProfile": {
+      "title": "Seller Profile",
+      "description": "Information about the seller including business details",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Seller's full name" },
+        "email": { "type": "string", "format": "email", "description": "Seller's email" },
+        "phone": { "type": "string", "description": "Seller's phone number" },
+        "gstNumber": { "type": "string", "description": "Unique GST Number" },
+        "gstName": { "type": "string", "description": "Registered GST Name" },
+        "businessAddress": { "type": "string", "description": "Business address" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "email", "phone", "gstNumber", "gstName"]
+    }
+  },
+  "firestore": {
+    "/sellers/{uid}": {
+      "schema": "SellerProfile",
+      "description": "Collection of seller profiles"
+    }
+  }
+}

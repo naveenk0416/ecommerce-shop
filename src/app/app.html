@@ -1,0 +1,287 @@
+<ion-app>
+  <ion-header class="ion-no-border">
+    <ion-toolbar color="primary">
+      <ion-title class="font-bold tracking-tight">SellerGenie</ion-title>
+      <ion-badge slot="end" class="mr-4" color="secondary">AI Assistant</ion-badge>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content [fullscreen]="true" class="ion-padding bg-slate-50">
+    <div class="max-w-2xl mx-auto space-y-6 pb-12">
+      
+      <!-- Upload Section -->
+      <section class="text-center py-8 px-4 bg-white rounded-3xl shadow-sm border border-slate-100">
+        <div class="mb-4">
+          <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ion-icon name="cloud-upload" class="text-3xl text-indigo-600"></ion-icon>
+          </div>
+          <h2 class="text-2xl font-bold text-slate-800">Upload Product Image</h2>
+          <p class="text-slate-500 mt-2">We'll automatically extract details and optimize the image.</p>
+        </div>
+        
+        <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/*" class="hidden">
+        <ion-button (click)="fileInput.click()" shape="round" class="h-12 px-8 font-semibold">
+          <ion-icon slot="start" name="camera"></ion-icon>
+          Select Image
+        </ion-button>
+      </section>
+
+      @if (selectedImage()) {
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Original Image -->
+          <ion-card class="m-0 rounded-2xl overflow-hidden shadow-md">
+            <ion-card-header class="bg-slate-50 py-3">
+              <ion-card-title class="text-sm font-semibold uppercase tracking-wider text-slate-500 flex items-center">
+                <ion-icon name="image" class="mr-2"></ion-icon> Original
+              </ion-card-title>
+            </ion-card-header>
+            <div class="aspect-square bg-slate-200 flex items-center justify-center overflow-hidden">
+              <img [src]="selectedImage()" alt="Original product image" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+            </div>
+          </ion-card>
+
+          <!-- Processed Image -->
+          <ion-card class="m-0 rounded-2xl overflow-hidden shadow-md">
+            <ion-card-header class="bg-slate-50 py-3">
+              <ion-card-title class="text-sm font-semibold uppercase tracking-wider text-slate-500 flex items-center">
+                <ion-icon name="sparkles" class="mr-2 text-amber-500"></ion-icon> AI Optimized (White BG)
+              </ion-card-title>
+            </ion-card-header>
+            <div class="aspect-square bg-white flex items-center justify-center overflow-hidden relative">
+              @if (isGeneratingImage()) {
+                <div class="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm z-10">
+                  <ion-spinner name="crescent" color="primary"></ion-spinner>
+                  <p class="mt-4 text-sm font-medium text-slate-600">Removing background...</p>
+                </div>
+              }
+              @if (processedImage()) {
+                <img [src]="processedImage()" alt="AI optimized product image" class="w-full h-full object-contain p-4" referrerpolicy="no-referrer">
+              } @else if (!isGeneratingImage()) {
+                <div class="text-slate-400 text-center p-8">
+                  <ion-icon name="image" class="text-4xl mb-2 opacity-20"></ion-icon>
+                  <p class="text-xs">Processing...</p>
+                </div>
+              }
+            </div>
+          </ion-card>
+        </div>
+      }
+
+      @if (isProcessing()) {
+        <div class="flex flex-col items-center justify-center py-12">
+          <ion-spinner name="dots" color="primary" class="scale-150"></ion-spinner>
+          <p class="mt-6 text-lg font-medium text-slate-600 animate-pulse">Analyzing product details...</p>
+        </div>
+      }
+
+      @if (productDetails(); as details) {
+        <ion-segment [value]="activeTab()" (ionChange)="activeTab.set($any($event).detail.value)" [scrollable]="true" class="rounded-xl bg-slate-100 p-1">
+          <ion-segment-button value="details">
+            <ion-label>Details</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="amazon">
+            <ion-label>Amazon</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="flipkart">
+            <ion-label>Flipkart</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="meesho">
+            <ion-label>Meesho</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="instagram">
+            <ion-label>Instagram</ion-label>
+          </ion-segment-button>
+        </ion-segment>
+
+        @if (activeTab() === 'details') {
+          <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <!-- Basic Info -->
+            <ion-card class="m-0 rounded-2xl shadow-sm border border-slate-100">
+              <ion-card-content class="p-6 space-y-6">
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-indigo-600">Product Name</ion-label>
+                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.name, 'name')">
+                      <ion-icon [name]="copiedField() === 'name' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <h3 class="text-xl font-bold text-slate-800 leading-tight">{{details.name}}</h3>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-1">Price (INR)</ion-label>
+                    <div class="text-lg font-bold text-emerald-600 flex items-center">
+                      <span class="mr-1 text-sm">₹</span>
+                      {{details.priceINR}}
+                    </div>
+                  </div>
+                  <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-1">GST & HSN</ion-label>
+                    <div class="text-sm font-bold text-slate-700">
+                      {{details.gstRate}} GST | {{details.hsnCode}}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-1">Material</ion-label>
+                  <div class="text-sm font-bold text-slate-700">
+                    {{details.material}}
+                  </div>
+                </div>
+
+                <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                  <ion-label class="text-xs font-bold uppercase tracking-widest text-indigo-600 block mb-2">Variations</ion-label>
+                  <div class="flex flex-wrap gap-2">
+                    @for (v of details.variations; track v) {
+                      <ion-badge color="primary" class="px-3 py-1 rounded-full text-[10px]">{{v}}</ion-badge>
+                    }
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-indigo-600">General Description</ion-label>
+                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.description, 'desc')">
+                      <ion-icon [name]="copiedField() === 'desc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <p class="text-slate-600 leading-relaxed text-sm">{{details.description}}</p>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </div>
+        }
+
+        @if (activeTab() === 'amazon') {
+          <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ion-card class="m-0 rounded-2xl shadow-sm border border-slate-100">
+              <ion-card-content class="p-6 space-y-6">
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-orange-600">Amazon SEO Title</ion-label>
+                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.amazon.title, 'amzTitle')">
+                      <ion-icon [name]="copiedField() === 'amzTitle' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <h3 class="text-lg font-bold text-slate-800">{{details.platformContent.amazon.title}}</h3>
+                </div>
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-orange-600">Product Description</ion-label>
+                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.amazon.description, 'amzDesc')">
+                      <ion-icon [name]="copiedField() === 'amzDesc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <p class="text-slate-600 text-sm whitespace-pre-wrap">{{details.platformContent.amazon.description}}</p>
+                </div>
+                <div>
+                  <ion-label class="text-xs font-bold uppercase tracking-widest text-orange-600 block mb-2">Keywords</ion-label>
+                  <div class="flex flex-wrap gap-1">
+                    @for (kw of details.platformContent.amazon.keywords; track kw) {
+                      <ion-badge color="warning" class="text-[10px]">{{kw}}</ion-badge>
+                    }
+                  </div>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </div>
+        }
+
+        @if (activeTab() === 'flipkart') {
+          <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ion-card class="m-0 rounded-2xl shadow-sm border border-slate-100">
+              <ion-card-content class="p-6 space-y-6">
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-blue-600">Flipkart Title</ion-label>
+                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.flipkart.title, 'fkTitle')">
+                      <ion-icon [name]="copiedField() === 'fkTitle' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <h3 class="text-lg font-bold text-slate-800">{{details.platformContent.flipkart.title}}</h3>
+                </div>
+                <div>
+                  <ion-label class="text-xs font-bold uppercase tracking-widest text-blue-600 block mb-2">Key Highlights</ion-label>
+                  <ul class="list-disc pl-5 space-y-1">
+                    @for (h of details.platformContent.flipkart.highlights; track h) {
+                      <li class="text-sm text-slate-600">{{h}}</li>
+                    }
+                  </ul>
+                </div>
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-blue-600">Description</ion-label>
+                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.flipkart.description, 'fkDesc')">
+                      <ion-icon [name]="copiedField() === 'fkDesc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <p class="text-slate-600 text-sm">{{details.platformContent.flipkart.description}}</p>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </div>
+        }
+
+        @if (activeTab() === 'meesho') {
+          <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ion-card class="m-0 rounded-2xl shadow-sm border border-slate-100">
+              <ion-card-content class="p-6 space-y-6">
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-pink-600">Meesho Title</ion-label>
+                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.meesho.title, 'mshTitle')">
+                      <ion-icon [name]="copiedField() === 'mshTitle' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <h3 class="text-lg font-bold text-slate-800">{{details.platformContent.meesho.title}}</h3>
+                </div>
+                <div class="bg-pink-50 p-3 rounded-xl border border-pink-100">
+                  <ion-label class="text-xs font-bold uppercase tracking-widest text-pink-600 block mb-1">Suggested Category</ion-label>
+                  <p class="text-sm font-bold text-pink-700">{{details.platformContent.meesho.category}}</p>
+                </div>
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-pink-600">Description</ion-label>
+                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.meesho.description, 'mshDesc')">
+                      <ion-icon [name]="copiedField() === 'mshDesc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <p class="text-slate-600 text-sm whitespace-pre-wrap">{{details.platformContent.meesho.description}}</p>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </div>
+        }
+
+        @if (activeTab() === 'instagram') {
+          <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ion-card class="m-0 rounded-2xl shadow-sm border border-slate-100">
+              <ion-card-content class="p-6 space-y-6">
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-purple-600">Instagram Caption</ion-label>
+                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.instagram.caption, 'igCaption')">
+                      <ion-icon [name]="copiedField() === 'igCaption' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <p class="text-slate-800 text-sm leading-relaxed italic">"{{details.platformContent.instagram.caption}}"</p>
+                </div>
+                <div>
+                  <ion-label class="text-xs font-bold uppercase tracking-widest text-purple-600 block mb-2">Hashtags</ion-label>
+                  <div class="flex flex-wrap gap-1">
+                    @for (tag of details.platformContent.instagram.hashtags; track tag) {
+                      <span class="text-indigo-600 text-xs font-medium">#{{tag}}</span>
+                    }
+                  </div>
+                </div>
+              </ion-card-content>
+            </ion-card>
+          </div>
+        }
+      }
+
+    </div>
+  </ion-content>
+</ion-app>
