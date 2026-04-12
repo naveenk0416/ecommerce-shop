@@ -1,75 +1,36 @@
-import { ChangeDetectionStrategy, Component, signal, inject, effect } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { 
-  IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
+import { FormsModule } from '@angular/forms';
+import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
   IonCardContent, IonLabel, IonBadge, IonSpinner,
-  IonSegment, IonSegmentButton, IonItem, IonInput, IonText,
-  IonAvatar, IonButtons, IonMenuButton
+  IonSegment, IonSegmentButton, IonInput, IonTextarea
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { 
-  camera, cloudUpload, sparkles, image, list, pricetag, 
-  copy, checkmark, logIn, logOut, person, business, 
-  call, mail, location
-} from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
-import { auth, db } from './firebase';
-import { 
-  signInWithPopup, GoogleAuthProvider, onAuthStateChanged, 
-  User, signOut 
-} from 'firebase/auth';
-import { 
-  doc, getDoc, setDoc, serverTimestamp 
-} from 'firebase/firestore';
-
-interface SellerProfile {
-  uid: string;
-  name: string;
-  email: string;
-  phone: string;
-  gstNumber: string;
-  gstName: string;
-  businessAddress: string;
-  createdAt: any;
-}
+import { AuthService } from './services/auth';
+import { Landing } from './landing';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, ReactiveFormsModule,
+    CommonModule, FormsModule, Landing,
     IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
-    IonSegment, IonSegmentButton, IonItem, IonInput, IonText,
-    IonAvatar, IonButtons, IonMenuButton
+    IonSegment, IonSegmentButton, IonInput, IonTextarea
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App {
   private gemini = inject(GeminiService);
-  private fb = inject(FormBuilder);
+  public auth = inject(AuthService);
 
-  // Auth State
-  user = signal<User | null>(null);
-  isAuthReady = signal(false);
-  sellerProfile = signal<SellerProfile | null>(null);
-  isProfileLoading = signal(false);
-
-  // Registration Form
-  registrationForm = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(2)]],
-    phone: ['', [Validators.required, Validators.pattern('^[0-9]{10,15}$')]],
-    gstNumber: ['', [Validators.required, Validators.pattern('^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$')]],
-    gstName: ['', [Validators.required]],
-    businessAddress: ['']
-  });
-
-  // App State
+  showLanding = signal(true);
   selectedImage = signal<string | null>(null);
   processedImage = signal<string | null>(null);
   isProcessing = signal(false);
@@ -77,75 +38,52 @@ export class App {
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<'details' | 'amazon' | 'flipkart' | 'meesho' | 'instagram'>('details');
   copiedField = signal<string | null>(null);
+  editingField = signal<string | null>(null);
+
+  // Auth Form State
+  email = signal('');
+  password = signal('');
+  isRegistering = signal(false);
+  authError = signal<string | null>(null);
 
   constructor() {
-    addIcons({ 
-      camera, cloudUpload, sparkles, image, list, pricetag, 
-      copy, checkmark, logIn, logOut, person, business, 
-      call, mail, location 
-    });
-
-    onAuthStateChanged(auth, (user: User | null) => {
-      this.user.set(user);
-      this.isAuthReady.set(true);
-      if (user) {
-        this.loadProfile(user.uid);
-      } else {
-        this.sellerProfile.set(null);
-      }
-    });
+    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close });
   }
 
   async login() {
-    const provider = new GoogleAuthProvider();
+    this.authError.set(null);
     try {
-      await signInWithPopup(auth, provider);
+      await this.auth.loginWithGoogle();
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error('Login failed:', error);
+      this.authError.set('Google login failed. Please try again.');
+    }
+  }
+
+  async emailAuth() {
+    this.authError.set(null);
+    if (!this.email() || !this.password()) {
+      this.authError.set('Please enter both email and password.');
+      return;
+    }
+
+    try {
+      if (this.isRegistering()) {
+        await this.auth.registerWithEmail(this.email(), this.password());
+      } else {
+        await this.auth.loginWithEmail(this.email(), this.password());
+      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      this.authError.set(error.message || 'Authentication failed.');
     }
   }
 
   async logout() {
     try {
-      await signOut(auth);
-      this.selectedImage.set(null);
-      this.productDetails.set(null);
+      await this.auth.logout();
     } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  }
-
-  async loadProfile(uid: string) {
-    this.isProfileLoading.set(true);
-    try {
-      const docRef = doc(db, 'sellers', uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        this.sellerProfile.set(docSnap.data() as SellerProfile);
-      }
-    } catch (error) {
-      console.error("Error loading profile:", error);
-    } finally {
-      this.isProfileLoading.set(false);
-    }
-  }
-
-  async registerSeller() {
-    const user = this.user();
-    if (!user || !this.registrationForm.valid) return;
-
-    const profileData = {
-      uid: user.uid,
-      email: user.email,
-      ...this.registrationForm.value,
-      createdAt: serverTimestamp()
-    };
-
-    try {
-      await setDoc(doc(db, 'sellers', user.uid), profileData);
-      this.sellerProfile.set(profileData as any);
-    } catch (error) {
-      console.error("Registration failed:", error);
+      console.error('Logout failed:', error);
     }
   }
 
@@ -198,5 +136,66 @@ export class App {
     navigator.clipboard.writeText(text);
     this.copiedField.set(field);
     setTimeout(() => this.copiedField.set(null), 2000);
+  }
+
+  toggleEdit(field: string) {
+    if (this.editingField() === field) {
+      this.editingField.set(null);
+    } else {
+      this.editingField.set(field);
+    }
+  }
+
+  updateField(path: string, value: unknown) {
+    const details = this.productDetails();
+    if (!details) return;
+
+    const newDetails = { ...details };
+    const parts = path.split('.');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let current: any = newDetails;
+
+    for (let i = 0; i < parts.length - 1; i++) {
+      current = current[parts[i]];
+    }
+    current[parts[parts.length - 1]] = value;
+
+    this.productDetails.set(newDetails);
+  }
+
+  updateHashtag(index: number, value: unknown) {
+    const details = this.productDetails();
+    if (!details) return;
+
+    const newDetails = { ...details };
+    newDetails.platformContent.instagram.hashtags[index] = String(value ?? '').replace(/^#/, '');
+    this.productDetails.set(newDetails);
+  }
+
+  updateAmazonKeyword(index: number, value: unknown) {
+    const details = this.productDetails();
+    if (!details) return;
+
+    const newDetails = { ...details };
+    newDetails.platformContent.amazon.keywords[index] = String(value ?? '');
+    this.productDetails.set(newDetails);
+  }
+
+  updateFlipkartHighlight(index: number, value: unknown) {
+    const details = this.productDetails();
+    if (!details) return;
+
+    const newDetails = { ...details };
+    newDetails.platformContent.flipkart.highlights[index] = String(value ?? '');
+    this.productDetails.set(newDetails);
+  }
+
+  updateVariation(index: number, value: unknown) {
+    const details = this.productDetails();
+    if (!details) return;
+
+    const newDetails = { ...details };
+    newDetails.variations[index] = String(value ?? '');
+    this.productDetails.set(newDetails);
   }
 }

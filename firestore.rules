@@ -2,59 +2,28 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: sellers
-    // Document ID: {uid}
-    // Fields:
-    //   - uid: string (required) - Firebase Auth UID
-    //   - name: string (required) - Seller's full name
-    //   - email: string (required) - Seller's email
-    //   - phone: string (required) - Seller's phone number
-    //   - gstNumber: string (required) - Unique GST Number
-    //   - gstName: string (required) - Registered GST Name
-    //   - businessAddress: string (optional)
-    //   - createdAt: timestamp (required)
-    //
-    // ===============================================================
-
-    // ===============================================================
     // Helper Functions
     // ===============================================================
     function isAuthenticated() {
       return request.auth != null;
     }
-
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
-
-    function isValidEmail(email) {
-      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     }
 
-    function isValidGst(gst) {
-      // Basic GST validation (15 characters)
-      return gst is string && gst.size() == 15;
-    }
-
-    function isValidSeller(data) {
-      return data.keys().hasAll(['uid', 'name', 'email', 'phone', 'gstNumber', 'gstName', 'createdAt']) &&
-             data.uid == request.auth.uid &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             isValidEmail(data.email) &&
-             data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 15 &&
-             isValidGst(data.gstNumber) &&
-             data.gstName is string && data.gstName.size() > 0 && data.gstName.size() < 100;
-    }
-
-    match /sellers/{userId} {
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{userId} {
       allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidSeller(request.resource.data);
-      allow update: if isOwner(userId) && isValidSeller(request.resource.data) && 
-                    request.resource.data.createdAt == resource.data.createdAt &&
-                    request.resource.data.email == resource.data.email;
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
     }
   }
 }

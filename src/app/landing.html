@@ -1,0 +1,89 @@
+<main class="landing-container">
+  <!-- Left Pane: Hero Content -->
+  <section class="hero-pane">
+    <div class="rail-text">SellerGenie • AI Powered</div>
+    
+    <div class="content-wrapper">
+      <div class="brand">
+        <ion-icon name="sparkles" class="brand-icon"></ion-icon>
+        <span class="brand-name">SellerGenie</span>
+      </div>
+
+      <h1 class="headline">
+        Optimize <br>
+        <span class="text-accent">Every</span> <br>
+        Listing.
+      </h1>
+
+      <p class="subheadline">
+        The AI-powered assistant that turns product photos into high-converting listings for Amazon, Flipkart, Meesho, and Instagram.
+      </p>
+
+      <div class="cta-group">
+        <ion-button (click)="onGetStarted.emit()" class="cta-primary" shape="round">
+          Get Started Free
+          <ion-icon slot="end" name="arrow-forward"></ion-icon>
+        </ion-button>
+        
+        <button (click)="onLogin.emit()" class="cta-secondary">
+          Sign In
+        </button>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-item">
+          <ion-icon name="flash" class="feature-icon"></ion-icon>
+          <span>Instant Extraction</span>
+        </div>
+        <div class="feature-item">
+          <ion-icon name="shield-checkmark" class="feature-icon"></ion-icon>
+          <span>SEO Optimized</span>
+        </div>
+        <div class="feature-item">
+          <ion-icon name="rocket" class="feature-icon"></ion-icon>
+          <span>Multi-Platform</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right Pane: Visual/Interactive -->
+  <section class="visual-pane">
+    <div class="atmosphere"></div>
+    
+    <div class="floating-elements">
+      <div class="feature-bubble bubble-1">
+        <div class="bubble-header">Amazon</div>
+        <div class="bubble-content">SEO Title Optimized</div>
+      </div>
+      
+      <div class="feature-bubble bubble-2">
+        <div class="bubble-header">Instagram</div>
+        <div class="bubble-content">Viral Captions</div>
+      </div>
+      
+      <div class="feature-bubble bubble-3">
+        <div class="bubble-header">Flipkart</div>
+        <div class="bubble-content">Key Highlights Generated</div>
+      </div>
+
+      <div class="main-visual">
+        <div class="image-frame">
+          <img src="https://picsum.photos/seed/product/800/800" alt="Product Preview" referrerpolicy="no-referrer">
+          <div class="scan-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-overlay">
+      <div class="stat-item">
+        <span class="stat-value">10x</span>
+        <span class="stat-label">Faster Listings</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">45%</span>
+        <span class="stat-label">Higher CTR</span>
+      </div>
+    </div>
+  </section>
+</main>

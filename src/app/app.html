@@ -2,15 +2,94 @@
   <ion-header class="ion-no-border">
     <ion-toolbar color="primary">
       <ion-title class="font-bold tracking-tight">SellerGenie</ion-title>
-      <ion-badge slot="end" class="mr-4" color="secondary">AI Assistant</ion-badge>
+      
+      <div slot="end" class="flex items-center gap-2 mr-2">
+        @if (auth.user()) {
+          <div class="hidden md:flex flex-col items-end text-xs mr-2">
+            <span class="font-bold">{{ auth.user()?.displayName }}</span>
+            <span class="opacity-80">{{ auth.user()?.email }}</span>
+          </div>
+          <ion-button (click)="logout()" fill="clear" color="light" class="ion-no-margin">
+            <ion-icon slot="icon-only" name="log-out"></ion-icon>
+          </ion-button>
+        } @else {
+          <ion-button (click)="login()" fill="clear" color="light" class="ion-no-margin">
+            <ion-icon slot="start" name="log-in"></ion-icon>
+            <span class="hidden sm:inline">Login</span>
+          </ion-button>
+        }
+      </div>
     </ion-toolbar>
   </ion-header>
 
   <ion-content [fullscreen]="true" class="ion-padding bg-slate-50">
-    <div class="max-w-2xl mx-auto space-y-6 pb-12">
-      
-      <!-- Upload Section -->
-      <section class="text-center py-8 px-4 bg-white rounded-3xl shadow-sm border border-slate-100">
+    @if (showLanding() && !auth.user()) {
+      <app-landing (login)="showLanding.set(false)" (getStarted)="showLanding.set(false)"></app-landing>
+    } @else {
+      <div class="max-w-2xl mx-auto space-y-6 pb-12">
+        
+        @if (!auth.isAuthReady()) {
+        <div class="flex flex-col items-center justify-center py-20">
+          <ion-spinner name="crescent" color="primary"></ion-spinner>
+          <p class="text-slate-500 mt-4">Initializing...</p>
+        </div>
+      } @else if (!auth.user()) {
+        <section class="max-w-md mx-auto py-12 px-6 bg-white rounded-3xl shadow-sm border border-slate-100">
+          <div class="text-center mb-8 relative">
+            <button (click)="showLanding.set(true)" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600">
+              <ion-icon name="close" class="text-2xl"></ion-icon>
+            </button>
+            <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ion-icon name="person-circle" class="text-4xl text-indigo-600"></ion-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800">{{ isRegistering() ? 'Create Account' : 'Welcome Back' }}</h2>
+            <p class="text-slate-500 mt-2">Sign in to start optimizing your listings.</p>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Email</ion-label>
+              <ion-input type="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" placeholder="seller@example.com" class="bg-slate-50 rounded-xl px-4 py-1 mt-1 border border-slate-100"></ion-input>
+            </div>
+            <div>
+              <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Password</ion-label>
+              <ion-input type="password" [value]="password()" (ionInput)="password.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-xl px-4 py-1 mt-1 border border-slate-100"></ion-input>
+            </div>
+
+            @if (authError()) {
+              <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100">
+                {{ authError() }}
+              </div>
+            }
+
+            <ion-button (click)="emailAuth()" expand="block" shape="round" class="h-12 font-bold mt-4">
+              {{ isRegistering() ? 'Sign Up' : 'Login' }}
+            </ion-button>
+
+            <div class="text-center py-2">
+              <button (click)="isRegistering.set(!isRegistering())" class="text-sm text-indigo-600 font-medium hover:underline">
+                {{ isRegistering() ? 'Already have an account? Login' : 'Need an account? Sign Up' }}
+              </button>
+            </div>
+
+            <div class="relative py-4">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-slate-100"></div>
+              </div>
+              <div class="relative flex justify-center text-xs uppercase">
+                <span class="bg-white px-2 text-slate-400">Or continue with</span>
+              </div>
+            </div>
+
+            <ion-button (click)="login()" expand="block" fill="outline" shape="round" color="dark" class="h-12 font-bold">
+              <ion-icon slot="start" name="logo-google"></ion-icon>
+              Google
+            </ion-button>
+          </div>
+        </section>
+      } @else {
+        <!-- Upload Section -->
+        <section class="text-center py-8 px-4 bg-white rounded-3xl shadow-sm border border-slate-100">
         <div class="mb-4">
           <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <ion-icon name="cloud-upload" class="text-3xl text-indigo-600"></ion-icon>
@@ -101,53 +180,114 @@
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <ion-label class="text-xs font-bold uppercase tracking-widest text-indigo-600">Product Name</ion-label>
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.name, 'name')">
-                      <ion-icon [name]="copiedField() === 'name' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
-                    </ion-button>
+                    <div class="flex gap-1">
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('name')">
+                        <ion-icon [name]="editingField() === 'name' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(details.name, 'name')">
+                        <ion-icon [name]="copiedField() === 'name' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <h3 class="text-xl font-bold text-slate-800 leading-tight">{{details.name}}</h3>
+                  @if (editingField() === 'name') {
+                    <ion-input [value]="details.name" (ionInput)="updateField('name', $event.target.value)" class="bg-slate-50 rounded-xl px-3 py-2 text-lg font-bold border border-indigo-100"></ion-input>
+                  } @else {
+                    <h3 class="text-xl font-bold text-slate-800 leading-tight">{{details.name}}</h3>
+                  }
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
-                  <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-1">Price (INR)</ion-label>
-                    <div class="text-lg font-bold text-emerald-600 flex items-center">
-                      <span class="mr-1 text-sm">₹</span>
-                      {{details.priceINR}}
+                  <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative">
+                    <div class="flex justify-between items-start mb-1">
+                      <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500">Price (INR)</ion-label>
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('price')" class="h-6 w-6 ion-no-margin">
+                        <ion-icon [name]="editingField() === 'price' ? 'save' : 'pencil'" slot="icon-only" class="text-xs"></ion-icon>
+                      </ion-button>
                     </div>
-                  </div>
-                  <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-1">GST & HSN</ion-label>
-                    <div class="text-sm font-bold text-slate-700">
-                      {{details.gstRate}} GST | {{details.hsnCode}}
-                    </div>
-                  </div>
-                </div>
-
-                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500 block mb-1">Material</ion-label>
-                  <div class="text-sm font-bold text-slate-700">
-                    {{details.material}}
-                  </div>
-                </div>
-
-                <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
-                  <ion-label class="text-xs font-bold uppercase tracking-widest text-indigo-600 block mb-2">Variations</ion-label>
-                  <div class="flex flex-wrap gap-2">
-                    @for (v of details.variations; track v) {
-                      <ion-badge color="primary" class="px-3 py-1 rounded-full text-[10px]">{{v}}</ion-badge>
+                    @if (editingField() === 'price') {
+                      <ion-input type="number" [value]="details.priceINR" (ionInput)="updateField('priceINR', $event.target.value)" class="text-lg font-bold text-emerald-600"></ion-input>
+                    } @else {
+                      <div class="text-lg font-bold text-emerald-600 flex items-center">
+                        <span class="mr-1 text-sm">₹</span>
+                        {{details.priceINR}}
+                      </div>
                     }
                   </div>
+                  <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative">
+                    <div class="flex justify-between items-start mb-1">
+                      <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500">GST & HSN</ion-label>
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('gstHsn')" class="h-6 w-6 ion-no-margin">
+                        <ion-icon [name]="editingField() === 'gstHsn' ? 'save' : 'pencil'" slot="icon-only" class="text-xs"></ion-icon>
+                      </ion-button>
+                    </div>
+                    @if (editingField() === 'gstHsn') {
+                      <div class="flex gap-2">
+                        <ion-input [value]="details.gstRate" (ionInput)="updateField('gstRate', $event.target.value)" placeholder="GST" class="text-xs font-bold"></ion-input>
+                        <ion-input [value]="details.hsnCode" (ionInput)="updateField('hsnCode', $event.target.value)" placeholder="HSN" class="text-xs font-bold"></ion-input>
+                      </div>
+                    } @else {
+                      <div class="text-sm font-bold text-slate-700">
+                        {{details.gstRate}} GST | {{details.hsnCode}}
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative">
+                  <div class="flex justify-between items-start mb-1">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-slate-500">Material</ion-label>
+                    <ion-button fill="clear" size="small" (click)="toggleEdit('material')" class="h-6 w-6 ion-no-margin">
+                      <ion-icon [name]="editingField() === 'material' ? 'save' : 'pencil'" slot="icon-only" class="text-xs"></ion-icon>
+                    </ion-button>
+                  </div>
+                  @if (editingField() === 'material') {
+                    <ion-input [value]="details.material" (ionInput)="updateField('material', $event.target.value)" class="text-sm font-bold text-slate-700"></ion-input>
+                  } @else {
+                    <div class="text-sm font-bold text-slate-700">
+                      {{details.material}}
+                    </div>
+                  }
+                </div>
+
+                <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 relative">
+                  <div class="flex justify-between items-start mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-indigo-600">Variations</ion-label>
+                    <ion-button fill="clear" size="small" (click)="toggleEdit('variations')" class="h-6 w-6 ion-no-margin">
+                      <ion-icon [name]="editingField() === 'variations' ? 'save' : 'pencil'" slot="icon-only" class="text-xs"></ion-icon>
+                    </ion-button>
+                  </div>
+                  @if (editingField() === 'variations') {
+                    <div class="space-y-2">
+                      @for (v of details.variations; track $index) {
+                        <ion-input [value]="v" (ionInput)="updateVariation($index, $event.target.value)" class="bg-white rounded-lg px-2 py-1 text-xs border border-indigo-50"></ion-input>
+                      }
+                    </div>
+                  } @else {
+                    <div class="flex flex-wrap gap-2">
+                      @for (v of details.variations; track v) {
+                        <ion-badge color="primary" class="px-3 py-1 rounded-full text-[10px]">{{v}}</ion-badge>
+                      }
+                    </div>
+                  }
                 </div>
 
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <ion-label class="text-xs font-bold uppercase tracking-widest text-indigo-600">General Description</ion-label>
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.description, 'desc')">
-                      <ion-icon [name]="copiedField() === 'desc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
-                    </ion-button>
+                    <div class="flex gap-1">
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('desc')">
+                        <ion-icon [name]="editingField() === 'desc' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(details.description, 'desc')">
+                        <ion-icon [name]="copiedField() === 'desc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <p class="text-slate-600 leading-relaxed text-sm">{{details.description}}</p>
+                  @if (editingField() === 'desc') {
+                    <ion-textarea [value]="details.description" (ionInput)="updateField('description', $event.target.value)" [autoGrow]="true" class="bg-slate-50 rounded-xl px-3 py-2 text-sm border border-indigo-100"></ion-textarea>
+                  } @else {
+                    <p class="text-slate-600 leading-relaxed text-sm">{{details.description}}</p>
+                  }
                 </div>
               </ion-card-content>
             </ion-card>
@@ -161,28 +301,59 @@
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <ion-label class="text-xs font-bold uppercase tracking-widest text-orange-600">Amazon SEO Title</ion-label>
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.amazon.title, 'amzTitle')">
-                      <ion-icon [name]="copiedField() === 'amzTitle' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
-                    </ion-button>
+                    <div class="flex gap-1">
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('amzTitle')">
+                        <ion-icon [name]="editingField() === 'amzTitle' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.amazon.title, 'amzTitle')">
+                        <ion-icon [name]="copiedField() === 'amzTitle' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <h3 class="text-lg font-bold text-slate-800">{{details.platformContent.amazon.title}}</h3>
+                  @if (editingField() === 'amzTitle') {
+                    <ion-input [value]="details.platformContent.amazon.title" (ionInput)="updateField('platformContent.amazon.title', $event.target.value)" class="bg-slate-50 rounded-xl px-3 py-2 text-sm font-bold border border-orange-100"></ion-input>
+                  } @else {
+                    <h3 class="text-lg font-bold text-slate-800">{{details.platformContent.amazon.title}}</h3>
+                  }
                 </div>
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <ion-label class="text-xs font-bold uppercase tracking-widest text-orange-600">Product Description</ion-label>
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.amazon.description, 'amzDesc')">
-                      <ion-icon [name]="copiedField() === 'amzDesc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
-                    </ion-button>
+                    <div class="flex gap-1">
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('amzDesc')">
+                        <ion-icon [name]="editingField() === 'amzDesc' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.amazon.description, 'amzDesc')">
+                        <ion-icon [name]="copiedField() === 'amzDesc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <p class="text-slate-600 text-sm whitespace-pre-wrap">{{details.platformContent.amazon.description}}</p>
+                  @if (editingField() === 'amzDesc') {
+                    <ion-textarea [value]="details.platformContent.amazon.description" (ionInput)="updateField('platformContent.amazon.description', $event.target.value)" [autoGrow]="true" class="bg-slate-50 rounded-xl px-3 py-2 text-sm border border-orange-100"></ion-textarea>
+                  } @else {
+                    <p class="text-slate-600 text-sm whitespace-pre-wrap">{{details.platformContent.amazon.description}}</p>
+                  }
                 </div>
                 <div>
-                  <ion-label class="text-xs font-bold uppercase tracking-widest text-orange-600 block mb-2">Keywords</ion-label>
-                  <div class="flex flex-wrap gap-1">
-                    @for (kw of details.platformContent.amazon.keywords; track kw) {
-                      <ion-badge color="warning" class="text-[10px]">{{kw}}</ion-badge>
-                    }
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-orange-600">Keywords</ion-label>
+                    <ion-button fill="clear" size="small" (click)="toggleEdit('amzKeywords')">
+                      <ion-icon [name]="editingField() === 'amzKeywords' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                    </ion-button>
                   </div>
+                  @if (editingField() === 'amzKeywords') {
+                    <div class="space-y-2">
+                      @for (kw of details.platformContent.amazon.keywords; track $index) {
+                        <ion-input [value]="kw" (ionInput)="updateAmazonKeyword($index, $event.target.value)" class="bg-slate-50 rounded-lg px-2 py-1 text-xs border border-orange-50"></ion-input>
+                      }
+                    </div>
+                  } @else {
+                    <div class="flex flex-wrap gap-1">
+                      @for (kw of details.platformContent.amazon.keywords; track kw) {
+                        <ion-badge color="warning" class="text-[10px]">{{kw}}</ion-badge>
+                      }
+                    </div>
+                  }
                 </div>
               </ion-card-content>
             </ion-card>
@@ -196,28 +367,59 @@
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <ion-label class="text-xs font-bold uppercase tracking-widest text-blue-600">Flipkart Title</ion-label>
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.flipkart.title, 'fkTitle')">
-                      <ion-icon [name]="copiedField() === 'fkTitle' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
-                    </ion-button>
+                    <div class="flex gap-1">
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('fkTitle')">
+                        <ion-icon [name]="editingField() === 'fkTitle' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.flipkart.title, 'fkTitle')">
+                        <ion-icon [name]="copiedField() === 'fkTitle' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <h3 class="text-lg font-bold text-slate-800">{{details.platformContent.flipkart.title}}</h3>
+                  @if (editingField() === 'fkTitle') {
+                    <ion-input [value]="details.platformContent.flipkart.title" (ionInput)="updateField('platformContent.flipkart.title', $event.target.value)" class="bg-slate-50 rounded-xl px-3 py-2 text-sm font-bold border border-blue-100"></ion-input>
+                  } @else {
+                    <h3 class="text-lg font-bold text-slate-800">{{details.platformContent.flipkart.title}}</h3>
+                  }
                 </div>
                 <div>
-                  <ion-label class="text-xs font-bold uppercase tracking-widest text-blue-600 block mb-2">Key Highlights</ion-label>
-                  <ul class="list-disc pl-5 space-y-1">
-                    @for (h of details.platformContent.flipkart.highlights; track h) {
-                      <li class="text-sm text-slate-600">{{h}}</li>
-                    }
-                  </ul>
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-blue-600">Key Highlights</ion-label>
+                    <ion-button fill="clear" size="small" (click)="toggleEdit('fkHighlights')">
+                      <ion-icon [name]="editingField() === 'fkHighlights' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                    </ion-button>
+                  </div>
+                  @if (editingField() === 'fkHighlights') {
+                    <div class="space-y-2">
+                      @for (h of details.platformContent.flipkart.highlights; track $index) {
+                        <ion-input [value]="h" (ionInput)="updateFlipkartHighlight($index, $event.target.value)" class="bg-slate-50 rounded-lg px-2 py-1 text-xs border border-blue-50"></ion-input>
+                      }
+                    </div>
+                  } @else {
+                    <ul class="list-disc pl-5 space-y-1">
+                      @for (h of details.platformContent.flipkart.highlights; track h) {
+                        <li class="text-sm text-slate-600">{{h}}</li>
+                      }
+                    </ul>
+                  }
                 </div>
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <ion-label class="text-xs font-bold uppercase tracking-widest text-blue-600">Description</ion-label>
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.flipkart.description, 'fkDesc')">
-                      <ion-icon [name]="copiedField() === 'fkDesc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
-                    </ion-button>
+                    <div class="flex gap-1">
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('fkDesc')">
+                        <ion-icon [name]="editingField() === 'fkDesc' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.flipkart.description, 'fkDesc')">
+                        <ion-icon [name]="copiedField() === 'fkDesc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <p class="text-slate-600 text-sm">{{details.platformContent.flipkart.description}}</p>
+                  @if (editingField() === 'fkDesc') {
+                    <ion-textarea [value]="details.platformContent.flipkart.description" (ionInput)="updateField('platformContent.flipkart.description', $event.target.value)" [autoGrow]="true" class="bg-slate-50 rounded-xl px-3 py-2 text-sm border border-blue-100"></ion-textarea>
+                  } @else {
+                    <p class="text-slate-600 text-sm">{{details.platformContent.flipkart.description}}</p>
+                  }
                 </div>
               </ion-card-content>
             </ion-card>
@@ -231,11 +433,20 @@
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <ion-label class="text-xs font-bold uppercase tracking-widest text-pink-600">Meesho Title</ion-label>
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.meesho.title, 'mshTitle')">
-                      <ion-icon [name]="copiedField() === 'mshTitle' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
-                    </ion-button>
+                    <div class="flex gap-1">
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('mshTitle')">
+                        <ion-icon [name]="editingField() === 'mshTitle' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.meesho.title, 'mshTitle')">
+                        <ion-icon [name]="copiedField() === 'mshTitle' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <h3 class="text-lg font-bold text-slate-800">{{details.platformContent.meesho.title}}</h3>
+                  @if (editingField() === 'mshTitle') {
+                    <ion-input [value]="details.platformContent.meesho.title" (ionInput)="updateField('platformContent.meesho.title', $event.target.value)" class="bg-slate-50 rounded-xl px-3 py-2 text-sm font-bold border border-pink-100"></ion-input>
+                  } @else {
+                    <h3 class="text-lg font-bold text-slate-800">{{details.platformContent.meesho.title}}</h3>
+                  }
                 </div>
                 <div class="bg-pink-50 p-3 rounded-xl border border-pink-100">
                   <ion-label class="text-xs font-bold uppercase tracking-widest text-pink-600 block mb-1">Suggested Category</ion-label>
@@ -244,11 +455,20 @@
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <ion-label class="text-xs font-bold uppercase tracking-widest text-pink-600">Description</ion-label>
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.meesho.description, 'mshDesc')">
-                      <ion-icon [name]="copiedField() === 'mshDesc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
-                    </ion-button>
+                    <div class="flex gap-1">
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('mshDesc')">
+                        <ion-icon [name]="editingField() === 'mshDesc' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.meesho.description, 'mshDesc')">
+                        <ion-icon [name]="copiedField() === 'mshDesc' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <p class="text-slate-600 text-sm whitespace-pre-wrap">{{details.platformContent.meesho.description}}</p>
+                  @if (editingField() === 'mshDesc') {
+                    <ion-textarea [value]="details.platformContent.meesho.description" (ionInput)="updateField('platformContent.meesho.description', $event.target.value)" [autoGrow]="true" class="bg-slate-50 rounded-xl px-3 py-2 text-sm border border-pink-100"></ion-textarea>
+                  } @else {
+                    <p class="text-slate-600 text-sm whitespace-pre-wrap">{{details.platformContent.meesho.description}}</p>
+                  }
                 </div>
               </ion-card-content>
             </ion-card>
@@ -262,26 +482,49 @@
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <ion-label class="text-xs font-bold uppercase tracking-widest text-purple-600">Instagram Caption</ion-label>
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.instagram.caption, 'igCaption')">
-                      <ion-icon [name]="copiedField() === 'igCaption' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
-                    </ion-button>
+                    <div class="flex gap-1">
+                      <ion-button fill="clear" size="small" (click)="toggleEdit('igCaption')">
+                        <ion-icon [name]="editingField() === 'igCaption' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(details.platformContent.instagram.caption, 'igCaption')">
+                        <ion-icon [name]="copiedField() === 'igCaption' ? 'checkmark' : 'copy'" slot="icon-only"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <p class="text-slate-800 text-sm leading-relaxed italic">"{{details.platformContent.instagram.caption}}"</p>
+                  @if (editingField() === 'igCaption') {
+                    <ion-textarea [value]="details.platformContent.instagram.caption" (ionInput)="updateField('platformContent.instagram.caption', $event.target.value)" [autoGrow]="true" class="bg-slate-50 rounded-xl px-3 py-2 text-sm border border-purple-100 italic"></ion-textarea>
+                  } @else {
+                    <p class="text-slate-800 text-sm leading-relaxed italic">"{{details.platformContent.instagram.caption}}"</p>
+                  }
                 </div>
                 <div>
-                  <ion-label class="text-xs font-bold uppercase tracking-widest text-purple-600 block mb-2">Hashtags</ion-label>
-                  <div class="flex flex-wrap gap-1">
-                    @for (tag of details.platformContent.instagram.hashtags; track tag) {
-                      <span class="text-indigo-600 text-xs font-medium">#{{tag}}</span>
-                    }
+                  <div class="flex justify-between items-center mb-2">
+                    <ion-label class="text-xs font-bold uppercase tracking-widest text-purple-600">Hashtags</ion-label>
+                    <ion-button fill="clear" size="small" (click)="toggleEdit('igHashtags')">
+                      <ion-icon [name]="editingField() === 'igHashtags' ? 'save' : 'pencil'" slot="icon-only"></ion-icon>
+                    </ion-button>
                   </div>
+                  @if (editingField() === 'igHashtags') {
+                    <div class="space-y-2">
+                      @for (tag of details.platformContent.instagram.hashtags; track $index) {
+                        <ion-input [value]="'#' + tag" (ionInput)="updateHashtag($index, $event.target.value)" class="bg-slate-50 rounded-lg px-2 py-1 text-xs border border-purple-50"></ion-input>
+                      }
+                    </div>
+                  } @else {
+                    <div class="flex flex-wrap gap-1">
+                      @for (tag of details.platformContent.instagram.hashtags; track tag) {
+                        <span class="text-indigo-600 text-xs font-medium">#{{tag}}</span>
+                      }
+                    </div>
+                  }
                 </div>
               </ion-card-content>
             </ion-card>
           </div>
         }
       }
-
-    </div>
-  </ion-content>
+    }
+  </div>
+}
+</ion-content>
 </ion-app>
