@@ -1,7 +1,7 @@
 import { Component, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { 
-  IonButton, IonIcon, IonText
+  IonButton, IonIcon
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle } from 'ionicons/icons';
@@ -11,7 +11,7 @@ import { sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle } fr
   standalone: true,
   imports: [
     CommonModule,
-    IonButton, IonIcon, IonText
+    IonButton, IonIcon
   ],
   templateUrl: './landing.html',
   styleUrl: './landing.css',
