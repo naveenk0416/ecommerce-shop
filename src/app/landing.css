@@ -59,7 +59,7 @@
 
 .brand {
   display: flex;
-  items-center: center;
+  align-items: center;
   gap: 0.75rem;
   margin-bottom: 3rem;
 }

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
@@ -10,6 +10,7 @@ import { addIcons } from 'ionicons';
 import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
+import { ListingService, Listing } from './services/listing';
 import { Landing } from './landing';
 
 @Component({
@@ -29,14 +30,19 @@ import { Landing } from './landing';
 export class App {
   private gemini = inject(GeminiService);
   public auth = inject(AuthService);
+  private listingService = inject(ListingService);
+  private platformId = inject(PLATFORM_ID);
 
   showLanding = signal(true);
   selectedImage = signal<string | null>(null);
   processedImage = signal<string | null>(null);
   isProcessing = signal(false);
   isGeneratingImage = signal(false);
+  isSaving = signal(false);
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<'details' | 'amazon' | 'flipkart' | 'meesho' | 'instagram'>('details');
+  mainView = signal<'home' | 'listings'>('home');
+  myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
   editingField = signal<string | null>(null);
 
@@ -48,6 +54,48 @@ export class App {
 
   constructor() {
     addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close });
+    
+    if (isPlatformBrowser(this.platformId)) {
+      // Listen for listings
+      this.listingService.getListings((listings) => {
+        this.myListings.set(listings);
+      });
+    }
+  }
+
+  async saveListing() {
+    const details = this.productDetails();
+    const original = this.selectedImage();
+    if (!details || !original) return;
+
+    this.isSaving.set(true);
+    try {
+      await this.listingService.saveListing(details, original, this.processedImage());
+      this.mainView.set('listings');
+    } catch (error) {
+      console.error('Failed to save listing:', error);
+    } finally {
+      this.isSaving.set(false);
+    }
+  }
+
+  async deleteListing(id: string | undefined) {
+    if (!id) return;
+    await this.listingService.deleteListing(id);
+  }
+
+  viewListing(listing: Listing) {
+    this.productDetails.set(listing);
+    this.selectedImage.set(listing.originalImage);
+    this.processedImage.set(listing.processedImage);
+    this.mainView.set('home');
+  }
+
+  reset() {
+    this.selectedImage.set(null);
+    this.processedImage.set(null);
+    this.productDetails.set(null);
+    this.activeTab.set('details');
   }
 
   async login() {

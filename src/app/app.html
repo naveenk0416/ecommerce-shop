@@ -5,9 +5,16 @@
       
       <div slot="end" class="flex items-center gap-2 mr-2">
         @if (auth.user()) {
-          <div class="hidden md:flex flex-col items-end text-xs mr-2">
+          <ion-button (click)="mainView.set('home')" fill="clear" color="light" [class.opacity-50]="mainView() !== 'home'">
+            <ion-icon slot="start" name="sparkles"></ion-icon>
+            <span class="hidden sm:inline">Optimize</span>
+          </ion-button>
+          <ion-button (click)="mainView.set('listings')" fill="clear" color="light" [class.opacity-50]="mainView() !== 'listings'">
+            <ion-icon slot="start" name="list"></ion-icon>
+            <span class="hidden sm:inline">My Listings</span>
+          </ion-button>
+          <div class="hidden md:flex flex-col items-end text-xs mx-2">
             <span class="font-bold">{{ auth.user()?.displayName }}</span>
-            <span class="opacity-80">{{ auth.user()?.email }}</span>
           </div>
           <ion-button (click)="logout()" fill="clear" color="light" class="ion-no-margin">
             <ion-icon slot="icon-only" name="log-out"></ion-icon>
@@ -87,6 +94,53 @@
             </ion-button>
           </div>
         </section>
+      } @else if (mainView() === 'listings') {
+        <!-- My Listings View -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-bold text-slate-800">My Listings</h2>
+            <ion-button (click)="mainView.set('home')" fill="clear" size="small">
+              <ion-icon slot="start" name="sparkles"></ion-icon>
+              New Listing
+            </ion-button>
+          </div>
+
+          @if (myListings().length === 0) {
+            <div class="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+              <ion-icon name="list" class="text-5xl text-slate-200 mb-4"></ion-icon>
+              <p class="text-slate-500">No listings saved yet.</p>
+              <ion-button (click)="mainView.set('home')" fill="outline" shape="round" class="mt-4">
+                Start Optimizing
+              </ion-button>
+            </div>
+          } @else {
+            <div class="grid gap-4">
+              @for (listing of myListings(); track listing.id) {
+                <ion-card class="ion-no-margin overflow-hidden rounded-2xl border-none shadow-sm hover:shadow-md transition-shadow">
+                  <div class="flex h-32">
+                    <div class="w-32 h-full bg-slate-100 flex-shrink-0">
+                      <img [src]="listing.processedImage || listing.originalImage" [alt]="listing.name" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+                    </div>
+                    <div class="flex-grow p-4 flex flex-col justify-between">
+                      <div>
+                        <h3 class="font-bold text-slate-800 line-clamp-1">{{ listing.name }}</h3>
+                        <p class="text-xs text-slate-500">{{ listing.createdAt | date:'mediumDate' }}</p>
+                      </div>
+                      <div class="flex justify-end gap-2">
+                        <ion-button (click)="viewListing(listing)" fill="clear" size="small">
+                          View
+                        </ion-button>
+                        <ion-button (click)="deleteListing(listing.id)" fill="clear" color="danger" size="small">
+                          Delete
+                        </ion-button>
+                      </div>
+                    </div>
+                  </div>
+                </ion-card>
+              }
+            </div>
+          }
+        </div>
       } @else {
         <!-- Upload Section -->
         <section class="text-center py-8 px-4 bg-white rounded-3xl shadow-sm border border-slate-100">
@@ -522,6 +576,21 @@
             </ion-card>
           </div>
         }
+
+        <div class="flex gap-2 mt-6">
+          <ion-button (click)="saveListing()" [disabled]="isSaving()" expand="block" class="flex-grow h-12 font-bold" shape="round">
+            @if (isSaving()) {
+              <ion-spinner name="crescent" slot="start"></ion-spinner>
+              Saving...
+            } @else {
+              <ion-icon slot="start" name="save"></ion-icon>
+              Save Listing
+            }
+          </ion-button>
+          <ion-button (click)="reset()" fill="outline" color="medium" class="h-12" shape="round">
+            <ion-icon slot="icon-only" name="close"></ion-icon>
+          </ion-button>
+        </div>
       }
     }
   </div>

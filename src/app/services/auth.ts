@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { 
   GoogleAuthProvider, 
   signInWithPopup, 
@@ -14,14 +15,20 @@ import { auth } from '../firebase';
   providedIn: 'root'
 })
 export class AuthService {
+  private platformId = inject(PLATFORM_ID);
   user = signal<User | null>(null);
   isAuthReady = signal(false);
 
   constructor() {
-    onAuthStateChanged(auth, (user) => {
-      this.user.set(user);
+    if (isPlatformBrowser(this.platformId)) {
+      onAuthStateChanged(auth, (user) => {
+        this.user.set(user);
+        this.isAuthReady.set(true);
+      });
+    } else {
+      // On server, we can't know the auth state easily without cookies
       this.isAuthReady.set(true);
-    });
+    }
   }
 
   async loginWithGoogle() {

@@ -11,12 +11,36 @@
         "photoURL": { "type": "string", "description": "URL to user's profile picture" }
       },
       "required": ["uid", "email"]
+    },
+    "listings": {
+      "title": "Product Listing",
+      "description": "Generated and optimized product listing",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Owner's user ID" },
+        "name": { "type": "string", "description": "Product name" },
+        "description": { "type": "string", "description": "Product description" },
+        "priceINR": { "type": "string", "description": "Price in INR" },
+        "gstRate": { "type": "string", "description": "GST rate" },
+        "hsnCode": { "type": "string", "description": "HSN code" },
+        "material": { "type": "string", "description": "Material" },
+        "variations": { "type": "array", "items": { "type": "string" } },
+        "platformContent": { "type": "object" },
+        "originalImage": { "type": "string", "description": "Base64 or URL of original image" },
+        "processedImage": { "type": "string", "description": "Base64 or URL of processed image" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "users",
       "description": "User profile documents"
+    },
+    "/listings/{listingId}": {
+      "schema": "listings",
+      "description": "Optimized product listings"
     }
   }
 }

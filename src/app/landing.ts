@@ -1,4 +1,4 @@
-import { Component, output } from '@angular/core';
+import { Component, output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { 
   IonButton, IonIcon
@@ -9,6 +9,7 @@ import { sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle } fr
 @Component({
   selector: 'app-landing',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     IonButton, IonIcon
