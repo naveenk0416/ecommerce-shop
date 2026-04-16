@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "dev": "cross-env ng serve --port=3000 --host=0.0.0.0 --disable-host-check --define=\"GEMINI_API_KEY=\\'${GEMINI_API_KEY}\\'\" ${DISABLE_HMR:+--live-reload=false}",
+    "dev": "[ ! -f src/app/env.ts ] || grep -q \"''\" src/app/env.ts || grep -q \"MY_GEMINI_API_KEY\" src/app/env.ts && [ -n \"$GEMINI_API_KEY\" ] && printf \"export const GEMINI_API_KEY = '%s';\\n\" \"$GEMINI_API_KEY\" > src/app/env.ts; npx ng serve --host 0.0.0.0 --port 3000 --live-reload=false",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",

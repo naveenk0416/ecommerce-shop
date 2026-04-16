@@ -7,18 +7,20 @@ import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent,
   IonSegment, IonSegmentButton, IonInput, IonTextarea
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
 import { Landing } from './landing';
+import { Products } from './products';
+import { resizeImage } from './utils/image';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, Landing,
+    CommonModule, FormsModule, Landing, Products,
     IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
@@ -41,7 +43,7 @@ export class App {
   isSaving = signal(false);
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<'details' | 'amazon' | 'flipkart' | 'meesho' | 'instagram'>('details');
-  mainView = signal<'home' | 'listings'>('home');
+  mainView = signal<'home' | 'listings' | 'products'>('home');
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
   editingField = signal<string | null>(null);
@@ -53,7 +55,7 @@ export class App {
   authError = signal<string | null>(null);
 
   constructor() {
-    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close });
+    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube });
     
     if (isPlatformBrowser(this.platformId)) {
       // Listen for listings
@@ -142,7 +144,12 @@ export class App {
 
     const reader = new FileReader();
     reader.onload = async () => {
-      const base64 = reader.result as string;
+      let base64 = reader.result as string;
+      try {
+        base64 = await resizeImage(base64, 1200, 1200);
+      } catch (e) {
+        console.warn('Resize failed, using original', e);
+      }
       this.selectedImage.set(base64);
       this.processedImage.set(null);
       this.productDetails.set(null);
@@ -171,7 +178,12 @@ export class App {
   async generateWhiteBg(base64: string, mimeType: string) {
     this.isGeneratingImage.set(true);
     try {
-      const newImage = await this.gemini.generateWhiteBackground(base64, mimeType);
+      let newImage = await this.gemini.generateWhiteBackground(base64, mimeType);
+      try {
+        newImage = await resizeImage(newImage, 1200, 1200);
+      } catch (e) {
+        console.warn('Processed image resize failed', e);
+      }
       this.processedImage.set(newImage);
     } catch (error) {
       console.error("Error generating white background:", error);

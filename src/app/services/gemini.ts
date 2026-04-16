@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { GoogleGenAI, Type } from "@google/genai";
+import { GEMINI_API_KEY } from '../env';
 
 export interface ProductDetails {
   name: string;
@@ -21,7 +22,18 @@ export interface ProductDetails {
   providedIn: 'root'
 })
 export class GeminiService {
-  private ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  private aiClient: GoogleGenAI | null = null;
+
+  private get ai() {
+    if (!this.aiClient) {
+      const key = GEMINI_API_KEY as string;
+      if (!key) {
+        throw new Error('GEMINI_API_KEY is not defined. Please configure it in your secrets.');
+      }
+      this.aiClient = new GoogleGenAI({ apiKey: key });
+    }
+    return this.aiClient;
+  }
 
   async extractProductDetails(base64Image: string, mimeType: string): Promise<ProductDetails> {
     const model = "gemini-3-flash-preview";

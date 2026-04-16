@@ -1,0 +1,123 @@
+<div class="products-dashboard animate-in fade-in">
+  <!-- Stats Header -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <ion-card class="ion-no-margin border-none shadow-sm bg-indigo-600 text-white">
+      <ion-card-content class="p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-indigo-100 text-xs font-bold uppercase tracking-wider">Total Products</p>
+            <h2 class="text-3xl font-bold mt-1">{{ listings().length }}</h2>
+          </div>
+          <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+            <ion-icon name="cube" class="text-2xl"></ion-icon>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card class="ion-no-margin border-none shadow-sm bg-white">
+      <ion-card-content class="p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider">Inventory Value</p>
+            <h2 class="text-3xl font-bold mt-1 text-slate-800">₹{{ totalValue | number:'1.0-0' }}</h2>
+          </div>
+          <div class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
+            <ion-icon name="trending-up" class="text-2xl text-emerald-600"></ion-icon>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card class="ion-no-margin border-none shadow-sm bg-white">
+      <ion-card-content class="p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider">Avg. Price</p>
+            <h2 class="text-3xl font-bold mt-1 text-slate-800">₹{{ averagePrice | number:'1.0-0' }}</h2>
+          </div>
+          <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center">
+            <ion-icon name="alert-circle" class="text-2xl text-amber-600"></ion-icon>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <!-- Management Table -->
+  <ion-card class="ion-no-margin border-none shadow-sm bg-white overflow-hidden">
+    <ion-card-header class="border-b border-slate-100 flex flex-row items-center justify-between py-4">
+      <ion-card-title class="text-lg font-bold text-slate-800">Inventory Management</ion-card-title>
+      <div class="flex gap-2">
+        <ion-button fill="clear" color="medium" size="small">
+          <ion-icon slot="icon-only" name="filter"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" color="medium" size="small">
+          <ion-icon slot="icon-only" name="ellipsis-vertical"></ion-icon>
+        </ion-button>
+      </div>
+    </ion-card-header>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+            <th class="px-6 py-4">Product</th>
+            <th class="px-6 py-4">Category/HSN</th>
+            <th class="px-6 py-4">Price</th>
+            <th class="px-6 py-4">GST</th>
+            <th class="px-6 py-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (listing of listings(); track listing.id) {
+            <tr class="hover:bg-slate-50/50 transition-colors">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
+                    <img [src]="listing.processedImage || listing.originalImage" [alt]="listing.name" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-slate-800 line-clamp-1">{{ listing.name }}</p>
+                    <p class="text-xs text-slate-400">{{ listing.material }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex flex-col">
+                  <span class="text-sm text-slate-600">{{ listing.platformContent.meesho.category }}</span>
+                  <span class="text-xs text-slate-400 font-mono">{{ listing.hsnCode }}</span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-sm font-bold text-slate-800">{{ listing.priceINR }}</span>
+              </td>
+              <td class="px-6 py-4">
+                <ion-badge color="light" class="text-[10px] font-bold">{{ listing.gstRate }}</ion-badge>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <div class="flex justify-end gap-1">
+                  <ion-button (click)="view.emit(listing)" fill="clear" color="primary" size="small">
+                    <ion-icon slot="icon-only" name="eye"></ion-icon>
+                  </ion-button>
+                  <ion-button (click)="delete.emit(listing.id!)" fill="clear" color="danger" size="small">
+                    <ion-icon slot="icon-only" name="trash"></ion-icon>
+                  </ion-button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="px-6 py-20 text-center">
+                <div class="flex flex-col items-center">
+                  <ion-icon name="cube" class="text-5xl text-slate-200 mb-4"></ion-icon>
+                  <p class="text-slate-500">No products found in your inventory.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </ion-card>
+</div>
