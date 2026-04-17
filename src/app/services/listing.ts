@@ -47,13 +47,10 @@ export class ListingService {
     }
   }
 
-  getListings(callback: (listings: Listing[]) => void) {
-    const user = auth.currentUser;
-    if (!user) return () => { /* No-op */ };
-
+  getListings(userId: string, callback: (listings: Listing[]) => void) {
     const q = query(
       collection(db, this.listingsPath),
-      where('uid', '==', user.uid),
+      where('uid', '==', userId),
       orderBy('createdAt', 'desc')
     );
 

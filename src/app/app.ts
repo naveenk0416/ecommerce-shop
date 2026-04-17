@@ -1,16 +1,18 @@
-import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
   IonCardContent, IonLabel, IonBadge, IonSpinner,
-  IonSegment, IonSegmentButton, IonInput, IonTextarea
+  IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle,
+  ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
+import { TemplateService } from './services/template';
 import { Landing } from './landing';
 import { Products } from './products';
 import { resizeImage } from './utils/image';
@@ -24,7 +26,7 @@ import { resizeImage } from './utils/image';
     IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
-    IonSegment, IonSegmentButton, IonInput, IonTextarea
+    IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -33,7 +35,9 @@ export class App {
   private gemini = inject(GeminiService);
   public auth = inject(AuthService);
   private listingService = inject(ListingService);
+  public templateService = inject(TemplateService);
   private platformId = inject(PLATFORM_ID);
+  private toastController = inject(ToastController);
 
   showLanding = signal(true);
   selectedImage = signal<string | null>(null);
@@ -42,8 +46,8 @@ export class App {
   isGeneratingImage = signal(false);
   isSaving = signal(false);
   productDetails = signal<ProductDetails | null>(null);
-  activeTab = signal<'details' | 'amazon' | 'flipkart' | 'meesho' | 'instagram'>('details');
-  mainView = signal<'home' | 'listings' | 'products'>('home');
+  activeTab = signal<string>('details');
+  mainView = signal<'home' | 'listings' | 'products' | 'settings'>('home');
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
   editingField = signal<string | null>(null);
@@ -55,12 +59,21 @@ export class App {
   authError = signal<string | null>(null);
 
   constructor() {
-    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube });
+    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial });
     
     if (isPlatformBrowser(this.platformId)) {
-      // Listen for listings
-      this.listingService.getListings((listings) => {
-        this.myListings.set(listings);
+      // Reactively fetch listings when user changes
+      effect(() => {
+        const user = this.auth.user();
+        if (user) {
+          const unsubscribe = this.listingService.getListings(user.uid, (listings) => {
+            this.myListings.set(listings);
+          });
+          return () => unsubscribe();
+        } else {
+          this.myListings.set([]);
+          return;
+        }
       });
     }
   }
@@ -70,12 +83,38 @@ export class App {
     const original = this.selectedImage();
     if (!details || !original) return;
 
+    if (!this.auth.user()) {
+       const toast = await this.toastController.create({
+         message: 'Please login to save your listing',
+         duration: 3000,
+         color: 'warning',
+         position: 'bottom'
+       });
+       await toast.present();
+       this.showLanding.set(false); // Open auth modal
+       return;
+    }
+
     this.isSaving.set(true);
     try {
       await this.listingService.saveListing(details, original, this.processedImage());
+      const toast = await this.toastController.create({
+        message: 'Listing saved successfully to SellerSathi!',
+        duration: 2000,
+        color: 'success',
+        position: 'bottom'
+      });
+      await toast.present();
       this.mainView.set('listings');
     } catch (error) {
       console.error('Failed to save listing:', error);
+      const toast = await this.toastController.create({
+        message: 'Failed to save listing. Please try again.',
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
+      });
+      await toast.present();
     } finally {
       this.isSaving.set(false);
     }
@@ -163,7 +202,7 @@ export class App {
     this.isProcessing.set(true);
     
     try {
-      const details = await this.gemini.extractProductDetails(base64, mimeType);
+      const details = await this.gemini.extractProductDetails(base64, mimeType, this.templateService.templates());
       this.productDetails.set(details);
       
       // Start generating white background in parallel
@@ -223,33 +262,6 @@ export class App {
     this.productDetails.set(newDetails);
   }
 
-  updateHashtag(index: number, value: unknown) {
-    const details = this.productDetails();
-    if (!details) return;
-
-    const newDetails = { ...details };
-    newDetails.platformContent.instagram.hashtags[index] = String(value ?? '').replace(/^#/, '');
-    this.productDetails.set(newDetails);
-  }
-
-  updateAmazonKeyword(index: number, value: unknown) {
-    const details = this.productDetails();
-    if (!details) return;
-
-    const newDetails = { ...details };
-    newDetails.platformContent.amazon.keywords[index] = String(value ?? '');
-    this.productDetails.set(newDetails);
-  }
-
-  updateFlipkartHighlight(index: number, value: unknown) {
-    const details = this.productDetails();
-    if (!details) return;
-
-    const newDetails = { ...details };
-    newDetails.platformContent.flipkart.highlights[index] = String(value ?? '');
-    this.productDetails.set(newDetails);
-  }
-
   updateVariation(index: number, value: unknown) {
     const details = this.productDetails();
     if (!details) return;
@@ -257,5 +269,116 @@ export class App {
     const newDetails = { ...details };
     newDetails.variations[index] = String(value ?? '');
     this.productDetails.set(newDetails);
+  }
+
+  updatePlatformArrayField(platformId: string, fieldId: string, index: number, value: unknown) {
+    const details = this.productDetails();
+    if (!details) return;
+
+    const newDetails = { ...details };
+    const platform = newDetails.platformContent[platformId];
+    if (!platform) return;
+    
+    const field = platform[fieldId];
+    if (!Array.isArray(field)) return;
+
+    field[index] = String(value ?? '').replace(/^#/, '');
+    this.productDetails.set(newDetails);
+  }
+
+  // Template Management
+  updateTemplatePlatform(platformId: string, enabled: boolean) {
+    const configs = [...this.templateService.templates()];
+    const index = configs.findIndex(c => c.id === platformId);
+    if (index === -1) return;
+
+    configs[index] = { ...configs[index], enabled };
+    this.templateService.saveTemplates(configs);
+  }
+
+  shareOnSocial(platform: 'facebook' | 'twitter' | 'instagram', contentPlatformId: string) {
+    const details = this.productDetails();
+    if (!details) return;
+
+    let text = '';
+    
+    if (contentPlatformId === 'details') {
+      text = `${details.name}\n\nPrice: ₹${details.priceINR}\n\n${details.description}`;
+    } else {
+      const platformContent = details.platformContent[contentPlatformId];
+      if (!platformContent) return;
+
+      if (contentPlatformId === 'instagram') {
+        const caption = platformContent['caption'] as string;
+        const hashtags = (platformContent['hashtags'] as string[] || []).map(h => '#' + h).join(' ');
+        text = `${caption}\n\n${hashtags}`;
+      } else {
+        const title = platformContent['title'] || details.name;
+        const desc = platformContent['description'] || platformContent['highlights'] || '';
+        text = `${title}\n\n${Array.isArray(desc) ? desc.join('\n') : desc}`;
+      }
+    }
+
+    const url = window.location.href;
+
+    switch (platform) {
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`, '_blank');
+        break;
+      case 'twitter':
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+        break;
+      case 'instagram':
+        this.copyToClipboard(text, 'share-ig');
+        // Instagram doesn't support direct text sharing via web URL easily, so we copy and inform
+        alert('Caption copied! Open Instagram to paste and share your post.');
+        break;
+    }
+  }
+
+  updateTemplateField(platformId: string, fieldId: string, enabled: boolean) {
+    const configs = [...this.templateService.templates()];
+    const pIndex = configs.findIndex(c => c.id === platformId);
+    if (pIndex === -1) return;
+
+    const fIndex = configs[pIndex].fields.findIndex(f => f.id === fieldId);
+    if (fIndex === -1) return;
+
+    const newFields = [...configs[pIndex].fields];
+    newFields[fIndex] = { ...newFields[fIndex], enabled };
+    configs[pIndex] = { ...configs[pIndex], fields: newFields };
+    this.templateService.saveTemplates(configs);
+  }
+
+  updateTemplatePrompt(platformId: string, prompt: string) {
+    const configs = [...this.templateService.templates()];
+    const index = configs.findIndex(c => c.id === platformId);
+    if (index === -1) return;
+
+    configs[index] = { ...configs[index], customPrompt: prompt };
+    this.templateService.saveTemplates(configs);
+  }
+
+  moveField(platformId: string, fieldId: string, direction: 'up' | 'down') {
+    const configs = [...this.templateService.templates()];
+    const pIndex = configs.findIndex(c => c.id === platformId);
+    if (pIndex === -1) return;
+
+    const fields = [...configs[pIndex].fields];
+    const fIndex = fields.findIndex(f => f.id === fieldId);
+    if (fIndex === -1) return;
+
+    const newIndex = direction === 'up' ? fIndex - 1 : fIndex + 1;
+    if (newIndex < 0 || newIndex >= fields.length) return;
+
+    const temp = fields[fIndex];
+    fields[fIndex] = fields[newIndex];
+    fields[newIndex] = temp;
+
+    // Refresh orders
+    fields.forEach((f, i) => f.order = i);
+
+    configs[pIndex] = { ...configs[pIndex], fields };
+    this.templateService.saveTemplates(configs);
   }
 }

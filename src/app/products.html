@@ -1,43 +1,43 @@
 <div class="products-dashboard animate-in fade-in">
   <!-- Stats Header -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <ion-card class="ion-no-margin border-none shadow-sm bg-indigo-600 text-white">
-      <ion-card-content class="p-6">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <ion-card class="ion-no-margin border-none shadow-sm bg-slate-900 text-white rounded-[2rem]">
+      <ion-card-content class="p-8">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-indigo-100 text-xs font-bold uppercase tracking-wider">Total Products</p>
-            <h2 class="text-3xl font-bold mt-1">{{ listings().length }}</h2>
+            <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest">Total Products</p>
+            <h2 class="text-4xl font-black mt-1">{{ listings().length }}</h2>
           </div>
-          <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-            <ion-icon name="cube" class="text-2xl"></ion-icon>
+          <div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center">
+            <ion-icon name="cube" class="text-3xl"></ion-icon>
           </div>
         </div>
       </ion-card-content>
     </ion-card>
 
-    <ion-card class="ion-no-margin border-none shadow-sm bg-white">
-      <ion-card-content class="p-6">
+    <ion-card class="ion-no-margin border-none shadow-sm bg-white rounded-[2rem]">
+      <ion-card-content class="p-8">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider">Inventory Value</p>
-            <h2 class="text-3xl font-bold mt-1 text-slate-800">₹{{ totalValue | number:'1.0-0' }}</h2>
+            <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Inventory Value</p>
+            <h2 class="text-4xl font-black mt-1 text-slate-900">₹{{ totalValue | number:'1.0-0' }}</h2>
           </div>
-          <div class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
-            <ion-icon name="trending-up" class="text-2xl text-emerald-600"></ion-icon>
+          <div class="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center">
+            <ion-icon name="stats-chart" class="text-3xl text-emerald-600"></ion-icon>
           </div>
         </div>
       </ion-card-content>
     </ion-card>
 
-    <ion-card class="ion-no-margin border-none shadow-sm bg-white">
-      <ion-card-content class="p-6">
+    <ion-card class="ion-no-margin border-none shadow-sm bg-white rounded-[2rem]">
+      <ion-card-content class="p-8">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider">Avg. Price</p>
-            <h2 class="text-3xl font-bold mt-1 text-slate-800">₹{{ averagePrice | number:'1.0-0' }}</h2>
+            <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Avg. Price</p>
+            <h2 class="text-4xl font-black mt-1 text-slate-900">₹{{ averagePrice | number:'1.0-0' }}</h2>
           </div>
-          <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center">
-            <ion-icon name="alert-circle" class="text-2xl text-amber-600"></ion-icon>
+          <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center">
+            <ion-icon name="flash" class="text-3xl text-orange-600"></ion-icon>
           </div>
         </div>
       </ion-card-content>
@@ -45,9 +45,9 @@
   </div>
 
   <!-- Management Table -->
-  <ion-card class="ion-no-margin border-none shadow-sm bg-white overflow-hidden">
-    <ion-card-header class="border-b border-slate-100 flex flex-row items-center justify-between py-4">
-      <ion-card-title class="text-lg font-bold text-slate-800">Inventory Management</ion-card-title>
+  <ion-card class="ion-no-margin border-none shadow-sm bg-white overflow-hidden rounded-[2.5rem]">
+    <ion-card-header class="border-b border-slate-50 flex flex-row items-center justify-between py-6 px-8">
+      <ion-card-title class="text-xl font-black text-slate-900 tracking-tight">Inventory Management</ion-card-title>
       <div class="flex gap-2">
         <ion-button fill="clear" color="medium" size="small">
           <ion-icon slot="icon-only" name="filter"></ion-icon>
@@ -85,7 +85,7 @@
               </td>
               <td class="px-6 py-4">
                 <div class="flex flex-col">
-                  <span class="text-sm text-slate-600">{{ listing.platformContent.meesho.category }}</span>
+                  <span class="text-sm text-slate-600">{{ listing.platformContent['meesho']?.['category'] }}</span>
                   <span class="text-xs text-slate-400 font-mono">{{ listing.hsnCode }}</span>
                 </div>
               </td>

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { GEMINI_API_KEY } from '../env';
+import { PlatformTemplate } from './template';
 
 export interface ProductDetails {
   name: string;
@@ -10,12 +11,7 @@ export interface ProductDetails {
   hsnCode: string;
   material: string;
   variations: string[];
-  platformContent: {
-    amazon: { title: string; description: string; keywords: string[] };
-    flipkart: { title: string; description: string; highlights: string[] };
-    meesho: { title: string; description: string; category: string };
-    instagram: { caption: string; hashtags: string[] };
-  };
+  platformContent: Record<string, Record<string, string | string[]>>;
 }
 
 @Injectable({
@@ -35,28 +31,80 @@ export class GeminiService {
     return this.aiClient;
   }
 
-  async extractProductDetails(base64Image: string, mimeType: string): Promise<ProductDetails> {
+  async extractProductDetails(base64Image: string, mimeType: string, templates: PlatformTemplate[]): Promise<ProductDetails> {
     const model = "gemini-3-flash-preview";
     
-    const prompt = `
+    // Build parts of the prompt based on templates
+    const detailTemplate = templates.find(t => t.id === 'details');
+    const enabledPlatforms = templates.filter(t => t.id !== 'details' && t.enabled);
+
+    let prompt = `
       Analyze this product image for an e-commerce seller in India. 
       Extract and generate the following details following Indian standards:
-      1. Product Name (concise and catchy)
-      2. Product Description (detailed, highlighting features)
-      3. Estimated Price in INR (provide a realistic value or range)
-      4. Applicable GST Rate (e.g., 5%, 12%, 18%)
-      5. Likely HSN Code (8-digit code)
-      6. Material (e.g., Cotton, Leather, Plastic, Stainless Steel)
-      7. Potential Variations (e.g., colors, sizes, materials)
-      
-      Also, generate platform-specific content for:
-      - Amazon: SEO-optimized title, bullet-point description, and backend keywords.
-      - Flipkart: Catchy title, description, and key product highlights.
-      - Meesho: Simple title, description, and suggested category.
-      - Instagram: Engaging caption with emojis and relevant hashtags.
-
-      Return the data in the specified JSON format.
     `;
+
+    if (detailTemplate) {
+      detailTemplate.fields.filter(f => f.enabled).forEach((f, i) => {
+        prompt += `${i + 1}. ${f.label} (${f.customPrompt || 'provide relevant value'})\n`;
+      });
+    }
+
+    prompt += `\nAlso, generate platform-specific content for the following platforms:\n`;
+    enabledPlatforms.forEach(p => {
+      prompt += `- ${p.label}: ${p.customPrompt || 'Generate relevant content'} based on these fields: ${p.fields.filter(f => f.enabled).map(f => f.label).join(', ')}. ${p.fields.filter(f => f.customPrompt).map(f => `${f.label}: ${f.customPrompt}`).join('. ')}\n`;
+    });
+
+    prompt += `\nReturn the data in the specified JSON format.`;
+
+    // Build Dynamic Schema
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+
+    if (detailTemplate) {
+      detailTemplate.fields.filter(f => f.enabled).forEach(f => {
+        properties[f.id] = { type: f.type === 'array' ? 'array' : 'string' };
+        if (f.type === 'array') {
+          (properties[f.id] as Record<string, unknown>)['items'] = { type: 'string' };
+        }
+        required.push(f.id);
+      });
+    }
+
+    const platformProperties: Record<string, unknown> = {};
+    const platformRequired: string[] = [];
+
+    enabledPlatforms.forEach(p => {
+      const pFields: Record<string, unknown> = {};
+      const pFieldsRequired: string[] = [];
+
+      p.fields.filter(f => f.enabled).forEach(f => {
+        pFields[f.id] = { type: f.type === 'array' ? 'array' : 'string' };
+        if (f.type === 'array') {
+          (pFields[f.id] as Record<string, unknown>)['items'] = { type: 'string' };
+        }
+        pFieldsRequired.push(f.id);
+      });
+
+      platformProperties[p.id] = {
+        type: 'object',
+        properties: pFields,
+        required: pFieldsRequired
+      };
+      platformRequired.push(p.id);
+    });
+
+    properties['platformContent'] = {
+      type: 'object',
+      properties: platformProperties,
+      required: platformRequired
+    };
+    required.push('platformContent');
+
+    const responseSchema: Record<string, unknown> = {
+      type: 'object',
+      properties,
+      required
+    };
 
     const response = await this.ai.models.generateContent({
       model: model,
@@ -70,63 +118,7 @@ export class GeminiService {
       ],
       config: {
         responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING },
-            description: { type: Type.STRING },
-            priceINR: { type: Type.STRING },
-            gstRate: { type: Type.STRING },
-            hsnCode: { type: Type.STRING },
-            material: { type: Type.STRING },
-            variations: { 
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            },
-            platformContent: {
-              type: Type.OBJECT,
-              properties: {
-                amazon: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    keywords: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ["title", "description", "keywords"]
-                },
-                flipkart: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    highlights: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ["title", "description", "highlights"]
-                },
-                meesho: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    category: { type: Type.STRING }
-                  },
-                  required: ["title", "description", "category"]
-                },
-                instagram: {
-                  type: Type.OBJECT,
-                  properties: {
-                    caption: { type: Type.STRING },
-                    hashtags: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ["caption", "hashtags"]
-                }
-              },
-              required: ["amazon", "flipkart", "meesho", "instagram"]
-            }
-          },
-          required: ["name", "description", "priceINR", "gstRate", "hsnCode", "material", "variations", "platformContent"]
-        }
+        responseSchema: responseSchema
       }
     });
 

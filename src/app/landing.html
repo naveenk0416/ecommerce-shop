@@ -1,89 +1,159 @@
 <main class="landing-container">
-  <!-- Left Pane: Hero Content -->
-  <section class="hero-pane">
-    <div class="rail-text">SellerGenie • AI Powered</div>
-    
-    <div class="content-wrapper">
-      <div class="brand">
-        <ion-icon name="sparkles" class="brand-icon"></ion-icon>
-        <span class="brand-name">SellerGenie</span>
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div class="hero-content animate-in fade-in slide-in-from-bottom-4">
+        <div class="badge">
+          <ion-icon name="school" class="mr-1"></ion-icon>
+          Made for Indian Sellers »
+        </div>
+        
+        <h1 class="hero-title">
+          Snap a photo. <span class="text-orange">Sell smarter.</span>
+        </h1>
+        
+        <p class="hero-description">
+          Upload your product image and instantly get marketplace-ready titles, descriptions, HSN codes, GST rates and social captions for Meesho, Amazon, Flipkart, Instagram & Facebook.
+        </p>
+        
+        <div class="hero-actions">
+          <ion-button (click)="getStarted.emit()" class="btn-orange" shape="round">
+            Start Free
+            <ion-icon slot="end" name="arrow-forward"></ion-icon>
+          </ion-button>
+          
+          <ion-button fill="outline" color="dark" class="btn-outline" shape="round">
+            See how it works
+          </ion-button>
+        </div>
+        
+        <div class="hero-checklist">
+          <div class="check-item">
+            <ion-icon name="checkmark-circle"></ion-icon>
+            No credit card
+          </div>
+          <div class="check-item">
+            <ion-icon name="checkmark-circle"></ion-icon>
+            Hindi + English
+          </div>
+          <div class="check-item">
+            <ion-icon name="checkmark-circle"></ion-icon>
+            GST-compliant
+          </div>
+        </div>
       </div>
+      
+      <div class="hero-visual lg:block hidden">
+        <div class="browser-mockup">
+          <div class="browser-header">
+            <div class="dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+            </div>
+            <div class="url-bar">sellersathi.ai/generate</div>
+          </div>
+          <div class="browser-content space-y-4 p-6">
+            <div class="mock-field">
+              <span class="mock-label">AMAZON TITLE</span>
+              <div class="mock-value">Premium Cotton Kurta Set for Women — Floral Print, Ethnic Wear</div>
+            </div>
+            <div class="mock-field">
+              <span class="mock-label">HSN CODE</span>
+              <div class="mock-value text-orange-600 font-bold">6204</div>
+            </div>
+            <div class="mock-field">
+              <span class="mock-label">GST RATE</span>
+              <div class="mock-value text-orange-600 font-bold">5%</div>
+            </div>
+            <div class="mock-field">
+              <span class="mock-label">INSTAGRAM</span>
+              <div class="mock-value italic">✨ Bring tradition home this season... #EthnicWear #IndianFashion</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-      <h1 class="headline">
-        Optimize <br>
-        <span class="text-accent">Every</span> <br>
-        Listing.
-      </h1>
+  <!-- Features Grid -->
+  <section class="features-section py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-16">
+        <h2 class="section-title">Everything a seller needs, in one click</h2>
+        <p class="section-subtitle">From listing copy to GST classification — SellerSathi.ai handles the boring stuff so you can focus on selling.</p>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="feature-card">
+          <div class="feature-icon bg-orange-100 text-orange-500">
+            <ion-icon name="camera"></ion-icon>
+          </div>
+          <h3 class="feature-title">Image-First AI</h3>
+          <p class="feature-text">Upload a single product photo. Our AI sees colors, materials, style and writes the listing for you.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon bg-orange-100 text-orange-500">
+            <ion-icon name="text"></ion-icon>
+          </div>
+          <h3 class="feature-title">Marketplace Titles</h3>
+          <p class="feature-text">SEO-optimized titles tailored for Amazon, Flipkart and Meesho — each platform has its own style.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon bg-orange-100 text-orange-500">
+            <ion-icon name="document-text"></ion-icon>
+          </div>
+          <h3 class="feature-title">Rich Descriptions</h3>
+          <p class="feature-text">Compelling product descriptions with bullet points and keywords ready to paste.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon bg-orange-100 text-orange-500">
+            <ion-icon name="cash"></ion-icon>
+          </div>
+          <h3 class="feature-title">HSN + GST</h3>
+          <p class="feature-text">Get the correct HSN code and GST rate (5/12/18/28%) with a clear explanation.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon bg-orange-100 text-orange-500">
+            <ion-icon name="logo-instagram"></ion-icon>
+          </div>
+          <h3 class="feature-title">Social Captions</h3>
+          <p class="feature-text">Instagram + Facebook captions with hashtags, ready to share with your followers.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon bg-orange-100 text-orange-500">
+            <ion-icon name="time"></ion-icon>
+          </div>
+          <h3 class="feature-title">History & Reuse</h3>
+          <p class="feature-text">Every listing is saved. Browse, copy and re-use anytime from your dashboard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-      <p class="subheadline">
-        The AI-powered assistant that turns product photos into high-converting listings for Amazon, Flipkart, Meesho, and Instagram.
-      </p>
-
-      <div class="cta-group">
-        <ion-button (click)="getStarted.emit()" class="cta-primary" shape="round">
-          Get Started Free
+  <!-- CTA Section -->
+  <section class="cta-section py-20">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="cta-banner">
+        <h2 class="cta-title">Ready to sell smarter?</h2>
+        <p class="cta-text">Join thousands of Indian sellers using SellerSathi.ai to list faster and earn more.</p>
+        <ion-button (click)="getStarted.emit()" class="btn-white" shape="round">
+          Create your free account
           <ion-icon slot="end" name="arrow-forward"></ion-icon>
         </ion-button>
-        
-        <button (click)="login.emit()" class="cta-secondary">
-          Sign In
-        </button>
-      </div>
-
-      <div class="features-grid">
-        <div class="feature-item">
-          <ion-icon name="flash" class="feature-icon"></ion-icon>
-          <span>Instant Extraction</span>
-        </div>
-        <div class="feature-item">
-          <ion-icon name="shield-checkmark" class="feature-icon"></ion-icon>
-          <span>SEO Optimized</span>
-        </div>
-        <div class="feature-item">
-          <ion-icon name="rocket" class="feature-icon"></ion-icon>
-          <span>Multi-Platform</span>
-        </div>
       </div>
     </div>
   </section>
 
-  <!-- Right Pane: Visual/Interactive -->
-  <section class="visual-pane">
-    <div class="atmosphere"></div>
-    
-    <div class="floating-elements">
-      <div class="feature-bubble bubble-1">
-        <div class="bubble-header">Amazon</div>
-        <div class="bubble-content">SEO Title Optimized</div>
-      </div>
-      
-      <div class="feature-bubble bubble-2">
-        <div class="bubble-header">Instagram</div>
-        <div class="bubble-content">Viral Captions</div>
-      </div>
-      
-      <div class="feature-bubble bubble-3">
-        <div class="bubble-header">Flipkart</div>
-        <div class="bubble-content">Key Highlights Generated</div>
-      </div>
-
-      <div class="main-visual">
-        <div class="image-frame">
-          <img src="https://picsum.photos/seed/product/800/800" alt="Product Preview" referrerpolicy="no-referrer">
-          <div class="scan-line"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="stats-overlay">
-      <div class="stat-item">
-        <span class="stat-value">10x</span>
-        <span class="stat-label">Faster Listings</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value">45%</span>
-        <span class="stat-label">Higher CTR</span>
-      </div>
-    </div>
-  </section>
+  <!-- Simple Footer -->
+  <footer class="simple-footer py-10">
+    <p class="text-sm text-slate-500 text-center">
+      Built with ❤️ for Bharat's sellers • SellerSathi.ai
+    </p>
+  </footer>
 </main>

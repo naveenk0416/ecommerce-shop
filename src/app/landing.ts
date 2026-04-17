@@ -4,7 +4,7 @@ import {
   IonButton, IonIcon
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle } from 'ionicons/icons';
+import { camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoLinkedin, sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle, image, copy, settings, checkmarkCircle, chevronForward, text, documentText, cash, time, school, statsChart } from 'ionicons/icons';
 
 @Component({
   selector: 'app-landing',
@@ -22,6 +22,10 @@ export class Landing {
   getStarted = output<void>();
 
   constructor() {
-    addIcons({ sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle });
+    addIcons({ 
+      camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoLinkedin,
+      sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle, image,
+      copy, settings, checkmarkCircle, chevronForward, text, documentText, cash, time, school, statsChart
+    });
   }
 }

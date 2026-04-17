@@ -31,6 +31,19 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "name", "createdAt"]
+    },
+    "templates": {
+      "title": "User Templates",
+      "description": "Custom templates for different platforms",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "configs": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      },
+      "required": ["uid", "configs"]
     }
   },
   "firestore": {
@@ -41,6 +54,10 @@
     "/listings/{listingId}": {
       "schema": "listings",
       "description": "Optimized product listings"
+    },
+    "/templates/{userId}": {
+      "schema": "templates",
+      "description": "User platform templates"
     }
   }
 }

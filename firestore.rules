@@ -36,6 +36,11 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
              data.createdAt is string;
     }
+    function isValidTemplate(data) {
+      return hasRequiredFields(['uid', 'configs']) &&
+             data.uid is string &&
+             data.configs is list;
+    }
 
     // ===============================================================
     // Rules
@@ -44,6 +49,11 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    match /templates/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidTemplate(request.resource.data);
     }
 
     match /listings/{listingId} {

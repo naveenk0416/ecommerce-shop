@@ -1,14 +1,36 @@
 ion-content {
-  --background: #f8fafc;
+  --background: #fffbf5;
 }
 
 ion-toolbar {
-  --background: #4f46e5;
+  --background: #ffffff;
+  --color: #111827;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+ion-button[color="primary"] {
+  --background: #ff7e33;
+  --color: white;
+}
+
+ion-button[color="warning"] {
+  --background: #ff8c00;
   --color: white;
 }
 
 ion-card {
   --background: white;
+  border-radius: 24px;
+}
+
+ion-segment {
+  --background: #fdf2e9;
+  border-radius: 12px;
+}
+
+ion-segment-button {
+  --indicator-color: #ff7e33;
+  --color-checked: #ff7e33;
 }
 
 .animate-in {

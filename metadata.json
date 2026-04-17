@@ -1,5 +1,5 @@
 {
-  "name": "SellerGenie",
+  "name": "SellerSathi",
   "description": "AI-powered e-commerce assistant for product detail extraction and image optimization.",
   "requestFramePermissions": ["camera"]
 }
