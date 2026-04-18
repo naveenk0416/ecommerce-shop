@@ -12,7 +12,12 @@
           </div>
         </div>
         
-        <div slot="end" class="flex items-center gap-3">
+        <div slot="end" class="flex items-center gap-2">
+          <ion-button (click)="isGstModalOpen.set(true)" fill="clear" color="medium" class="font-bold text-xs">
+            <ion-icon name="calculator" slot="start"></ion-icon>
+            GST Calculator
+          </ion-button>
+
           @if (auth.user()) {
             <div class="flex items-center gap-1">
               <ion-button (click)="mainView.set('home')" fill="clear" [color]="mainView() === 'home' ? 'primary' : 'medium'" class="font-bold text-xs">
@@ -56,6 +61,39 @@
       <app-landing (login)="showLanding.set(false)" (getStarted)="showLanding.set(false)"></app-landing>
     } @else {
       <div class="max-w-2xl mx-auto space-y-12 pb-20">
+        
+        <!-- Quick Tools -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-12">
+          <div (click)="isGstModalOpen.set(true)" 
+               tabindex="0"
+               (keydown.enter)="isGstModalOpen.set(true)"
+               class="bg-white p-8 rounded-3xl border border-slate-100 hover:border-orange-500 hover:shadow-xl transition-all cursor-pointer group shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <div class="flex items-center gap-6">
+              <div class="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+                <ion-icon name="calculator" class="text-3xl"></ion-icon>
+              </div>
+              <div class="text-left">
+                <h3 class="text-xl font-bold text-slate-800">GST Calc</h3>
+                <p class="text-sm text-slate-500">Tax tools for sellers</p>
+              </div>
+            </div>
+          </div>
+          
+          <div (click)="mainView.set('products')" 
+               tabindex="0"
+               (keydown.enter)="mainView.set('products')"
+               class="bg-white p-8 rounded-3xl border border-slate-100 hover:border-orange-500 hover:shadow-xl transition-all cursor-pointer group shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex items-center gap-6">
+              <div class="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                <ion-icon name="list" class="text-3xl"></ion-icon>
+              </div>
+              <div class="text-left">
+                <h3 class="text-xl font-bold text-slate-800">Inventory</h3>
+                <p class="text-sm text-slate-500">Manage your listings</p>
+              </div>
+            </div>
+          </div>
+        </div>
         
         @if (!auth.isAuthReady()) {
         <div class="flex flex-col items-center justify-center py-20">
@@ -603,4 +641,20 @@
     </footer>
   }
 </ion-content>
+  <!-- GST Calculator Modal -->
+  <ion-modal [isOpen]="isGstModalOpen()" (didDismiss)="isGstModalOpen.set(false)" class="gst-modal">
+    <ng-template>
+      <ion-header class="ion-no-border">
+        <ion-toolbar>
+          <ion-title>Tax Tools</ion-title>
+          <ion-button slot="end" fill="clear" (click)="isGstModalOpen.set(false)" color="medium">
+            <ion-icon name="close"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content>
+        <app-gst-calculator></app-gst-calculator>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
 </ion-app>

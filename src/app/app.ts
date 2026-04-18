@@ -1,14 +1,14 @@
 import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonApp, IonHeader, IonToolbar, IonContent, 
+import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
   IonCardContent, IonLabel, IonBadge, IonSpinner,
   IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle,
-  ToastController
+  IonModal, ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
@@ -16,6 +16,7 @@ import { TemplateService } from './services/template';
 import { Landing } from './landing';
 import { Products } from './products';
 import { AdminComponent } from './admin';
+import { GstCalculator } from './gst-calculator';
 import { resizeImage } from './utils/image';
 
 @Component({
@@ -23,11 +24,11 @@ import { resizeImage } from './utils/image';
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, Landing, Products, AdminComponent,
-    IonApp, IonHeader, IonToolbar, IonContent, 
+    CommonModule, FormsModule, Landing, Products, AdminComponent, GstCalculator,
+    IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
-    IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle
+    IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle, IonModal
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -64,9 +65,10 @@ export class App {
 
   isRegistering = signal(false);
   authError = signal<string | null>(null);
+  isGstModalOpen = signal(false);
 
   constructor() {
-    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial });
+    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, calculator, informationCircle });
     
     if (isPlatformBrowser(this.platformId)) {
       // Reactively fetch listings when user changes
