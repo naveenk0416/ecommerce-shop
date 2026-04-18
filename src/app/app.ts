@@ -105,7 +105,7 @@ export class App {
     try {
       await this.listingService.saveListing(details, original, this.processedImage());
       const toast = await this.toastController.create({
-        message: 'Listing saved successfully to SellerSathi!',
+        message: 'Listing saved successfully to SellAssist!',
         duration: 2000,
         color: 'success',
         position: 'bottom'

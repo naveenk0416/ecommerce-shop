@@ -1,5 +1,5 @@
 {
-  "name": "SellerSathi",
-  "description": "AI-powered e-commerce assistant for product detail extraction and image optimization.",
+  "name": "SellAssist",
+  "description": "AI-powered e-commerce assistant for product detail extraction, image optimization, and smart listing creation.",
   "requestFramePermissions": ["camera"]
 }
