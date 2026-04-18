@@ -2,7 +2,7 @@
   <!-- Stats Header -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <ion-card class="ion-no-margin border-none shadow-sm bg-slate-900 text-white rounded-[2rem]">
-      <ion-card-content class="p-8">
+      <ion-card-content class="p-10">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest">Total Products</p>
@@ -16,7 +16,7 @@
     </ion-card>
 
     <ion-card class="ion-no-margin border-none shadow-sm bg-white rounded-[2rem]">
-      <ion-card-content class="p-8">
+      <ion-card-content class="p-10">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Inventory Value</p>
@@ -30,7 +30,7 @@
     </ion-card>
 
     <ion-card class="ion-no-margin border-none shadow-sm bg-white rounded-[2rem]">
-      <ion-card-content class="p-8">
+      <ion-card-content class="p-10">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Avg. Price</p>
@@ -46,7 +46,7 @@
 
   <!-- Management Table -->
   <ion-card class="ion-no-margin border-none shadow-sm bg-white overflow-hidden rounded-[2.5rem]">
-    <ion-card-header class="border-b border-slate-50 flex flex-row items-center justify-between py-6 px-8">
+    <ion-card-header class="border-b border-slate-50 flex flex-row items-center justify-between py-8 px-10">
       <ion-card-title class="text-xl font-black text-slate-900 tracking-tight">Inventory Management</ion-card-title>
       <div class="flex gap-2">
         <ion-button fill="clear" color="medium" size="small">
@@ -62,17 +62,17 @@
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
-            <th class="px-6 py-4">Product</th>
-            <th class="px-6 py-4">Category/HSN</th>
-            <th class="px-6 py-4">Price</th>
-            <th class="px-6 py-4">GST</th>
-            <th class="px-6 py-4 text-right">Actions</th>
+            <th class="px-10 py-5">Product</th>
+            <th class="px-8 py-5">Category/HSN</th>
+            <th class="px-8 py-5">Price</th>
+            <th class="px-8 py-5">GST</th>
+            <th class="px-10 py-5 text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           @for (listing of listings(); track listing.id) {
             <tr class="hover:bg-slate-50/50 transition-colors">
-              <td class="px-6 py-4">
+              <td class="px-10 py-6">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
                     <img [src]="listing.processedImage || listing.originalImage" [alt]="listing.name" class="w-full h-full object-cover" referrerpolicy="no-referrer">
@@ -83,19 +83,19 @@
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-8 py-6">
                 <div class="flex flex-col">
                   <span class="text-sm text-slate-600">{{ listing.platformContent['meesho']?.['category'] }}</span>
                   <span class="text-xs text-slate-400 font-mono">{{ listing.hsnCode }}</span>
                 </div>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-8 py-6">
                 <span class="text-sm font-bold text-slate-800">{{ listing.priceINR }}</span>
               </td>
-              <td class="px-6 py-4">
+              <td class="px-8 py-6">
                 <ion-badge color="light" class="text-[10px] font-bold">{{ listing.gstRate }}</ion-badge>
               </td>
-              <td class="px-6 py-4 text-right">
+              <td class="px-10 py-6 text-right">
                 <div class="flex justify-end gap-1">
                   <ion-button (click)="view.emit(listing)" fill="clear" color="primary" size="small">
                     <ion-icon slot="icon-only" name="eye"></ion-icon>

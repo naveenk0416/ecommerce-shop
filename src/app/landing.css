@@ -8,20 +8,20 @@
 
 /* Hero Section */
 .hero-section {
-  padding: 6rem 0;
+  padding: 8rem 0;
   position: relative;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1.2rem;
   background-color: #ffe8d1;
   color: #c2410c;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 700;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .hero-title {
@@ -169,7 +169,7 @@
   color: #111827;
   letter-spacing: -0.02em;
   line-height: 1.1;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .section-subtitle {
@@ -220,8 +220,8 @@
 /* CTA Section */
 .cta-banner {
   background: linear-gradient(135deg, #ff7e33 0%, #009688 100%);
-  border-radius: 3rem;
-  padding: 5rem 3rem;
+  border-radius: 3.5rem;
+  padding: 6rem 4rem;
   text-align: center;
   color: white;
   box-shadow: 0 30px 60px -15px rgba(255, 126, 51, 0.3);

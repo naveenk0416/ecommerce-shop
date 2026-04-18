@@ -24,6 +24,12 @@
               <ion-button (click)="mainView.set('products')" fill="clear" [color]="mainView() === 'products' ? 'primary' : 'medium'" class="font-bold text-xs">
                 Inventory
               </ion-button>
+              @if (auth.isAdmin()) {
+                <ion-button (click)="mainView.set('admin')" fill="clear" [color]="mainView() === 'admin' ? 'primary' : 'medium'" class="font-bold text-xs text-orange-600">
+                  <ion-icon name="shield-checkmark" slot="start" class="mr-1"></ion-icon>
+                  Admin
+                </ion-button>
+              }
             </div>
             
             <div class="h-6 w-[1px] bg-slate-200 mx-1"></div>
@@ -49,7 +55,7 @@
     @if (showLanding() && !auth.user()) {
       <app-landing (login)="showLanding.set(false)" (getStarted)="showLanding.set(false)"></app-landing>
     } @else {
-      <div class="max-w-2xl mx-auto space-y-6 pb-12">
+      <div class="max-w-2xl mx-auto space-y-12 pb-20">
         
         @if (!auth.isAuthReady()) {
         <div class="flex flex-col items-center justify-center py-20">
@@ -57,8 +63,8 @@
           <p class="text-slate-500 mt-4">Initializing...</p>
         </div>
       } @else if (!auth.user()) {
-        <section class="max-w-md mx-auto py-12 px-6 bg-white rounded-[3rem] shadow-sm border border-orange-50">
-          <div class="text-center mb-8 relative">
+        <section class="max-w-md mx-auto py-16 px-10 bg-white rounded-[3rem] shadow-sm border border-orange-50">
+          <div class="text-center mb-10 relative">
             <button (click)="showLanding.set(true)" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600">
               <ion-icon name="close" class="text-2xl"></ion-icon>
             </button>
@@ -70,13 +76,28 @@
           </div>
 
           <div class="space-y-4">
-            <div>
+            @if (isRegistering()) {
+              <div class="mb-2">
+                <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Full Name</ion-label>
+                <ion-input type="text" [value]="regName()" (ionInput)="regName.set($any($event).target.value)" placeholder="Your Name" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+              </div>
+              <div class="mb-2">
+                <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Mobile Number</ion-label>
+                <ion-input type="tel" [value]="regPhone()" (ionInput)="regPhone.set($any($event).target.value)" placeholder="+91 00000 00000" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+              </div>
+              <div class="mb-2">
+                <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">GST Number (Optional)</ion-label>
+                <ion-input type="text" [value]="regGST()" (ionInput)="regGST.set($any($event).target.value)" placeholder="22AAAAA0000A1Z5" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+              </div>
+            }
+
+            <div class="mb-2">
               <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
-              <ion-input type="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-4 py-1 mt-1 border border-slate-100"></ion-input>
+              <ion-input type="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
             </div>
-            <div>
+            <div class="mb-4">
               <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Password</ion-label>
-              <ion-input type="password" [value]="password()" (ionInput)="password.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-4 py-1 mt-1 border border-slate-100"></ion-input>
+              <ion-input type="password" [value]="password()" (ionInput)="password.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
             </div>
 
             @if (authError()) {
@@ -90,7 +111,7 @@
             </ion-button>
 
             <div class="text-center py-2">
-              <button (click)="isRegistering.set(!isRegistering())" class="text-sm text-orange-600 font-bold hover:underline">
+              <button (click)="toggleRegister()" class="text-sm text-orange-600 font-bold hover:underline">
                 {{ isRegistering() ? 'Already have an account? Login' : 'Need an account? Sign Up' }}
               </button>
             </div>
@@ -116,6 +137,8 @@
           (view)="viewListing($event)" 
           (delete)="deleteListing($event)">
         </app-products>
+      } @else if (mainView() === 'admin') {
+        <app-admin></app-admin>
       } @else if (mainView() === 'settings') {
         <!-- Template Settings View -->
         <div class="space-y-6">
@@ -234,13 +257,13 @@
         </div>
       } @else {
         <!-- Upload Section -->
-        <section class="text-center py-12 px-6 bg-white rounded-[3rem] shadow-sm border border-orange-50">
-        <div class="mb-6">
-          <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ion-icon name="cloud-upload" class="text-3xl text-orange-500"></ion-icon>
+        <section class="text-center py-20 px-10 bg-white rounded-[3rem] shadow-sm border border-orange-50">
+        <div class="mb-10">
+          <div class="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-8">
+            <ion-icon name="cloud-upload" class="text-4xl text-orange-500"></ion-icon>
           </div>
           <h2 class="text-3xl font-black text-slate-900 tracking-tight">Upload Product Image</h2>
-          <p class="text-slate-500 mt-2 font-medium">We'll automatically extract details and optimize the image.</p>
+          <p class="text-slate-600 mt-4 font-medium text-lg">We'll automatically extract details and optimize the image.</p>
         </div>
         
         <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/*" class="hidden">
@@ -299,7 +322,7 @@
       }
 
       @if (productDetails(); as details) {
-        <ion-segment [value]="activeTab()" (ionChange)="activeTab.set($any($event).detail.value)" [scrollable]="true" class="rounded-xl bg-slate-100 p-1">
+        <ion-segment [value]="activeTab()" (ionChange)="activeTab.set($any($event).detail.value)" [scrollable]="true" class="rounded-xl bg-slate-100 p-1 my-6">
           @for (platform of templateService.templates(); track platform.id) {
             @if (platform.enabled) {
               <ion-segment-button [value]="platform.id">
@@ -327,7 +350,7 @@
                     </div>
                   </div>
                   @if (editingField() === 'name') {
-                    <ion-input [value]="details.name" (ionInput)="updateField('name', $event.target.value)" class="bg-slate-50 rounded-xl px-3 py-2 text-lg font-bold border border-indigo-100"></ion-input>
+                    <ion-input [value]="details.name" (ionInput)="updateField('name', $event.target.value)" class="bg-slate-50 rounded-xl px-4 py-3 text-lg font-bold border border-indigo-100"></ion-input>
                   } @else {
                     <h3 class="text-xl font-bold text-slate-800 leading-tight">{{details.name}}</h3>
                   }
@@ -342,7 +365,7 @@
                       </ion-button>
                     </div>
                     @if (editingField() === 'price') {
-                      <ion-input type="number" [value]="details.priceINR" (ionInput)="updateField('priceINR', $event.target.value)" class="text-lg font-bold text-emerald-600"></ion-input>
+                      <ion-input type="number" [value]="details.priceINR" (ionInput)="updateField('priceINR', $event.target.value)" class="text-lg font-bold text-emerald-600 px-2 py-1"></ion-input>
                     } @else {
                       <div class="text-lg font-bold text-emerald-600 flex items-center">
                         <span class="mr-1 text-sm">₹</span>
@@ -421,7 +444,7 @@
                     </div>
                   </div>
                   @if (editingField() === 'desc') {
-                    <ion-textarea [value]="details.description" (ionInput)="updateField('description', $event.target.value)" [autoGrow]="true" class="bg-slate-50 rounded-xl px-3 py-2 text-sm border border-indigo-100"></ion-textarea>
+                    <ion-textarea [value]="details.description" (ionInput)="updateField('description', $event.target.value)" [autoGrow]="true" class="bg-slate-50 rounded-xl px-4 py-3 text-sm border border-indigo-100"></ion-textarea>
                   } @else {
                     <p class="text-slate-600 leading-relaxed text-sm">{{details.description}}</p>
                   }

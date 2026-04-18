@@ -1,20 +1,21 @@
 import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
+import { IonApp, IonHeader, IonToolbar, IonContent, 
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
   IonCardContent, IonLabel, IonBadge, IonSpinner,
   IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle,
   ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
 import { TemplateService } from './services/template';
 import { Landing } from './landing';
 import { Products } from './products';
+import { AdminComponent } from './admin';
 import { resizeImage } from './utils/image';
 
 @Component({
@@ -22,8 +23,8 @@ import { resizeImage } from './utils/image';
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, Landing, Products,
-    IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
+    CommonModule, FormsModule, Landing, Products, AdminComponent,
+    IonApp, IonHeader, IonToolbar, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
     IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle
@@ -47,7 +48,7 @@ export class App {
   isSaving = signal(false);
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<string>('details');
-  mainView = signal<'home' | 'listings' | 'products' | 'settings'>('home');
+  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin'>('home');
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
   editingField = signal<string | null>(null);
@@ -55,11 +56,17 @@ export class App {
   // Auth Form State
   email = signal('');
   password = signal('');
+
+  // Additional Registration Fields
+  regName = signal('');
+  regPhone = signal('');
+  regGST = signal('');
+
   isRegistering = signal(false);
   authError = signal<string | null>(null);
 
   constructor() {
-    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial });
+    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial });
     
     if (isPlatformBrowser(this.platformId)) {
       // Reactively fetch listings when user changes
@@ -157,14 +164,31 @@ export class App {
 
     try {
       if (this.isRegistering()) {
-        await this.auth.registerWithEmail(this.email(), this.password());
+        await this.auth.registerWithEmail(
+          this.email(), 
+          this.password(), 
+          { 
+            displayName: this.regName(), 
+            phoneNumber: this.regPhone(), 
+            gstNumber: this.regGST() 
+          }
+        );
       } else {
         await this.auth.loginWithEmail(this.email(), this.password());
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      this.authError.set(error.message || 'Authentication failed.');
+      if (error.code === 'auth/operation-not-allowed') {
+        this.authError.set('Email login is currently disabled in Firebase. Please enable it in the console or use Google Login below.');
+      } else {
+        this.authError.set(error.message || 'Authentication failed.');
+      }
     }
+  }
+
+  toggleRegister() {
+    this.isRegistering.set(!this.isRegistering());
+    this.authError.set(null);
   }
 
   async logout() {
