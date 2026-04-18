@@ -2,7 +2,7 @@
   <ion-header class="ion-no-border">
     <ion-toolbar>
       <div class="flex items-center gap-2 px-4 py-2">
-        <div class="flex items-center gap-2 cursor-pointer" (click)="mainView.set('home'); showLanding.set(true)" tabindex="0" (keydown.enter)="mainView.set('home'); showLanding.set(true)">
+        <div class="flex items-center gap-2 cursor-pointer" (click)="mainView.set('home'); showLanding.set(false)" tabindex="0" (keydown.enter)="mainView.set('home'); showLanding.set(false)">
           <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
             <ion-icon name="sparkles" class="text-white text-lg"></ion-icon>
           </div>
@@ -28,8 +28,9 @@
             
             <div class="h-6 w-[1px] bg-slate-200 mx-1"></div>
             
-            <ion-button (click)="logout()" fill="clear" color="medium">
-              <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
+            <ion-button (click)="logout()" fill="clear" color="medium" class="text-xs font-bold">
+              <ion-icon slot="start" name="log-out"></ion-icon>
+              Logout
             </ion-button>
           } @else {
             <ion-button (click)="login()" fill="clear" color="dark" class="font-bold text-sm">
@@ -558,7 +559,22 @@
         </div>
       }
     }
-  </div>
-}
+    
+    </div>
+
+    <footer class="mt-12 py-8 px-6 border-t border-slate-100 bg-white w-full">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-1">
+          <span class="text-xs font-black tracking-tight text-slate-800">SellerSathi<span class="text-orange-500">.ai</span></span>
+          <span class="text-[10px] text-slate-400 ml-2">© 2025</span>
+        </div>
+        <div class="flex gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <span class="hover:text-orange-500 cursor-pointer">Support</span>
+          <span class="hover:text-orange-500 cursor-pointer">Privacy</span>
+          <span class="hover:text-orange-500 cursor-pointer">Terms</span>
+        </div>
+      </div>
+    </footer>
+  }
 </ion-content>
 </ion-app>

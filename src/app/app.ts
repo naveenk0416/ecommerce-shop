@@ -8,7 +8,7 @@ import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent,
   ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
@@ -39,7 +39,7 @@ export class App {
   private platformId = inject(PLATFORM_ID);
   private toastController = inject(ToastController);
 
-  showLanding = signal(true);
+  showLanding = signal(false);
   selectedImage = signal<string | null>(null);
   processedImage = signal<string | null>(null);
   isProcessing = signal(false);
@@ -59,20 +59,19 @@ export class App {
   authError = signal<string | null>(null);
 
   constructor() {
-    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial });
+    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial });
     
     if (isPlatformBrowser(this.platformId)) {
       // Reactively fetch listings when user changes
-      effect(() => {
+      effect((onCleanup) => {
         const user = this.auth.user();
         if (user) {
           const unsubscribe = this.listingService.getListings(user.uid, (listings) => {
             this.myListings.set(listings);
           });
-          return () => unsubscribe();
+          onCleanup(() => unsubscribe());
         } else {
           this.myListings.set([]);
-          return;
         }
       });
     }

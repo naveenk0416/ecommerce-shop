@@ -95,6 +95,7 @@ const DEFAULT_TEMPLATES: PlatformTemplate[] = [
 })
 export class TemplateService {
   private templatesPath = 'templates';
+  private unsubscribe: (() => void) | null = null;
   templates = signal<PlatformTemplate[]>(DEFAULT_TEMPLATES);
 
   constructor() {
@@ -103,8 +104,13 @@ export class TemplateService {
 
   private init() {
     auth.onAuthStateChanged((user) => {
+      if (this.unsubscribe) {
+        this.unsubscribe();
+        this.unsubscribe = null;
+      }
+
       if (user) {
-        this.loadTemplates(user.uid);
+        this.unsubscribe = this.loadTemplates(user.uid);
       } else {
         this.templates.set(DEFAULT_TEMPLATES);
       }
