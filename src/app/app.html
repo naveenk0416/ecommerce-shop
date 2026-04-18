@@ -3,13 +3,7 @@
     <ion-toolbar>
       <div class="flex items-center gap-2 px-4 py-2">
         <div class="flex items-center gap-2 cursor-pointer" (click)="mainView.set('home'); showLanding.set(false)" tabindex="0" (keydown.enter)="mainView.set('home'); showLanding.set(false)">
-          <div class="w-9 h-9 bg-linear-to-br from-orange-400 to-red-600 rounded-xl flex items-center justify-center shadow-sm">
-            <ion-icon name="trending-up" class="text-white text-xl"></ion-icon>
-          </div>
-          <div class="flex flex-col leading-none">
-            <span class="text-xl font-black tracking-tight text-slate-800 uppercase">SellAssist</span>
-            <span class="text-[7px] font-bold uppercase tracking-[0.2em] text-slate-400 mt-0.5">Your Smart Selling Partner</span>
-          </div>
+            <img src="assets/logo.png" class="w-50 h-14"/>
         </div>
         
         <div slot="end" class="flex items-center gap-2">
@@ -626,8 +620,8 @@
     <footer class="mt-12 py-8 px-6 border-t border-slate-100 bg-white w-full">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-2">
-          <div class="w-6 h-6 bg-linear-to-br from-orange-400 to-red-600 rounded-md flex items-center justify-center">
-            <ion-icon name="trending-up" class="text-white text-[10px]"></ion-icon>
+          <div class="w-100 h-6 bg-linear-to-br flex items-center justify-center">
+            <img src="assets/logo_bg.png" class="w-50 h-14"/>
           </div>
           <span class="text-xs font-black tracking-tight text-slate-800 uppercase">SellAssist</span>
           <span class="text-[10px] text-slate-400 ml-2">© 2025</span>
