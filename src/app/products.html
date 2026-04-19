@@ -93,7 +93,9 @@
                   <div>
                     <h3 class="text-sm font-black text-slate-900 leading-tight">{{ listing.name }}</h3>
                     <div class="flex items-center gap-2 mt-1">
-                      <span class="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase">{{ listing.hsnCode || 'HSN-PENDING' }}</span>
+                      @if (auth.isPro()) {
+                        <span class="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase">{{ listing.hsnCode || 'HSN-PENDING' }}</span>
+                      }
                       @if (listing.material) {
                         <span class="text-[9px] font-bold text-slate-400 italic">#{{ listing.material }}</span>
                       }
@@ -122,7 +124,9 @@
                 <div class="space-y-1.5">
                   <div class="flex items-center gap-2">
                     <span class="text-[15px] font-black text-slate-900 font-mono tracking-tight">{{ listing.priceINR }}</span>
-                    <span class="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase border border-emerald-100">{{ listing.gstRate }} GST</span>
+                    @if (auth.isPro()) {
+                      <span class="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase border border-emerald-100">{{ listing.gstRate }} GST</span>
+                    }
                   </div>
                   @if (listing.costPrice) {
                     <div class="flex items-center gap-2">
@@ -262,25 +266,38 @@
                   </div>
                   <div class="premium-field">
                     <span class="premium-label">Tax Allocation</span>
-                    <div class="input-wrapper">
-                      <select [(ngModel)]="newProduct().gstRate" class="premium-input appearance-none bg-transparent">
+                    <div class="input-wrapper" [class.opacity-50]="!auth.isPro()">
+                      <select [(ngModel)]="newProduct().gstRate" [disabled]="!auth.isPro()" class="premium-input appearance-none bg-transparent">
                         <option value="5%">5% GST</option>
                         <option value="12%">12% GST</option>
                         <option value="18%">18% GST</option>
                         <option value="28%">28% GST</option>
                       </select>
+                      @if (!auth.isPro()) {
+                        <ion-icon name="lock-closed" class="absolute right-10 top-1/2 -translate-y-1/2 text-orange-500"></ion-icon>
+                      }
                       <ion-icon name="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></ion-icon>
                     </div>
                   </div>
                 </div>
 
-                <div class="premium-field">
+                <div class="premium-field" [class.hidden]="!auth.isPro()">
                   <span class="premium-label">Regulatory HSN Code</span>
                   <div class="input-wrapper">
                     <ion-icon name="barcode-outline" class="input-icon"></ion-icon>
                     <input type="text" [(ngModel)]="newProduct().hsnCode" placeholder="Enter HSN/SAC code" class="premium-input font-mono">
                   </div>
                 </div>
+
+                @if (!auth.isPro()) {
+                  <div class="bg-orange-50 p-4 rounded-2xl border border-orange-100 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <ion-icon name="star" class="text-orange-500"></ion-icon>
+                      <span class="text-[10px] font-bold text-orange-800 uppercase">Upgrade to PAID_PRO for HSN + GST support</span>
+                    </div>
+                    <ion-button fill="clear" size="small" class="font-bold text-[10px]" (click)="closeAddModal(); goPricing.emit()">Upgrade</ion-button>
+                  </div>
+                }
               </div>
             </div>
           </div>

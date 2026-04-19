@@ -20,6 +20,7 @@ import { camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoL
 export class Landing {
   login = output<void>();
   getStarted = output<void>();
+  goPricing = output<void>();
 
   constructor() {
     addIcons({ 

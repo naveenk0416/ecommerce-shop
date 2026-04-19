@@ -221,8 +221,10 @@
         <div>
            <h4 class="text-xs font-black tracking-widest uppercase text-slate-900 mb-6">Platform</h4>
            <ul class="space-y-4 text-sm font-medium text-slate-500">
-             <li class="hover:text-orange-500 cursor-pointer">Pricing</li>
-             <li class="hover:text-orange-500 cursor-pointer">Privacy Policy</li>
+           <li class="hover:text-orange-500 cursor-pointer">
+             <button type="button" class="w-full text-left bg-transparent border-none p-0 cursor-pointer font-medium text-slate-500 hover:text-orange-500 transition-colors" (click)="goPricing.emit()">Pricing</button>
+           </li>
+           <li class="hover:text-orange-500 cursor-pointer">Privacy Policy</li>
              <li class="hover:text-orange-500 cursor-pointer">Terms of Service</li>
              <li class="hover:text-orange-500 cursor-pointer">Support Helpdesk</li>
            </ul>

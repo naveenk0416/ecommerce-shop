@@ -13,15 +13,17 @@ service cloud.firestore {
     // ===============================================================
     // Primitive Helpers (ABAC / Zero-Trust)
     // ===============================================================
-    function isSignedIn() { return request.auth != null; }
+    function isSignedIn() { 
+      return request.auth != null; 
+    }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
     function isAdmin() { 
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        request.auth.token.email == 'naveenkumar0416@gmail.com'
+      return request.auth != null && (
+        request.auth.token.email == 'naveenkumar0416@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       ); 
     }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isValidId(id) { return id is string && id.size() <= 128; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     
@@ -30,14 +32,8 @@ service cloud.firestore {
     // ===============================================================
     
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email']) && 
-             (data.uid == request.auth.uid || isAdmin()) &&
-             data.email is string && data.email.size() > 3 &&
-             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 500)) &&
-             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 2000)) &&
-             (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() <= 30)) &&
-             (!('gstNumber' in data) || (data.gstNumber is string && data.gstNumber.size() <= 20)) &&
-             (!('lastLogin' in data) || (data.lastLogin is string));
+      return (data.uid == request.auth.uid || isAdmin()) &&
+             (data.role in ['FREE', 'PAID_PRO', 'ADMIN']);
     }
 
     function isValidListing(data) {
@@ -63,7 +59,7 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming()) && (
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'email', 'lastLogin', 'phoneNumber', 'gstNumber'])
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'email', 'lastLogin', 'phoneNumber', 'gstNumber', 'role', 'usageCount', 'dailyStats', 'uid'])
       );
     }
 
