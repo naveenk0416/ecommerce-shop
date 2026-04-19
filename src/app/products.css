@@ -1,14 +1,120 @@
+@reference "tailwindcss";
+
 .products-dashboard {
-  padding-bottom: 2rem;
+  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-table th {
-  white-space: nowrap;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.line-clamp-1 {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;  
-  overflow: hidden;
+/* Stats Cards */
+.stats-card {
+  @apply relative overflow-hidden bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm transition-all duration-500 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1;
+}
+
+.stats-card.dark {
+  @apply bg-slate-900 border-none shadow-2xl shadow-slate-900/20;
+}
+
+.stats-info {
+  @apply relative z-10;
+}
+
+.stats-label {
+  @apply text-[10px] font-black uppercase tracking-[0.2em] block mb-2;
+}
+
+.stats-value {
+  @apply text-4xl font-black tracking-tighter block mb-1;
+}
+
+.stats-delta {
+  @apply text-[9px] font-bold uppercase tracking-widest flex items-center gap-1;
+}
+
+.stats-icon-bg {
+  @apply absolute -right-4 -bottom-4 w-32 h-32 rounded-full flex items-center justify-center transition-transform duration-700 group-hover:scale-110 group-hover:rotate-12;
+}
+
+.stats-icon-bg ion-icon {
+  @apply text-6xl;
+}
+
+/* Product Avatar */
+.product-avatar {
+  @apply w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0 shadow-inner flex items-center justify-center;
+}
+
+/* Action Triggers */
+.action-trigger {
+  @apply w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 active:scale-95 border;
+}
+
+.action-trigger.primary {
+  @apply bg-slate-50 border-slate-100 text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900;
+}
+
+.action-trigger.danger {
+  @apply bg-slate-50 border-slate-100 text-slate-400 hover:bg-red-500 hover:text-white hover:border-red-500;
+}
+
+/* Modal Premium Styling */
+.product-modal-premium {
+  --width: 900px;
+  --height: 750px;
+  --max-width: 95%;
+  --max-height: 90%;
+  --border-radius: 40px;
+}
+
+.premium-field {
+  @apply space-y-2;
+}
+
+.premium-label {
+  @apply text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block;
+}
+
+.input-wrapper {
+  @apply relative bg-white border border-slate-100 rounded-2xl transition-all duration-300 focus-within:ring-4 focus-within:ring-slate-900/5 focus-within:border-slate-900;
+}
+
+.premium-input {
+  @apply w-full h-12 px-5 bg-transparent text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:outline-none;
+}
+
+.input-icon {
+  @apply absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors;
+}
+
+.premium-field:focus-within .input-icon {
+  @apply text-slate-900;
+}
+
+.premium-field:focus-within .input-wrapper {
+  @apply pl-6;
+}
+
+/* Custom scrollbar for better aesthetic */
+.overflow-y-auto::-webkit-scrollbar {
+  @apply w-1.5;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  @apply bg-slate-100 rounded-full hover:bg-slate-200 transition-colors;
+}
+
+/* Empty State */
+.empty-state-icon {
+  @apply relative w-32 h-32 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-center;
+}
+
+.pulse-ring {
+  @apply absolute inset-0 rounded-[2.5rem] border-2 border-slate-100 animate-ping opacity-20;
 }

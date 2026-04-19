@@ -1,14 +1,14 @@
 import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
+import { IonApp, IonHeader, IonToolbar, IonContent, 
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
   IonCardContent, IonLabel, IonBadge, IonSpinner,
   IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle,
-  IonModal, ToastController
+  ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
@@ -25,10 +25,10 @@ import { resizeImage } from './utils/image';
   standalone: true,
   imports: [
     CommonModule, FormsModule, Landing, Products, AdminComponent, GstCalculator,
-    IonApp, IonHeader, IonToolbar, IonTitle, IonContent, 
+    IonApp, IonHeader, IonToolbar, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
-    IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle, IonModal
+    IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -49,7 +49,7 @@ export class App {
   isSaving = signal(false);
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<string>('details');
-  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin'>('home');
+  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst'>('home');
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
   editingField = signal<string | null>(null);
@@ -65,22 +65,31 @@ export class App {
 
   isRegistering = signal(false);
   authError = signal<string | null>(null);
-  isGstModalOpen = signal(false);
 
   constructor() {
-    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, calculator, informationCircle });
+    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh });
     
     if (isPlatformBrowser(this.platformId)) {
       // Reactively fetch listings when user changes
       effect((onCleanup) => {
         const user = this.auth.user();
+        const isAdmin = this.auth.isAdmin();
+        
         if (user) {
-          const unsubscribe = this.listingService.getListings(user.uid, (listings) => {
+          this.mainView.set('home');
+          const fetchMethod = isAdmin ? 
+            this.listingService.getAllListings.bind(this.listingService) : 
+            this.listingService.getListings.bind(this.listingService, user.uid);
+
+          const unsubscribe = fetchMethod((listings) => {
             this.myListings.set(listings);
           });
           onCleanup(() => unsubscribe());
         } else {
           this.myListings.set([]);
+          if (this.mainView() === 'products' || this.mainView() === 'listings') {
+            this.mainView.set('home');
+          }
         }
       });
     }
@@ -131,6 +140,28 @@ export class App {
   async deleteListing(id: string | undefined) {
     if (!id) return;
     await this.listingService.deleteListing(id);
+  }
+
+  async handleAddManualProduct(product: Partial<Listing>) {
+    try {
+      await this.listingService.saveListing(product as ProductDetails, '', null);
+      const toast = await this.toastController.create({
+        message: 'Product added successfully!',
+        duration: 3000,
+        color: 'success',
+        position: 'bottom'
+      });
+      await toast.present();
+    } catch (error) {
+      console.error('Error saving manual product:', error);
+      const toast = await this.toastController.create({
+        message: 'Failed to add product. Please try again.',
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
+      });
+      await toast.present();
+    }
   }
 
   viewListing(listing: Listing) {

@@ -12,6 +12,10 @@ export interface ProductDetails {
   material: string;
   variations: string[];
   platformContent: Record<string, Record<string, string | string[]>>;
+  category?: string;
+  quantity?: number;
+  costPrice?: string;
+  sellingPrice?: string;
 }
 
 @Injectable({

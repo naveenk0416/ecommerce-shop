@@ -1,117 +1,165 @@
-<div class="products-dashboard animate-in fade-in">
+<div class="products-dashboard animate-in fade-in max-w-7xl mx-auto px-4 py-8">
   <!-- Stats Header -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-    <ion-card class="ion-no-margin border-none shadow-sm bg-slate-900 text-white rounded-[2rem]">
-      <ion-card-content class="p-10">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest">Total Products</p>
-            <h2 class="text-4xl font-black mt-1">{{ listings().length }}</h2>
-          </div>
-          <div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center">
-            <ion-icon name="cube" class="text-3xl"></ion-icon>
-          </div>
-        </div>
-      </ion-card-content>
-    </ion-card>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+    <div class="stats-card dark group">
+      <div class="stats-info">
+        <span class="stats-label text-slate-400">Total Inventory</span>
+        <h2 class="stats-value font-mono">{{ listings().length }}</h2>
+        <span class="stats-delta text-emerald-400">Live Status</span>
+      </div>
+      <div class="stats-icon-bg bg-white/5">
+        <ion-icon name="cube" class="text-white opacity-40"></ion-icon>
+      </div>
+    </div>
 
-    <ion-card class="ion-no-margin border-none shadow-sm bg-white rounded-[2rem]">
-      <ion-card-content class="p-10">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Inventory Value</p>
-            <h2 class="text-4xl font-black mt-1 text-slate-900">₹{{ totalValue | number:'1.0-0' }}</h2>
-          </div>
-          <div class="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center">
-            <ion-icon name="stats-chart" class="text-3xl text-emerald-600"></ion-icon>
-          </div>
-        </div>
-      </ion-card-content>
-    </ion-card>
+    <div class="stats-card group">
+      <div class="stats-info">
+        <span class="stats-label text-slate-500">Asset Valuation</span>
+        <h2 class="stats-value text-slate-900 font-mono">₹{{ totalValue | number:'1.0-0' }}</h2>
+        <span class="stats-delta text-slate-400">Total Portfolio</span>
+      </div>
+      <div class="stats-icon-bg bg-emerald-50">
+        <ion-icon name="stats-chart" class="text-emerald-600 opacity-40"></ion-icon>
+      </div>
+    </div>
 
-    <ion-card class="ion-no-margin border-none shadow-sm bg-white rounded-[2rem]">
-      <ion-card-content class="p-10">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Avg. Price</p>
-            <h2 class="text-4xl font-black mt-1 text-slate-900">₹{{ averagePrice | number:'1.0-0' }}</h2>
-          </div>
-          <div class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center">
-            <ion-icon name="flash" class="text-3xl text-orange-600"></ion-icon>
-          </div>
-        </div>
-      </ion-card-content>
-    </ion-card>
+    <div class="stats-card group">
+      <div class="stats-info">
+        <span class="stats-label text-slate-500">Avg. Listing Unit</span>
+        <h2 class="stats-value text-slate-900 font-mono">₹{{ averagePrice | number:'1.0-0' }}</h2>
+        <span class="stats-delta text-slate-400">Unit Density</span>
+      </div>
+      <div class="stats-icon-bg bg-orange-50">
+        <ion-icon name="flash" class="text-orange-600 opacity-40"></ion-icon>
+      </div>
+    </div>
   </div>
 
   <!-- Management Table -->
-  <ion-card class="ion-no-margin border-none shadow-sm bg-white overflow-hidden rounded-[2.5rem]">
-    <ion-card-header class="border-b border-slate-50 flex flex-row items-center justify-between py-8 px-10">
-      <ion-card-title class="text-xl font-black text-slate-900 tracking-tight">Inventory Management</ion-card-title>
-      <div class="flex gap-2">
-        <ion-button fill="clear" color="medium" size="small">
-          <ion-icon slot="icon-only" name="filter"></ion-icon>
-        </ion-button>
-        <ion-button fill="clear" color="medium" size="small">
-          <ion-icon slot="icon-only" name="ellipsis-vertical"></ion-icon>
+  <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 overflow-hidden border border-slate-100">
+    <div class="p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tighter italic lg:text-3xl">Stock Distribution</h1>
+        <div class="flex items-center gap-2 mt-2">
+          <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+          <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Global Vault Synchronized</p>
+        </div>
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div class="relative flex-1 md:w-72">
+          <label for="inventory-search" class="sr-only">Search Records</label>
+          <ion-icon name="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10"></ion-icon>
+          <input 
+            id="inventory-search"
+            type="text" 
+            [(ngModel)]="searchQuery"
+            placeholder="Search records..." 
+            class="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all"
+          >
+        </div>
+        <ion-button (click)="openAddModal()" class="h-11 ion-no-margin" fill="solid" [style.--background]="'#0f172a'" [style.--border-radius]="'16px'">
+          <ion-icon slot="start" name="add" class="text-lg"></ion-icon>
+          <span class="text-xs font-black px-1 uppercase tracking-tight">Post Inventory</span>
         </ion-button>
       </div>
-    </ion-card-header>
+    </div>
 
     <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse">
+      <table class="w-full text-left border-collapse min-w-[800px]">
         <thead>
-          <tr class="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
-            <th class="px-10 py-5">Product</th>
-            <th class="px-8 py-5">Category/HSN</th>
-            <th class="px-8 py-5">Price</th>
-            <th class="px-8 py-5">GST</th>
+          <tr class="bg-slate-50/80 backdrop-blur-sm text-slate-400 text-[10px] font-black uppercase tracking-widest border-y border-slate-100/50">
+            <th class="px-10 py-5 border-r border-slate-100/50">Core Identity</th>
+            <th class="px-8 py-5 border-r border-slate-100/50">Metadata Hub</th>
+            <th class="px-8 py-5 border-r border-slate-100/50 text-center">Volume</th>
+            <th class="px-8 py-5 border-r border-slate-100/50">Economic Analysis</th>
             <th class="px-10 py-5 text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
-          @for (listing of listings(); track listing.id) {
-            <tr class="hover:bg-slate-50/50 transition-colors">
-              <td class="px-10 py-6">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
-                    <img [src]="listing.processedImage || listing.originalImage" [alt]="listing.name" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+          @for (listing of filteredListings; track listing.id) {
+            <tr class="group hover:bg-slate-50/80 transition-all duration-300">
+              <td class="px-10 py-8 border-r border-slate-50/50">
+                <div class="flex items-center gap-5">
+                  <div class="product-avatar group-hover:scale-110 transition-transform duration-500">
+                    @if (listing.processedImage || listing.originalImage) {
+                      <img [src]="listing.processedImage || listing.originalImage" [alt]="listing.name" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+                    } @else {
+                      <div class="w-full h-full flex items-center justify-center bg-slate-50">
+                        <ion-icon name="cube" class="text-2xl text-slate-200"></ion-icon>
+                      </div>
+                    }
                   </div>
                   <div>
-                    <p class="text-sm font-bold text-slate-800 line-clamp-1">{{ listing.name }}</p>
-                    <p class="text-xs text-slate-400">{{ listing.material }}</p>
+                    <h3 class="text-sm font-black text-slate-900 leading-tight">{{ listing.name }}</h3>
+                    <div class="flex items-center gap-2 mt-1">
+                      <span class="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase">{{ listing.hsnCode || 'HSN-PENDING' }}</span>
+                      @if (listing.material) {
+                        <span class="text-[9px] font-bold text-slate-400 italic">#{{ listing.material }}</span>
+                      }
+                    </div>
                   </div>
                 </div>
               </td>
-              <td class="px-8 py-6">
-                <div class="flex flex-col">
-                  <span class="text-sm text-slate-600">{{ listing.platformContent['meesho']?.['category'] }}</span>
-                  <span class="text-xs text-slate-400 font-mono">{{ listing.hsnCode }}</span>
+              <td class="px-8 py-8 border-r border-slate-50/50">
+                <div class="flex flex-col gap-1.5">
+                  <span class="text-[10px] font-black text-slate-700 uppercase tracking-tighter px-2 py-1 bg-slate-100 rounded-lg w-fit">
+                    {{ listing.category || 'Standard Entry' }}
+                  </span>
+                  <div class="flex items-center gap-2 text-[9px] text-slate-400 font-bold">
+                    <ion-icon name="pricetag" class="text-[10px]"></ion-icon>
+                    <span>ID: {{ listing.id?.substring(0, 8) }}</span>
+                  </div>
                 </div>
               </td>
-              <td class="px-8 py-6">
-                <span class="text-sm font-bold text-slate-800">{{ listing.priceINR }}</span>
+              <td class="px-8 py-8 border-r border-slate-50/50 text-center">
+                <div class="inline-flex flex-col items-center">
+                  <span class="text-lg font-black text-slate-900 leading-none">{{ listing.quantity || 1 }}</span>
+                  <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Reserve</span>
+                </div>
               </td>
-              <td class="px-8 py-6">
-                <ion-badge color="light" class="text-[10px] font-bold">{{ listing.gstRate }}</ion-badge>
+              <td class="px-8 py-8 border-r border-slate-50/50">
+                <div class="space-y-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[15px] font-black text-slate-900 font-mono tracking-tight">{{ listing.priceINR }}</span>
+                    <span class="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase border border-emerald-100">{{ listing.gstRate }} GST</span>
+                  </div>
+                  @if (listing.costPrice) {
+                    <div class="flex items-center gap-2">
+                      <div class="h-1 w-12 bg-slate-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-400" [style.width.%]="(+listing.sellingPrice! - +listing.costPrice!) / +listing.sellingPrice! * 100"></div>
+                      </div>
+                      <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest">
+                        Net: ₹{{ (+listing.sellingPrice! - +listing.costPrice!) | number:'1.0-0' }}
+                      </span>
+                    </div>
+                  }
+                </div>
               </td>
-              <td class="px-10 py-6 text-right">
-                <div class="flex justify-end gap-1">
-                  <ion-button (click)="view.emit(listing)" fill="clear" color="primary" size="small">
-                    <ion-icon slot="icon-only" name="eye"></ion-icon>
-                  </ion-button>
-                  <ion-button (click)="delete.emit(listing.id!)" fill="clear" color="danger" size="small">
-                    <ion-icon slot="icon-only" name="trash"></ion-icon>
-                  </ion-button>
+              <td class="px-10 py-8 text-right">
+                <div class="flex justify-end gap-2 sm:opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                  <button (click)="view.emit(listing)" class="action-trigger primary">
+                    <ion-icon name="eye"></ion-icon>
+                  </button>
+                  <button (click)="delete.emit(listing.id!)" class="action-trigger danger">
+                    <ion-icon name="trash"></ion-icon>
+                  </button>
                 </div>
               </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="5" class="px-6 py-20 text-center">
-                <div class="flex flex-col items-center">
-                  <ion-icon name="cube" class="text-5xl text-slate-200 mb-4"></ion-icon>
-                  <p class="text-slate-500">No products found in your inventory.</p>
+              <td colspan="5" class="px-6 py-40 text-center bg-slate-50/20">
+                <div class="flex flex-col items-center max-w-sm mx-auto">
+                  <div class="empty-state-icon">
+                    <ion-icon name="cube" class="text-5xl text-slate-200"></ion-icon>
+                    <div class="pulse-ring"></div>
+                  </div>
+                  <h3 class="text-2xl font-black text-slate-900 tracking-tighter mt-8">No matching records</h3>
+                  <p class="text-sm text-slate-400 mt-2 font-medium">Your inventory query returned zero results. Try adjusting filters or adding new stock.</p>
+                  <ion-button (click)="openAddModal()" fill="solid" [style.--background]="'#0f172a'" class="mt-10 h-14 w-full rounded-[1.25rem] text-xs font-black uppercase tracking-widest overflow-hidden">
+                    Initialize Stock
+                  </ion-button>
                 </div>
               </td>
             </tr>
@@ -119,5 +167,132 @@
         </tbody>
       </table>
     </div>
-  </ion-card>
+  </div>
+
+  <!-- Footer Credits -->
+  <div class="mt-8 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] px-4">
+    <p>© 2026 SELLASSIST LOGISTICS HUB</p>
+    <div class="flex items-center gap-4 mt-2 sm:mt-0">
+      <span class="flex items-center gap-1"><ion-icon name="shield-checkmark" class="text-emerald-500"></ion-icon> Encrypted Data Vault</span>
+      <span class="flex items-center gap-1"><ion-icon name="rocket" class="text-blue-500"></ion-icon> AI Precision V2.0</span>
+    </div>
+  </div>
+
+  <!-- Add Product Modal -->
+  <ion-modal [isOpen]="isAddModalOpen()" (didDismiss)="closeAddModal()" class="product-modal-premium">
+    <ng-template>
+      <div class="flex flex-col h-full bg-[#fdfdfd]">
+        <div class="p-8 md:p-12 pb-6 flex items-center justify-between">
+          <div>
+            <h2 class="text-3xl font-black text-slate-900 tracking-tighter italic">Inventory Blueprint</h2>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Manual Stock Allocation Mode</p>
+            </div>
+          </div>
+          <button (click)="closeAddModal()" class="w-12 h-12 flex items-center justify-center bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors">
+            <ion-icon name="close" class="text-2xl text-slate-600"></ion-icon>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-8 md:px-12 py-6 space-y-10">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <!-- Identity Segment -->
+            <div class="space-y-6">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center font-mono text-xs font-black">01</div>
+                <h3 class="text-xs font-black uppercase tracking-widest text-slate-900">Base Identity</h3>
+              </div>
+              
+              <div class="space-y-4">
+                <div class="premium-field group">
+                  <span class="premium-label">Product Naming Convention</span>
+                  <div class="input-wrapper">
+                    <ion-icon name="pricetag" class="input-icon"></ion-icon>
+                    <input type="text" [(ngModel)]="newProduct().name" placeholder="E.g. Vintage Leather Briefcase" class="premium-input">
+                  </div>
+                </div>
+
+                <div class="premium-field group">
+                  <span class="premium-label">Market Classification</span>
+                  <div class="input-wrapper">
+                    <ion-icon name="list" class="input-icon"></ion-icon>
+                    <input type="text" [(ngModel)]="newProduct().category" placeholder="E.g. Travel / Premium" class="premium-input">
+                  </div>
+                </div>
+
+                <div class="premium-field group">
+                  <span class="premium-label">Descriptive Context</span>
+                  <div class="input-wrapper py-3">
+                    <textarea [(ngModel)]="newProduct().description" placeholder="Specify unique selling points and material details..." rows="4" class="premium-input resize-none w-full"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Commercial Segment -->
+            <div class="space-y-6">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center font-mono text-xs font-black">02</div>
+                <h3 class="text-xs font-black uppercase tracking-widest text-slate-900">Commercial Metrics</h3>
+              </div>
+
+              <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="premium-field">
+                    <span class="premium-label">Acquisition (₹)</span>
+                    <div class="input-wrapper">
+                      <input type="number" [(ngModel)]="newProduct().costPrice" placeholder="0.00" class="premium-input text-center">
+                    </div>
+                  </div>
+                  <div class="premium-field">
+                    <span class="premium-label">Listing Value (₹)</span>
+                    <div class="input-wrapper">
+                      <input type="number" [(ngModel)]="newProduct().sellingPrice" placeholder="0.00" class="premium-input text-center font-black">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="premium-field">
+                    <span class="premium-label">Stock Volume</span>
+                    <div class="input-wrapper">
+                      <input type="number" [(ngModel)]="newProduct().quantity" placeholder="Units" class="premium-input text-center">
+                    </div>
+                  </div>
+                  <div class="premium-field">
+                    <span class="premium-label">Tax Allocation</span>
+                    <div class="input-wrapper">
+                      <select [(ngModel)]="newProduct().gstRate" class="premium-input appearance-none bg-transparent">
+                        <option value="5%">5% GST</option>
+                        <option value="12%">12% GST</option>
+                        <option value="18%">18% GST</option>
+                        <option value="28%">28% GST</option>
+                      </select>
+                      <ion-icon name="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></ion-icon>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="premium-field">
+                  <span class="premium-label">Regulatory HSN Code</span>
+                  <div class="input-wrapper">
+                    <ion-icon name="barcode-outline" class="input-icon"></ion-icon>
+                    <input type="text" [(ngModel)]="newProduct().hsnCode" placeholder="Enter HSN/SAC code" class="premium-input font-mono">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-8 md:p-12 pt-4">
+          <ion-button (click)="submitManualProduct()" [disabled]="!newProduct().name || !newProduct().sellingPrice" class="h-16 w-full ion-no-margin shadow-2xl shadow-slate-900/10" fill="solid" [style.--background]="'#0f172a'" [style.--border-radius]="'24px'">
+            <ion-icon slot="start" name="save" class="mr-3 text-lg"></ion-icon>
+            <span class="text-sm font-black uppercase tracking-widest">Authorize & Commit Stock</span>
+          </ion-button>
+        </div>
+      </div>
+    </ng-template>
+  </ion-modal>
 </div>
