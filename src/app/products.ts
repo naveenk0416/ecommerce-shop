@@ -1,14 +1,16 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { 
-  IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
-  IonCardContent, IonBadge
+  IonButton, IonIcon, IonModal
 } from '@ionic/angular/standalone';
 import { Listing } from './services/listing';
 import { addIcons } from 'ionicons';
 import { 
   cube, search, filter, ellipsisVertical, 
-  eye, trash, trendingUp, alertCircle 
+  eye, trash, trendingUp, alertCircle, add,
+  pricetag, statsChart, chevronDown, close,
+  save, list
 } from 'ionicons/icons';
 
 @Component({
@@ -17,8 +19,8 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
-    IonCardContent, IonBadge
+    FormsModule,
+    IonButton, IonIcon, IonModal
   ],
   templateUrl: './products.html',
   styleUrl: './products.css'
@@ -27,9 +29,68 @@ export class Products {
   listings = input<Listing[]>([]);
   view = output<Listing>();
   delete = output<string>();
+  addManual = output<Partial<Listing>>();
+  searchQuery = signal<string>('');
+
+  isAddModalOpen = signal(false);
+  newProduct = signal<Partial<Listing>>({
+    name: '',
+    category: '',
+    quantity: 1,
+    costPrice: '',
+    sellingPrice: '',
+    description: '',
+    priceINR: '0',
+    gstRate: '12%',
+    hsnCode: '',
+    material: '',
+    variations: [],
+    platformContent: {}
+  });
 
   constructor() {
-    addIcons({ cube, search, filter, ellipsisVertical, eye, trash, trendingUp, alertCircle });
+    addIcons({ 
+      cube, search, filter, ellipsisVertical, eye, trash, 
+      trendingUp, alertCircle, add, pricetag, statsChart,
+      chevronDown, close, save, list
+    });
+  }
+
+  openAddModal() {
+    this.resetNewProduct();
+    this.isAddModalOpen.set(true);
+  }
+
+  closeAddModal() {
+    this.isAddModalOpen.set(false);
+  }
+
+  resetNewProduct() {
+    this.newProduct.set({
+      name: '',
+      category: '',
+      quantity: 1,
+      costPrice: '',
+      sellingPrice: '',
+      description: '',
+      priceINR: '0',
+      gstRate: '18%',
+      hsnCode: '',
+      material: '',
+      variations: [],
+      platformContent: {}
+    });
+  }
+
+  submitManualProduct() {
+    const product = this.newProduct();
+    if (!product.name || !product.sellingPrice) return;
+    
+    // Auto-fill priceINR for consistency with existing data
+    product.priceINR = `₹${product.sellingPrice}`;
+    
+    this.addManual.emit(product);
+    this.closeAddModal();
   }
 
   get totalValue(): number {
@@ -42,5 +103,15 @@ export class Products {
   get averagePrice(): number {
     if (this.listings().length === 0) return 0;
     return this.totalValue / this.listings().length;
+  }
+
+  get filteredListings(): Listing[] {
+    const query = this.searchQuery().toLowerCase();
+    if (!query) return this.listings();
+    return this.listings().filter(l => 
+      l.name.toLowerCase().includes(query) || 
+      (l.category || '').toLowerCase().includes(query) ||
+      (l.hsnCode || '').toLowerCase().includes(query)
+    );
   }
 }

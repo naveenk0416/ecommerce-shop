@@ -27,7 +27,7 @@ export interface Listing extends ProductDetails {
 export class ListingService {
   private listingsPath = 'listings';
 
-  saveListing(details: ProductDetails, originalImage: string, processedImage: string | null) {
+  saveListing(details: ProductDetails, originalImage = '', processedImage: string | null = null) {
     const user = auth.currentUser;
     if (!user) throw new Error('User must be authenticated to save a listing');
 
@@ -51,6 +51,23 @@ export class ListingService {
     const q = query(
       collection(db, this.listingsPath),
       where('uid', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+
+    return onSnapshot(q, (snapshot) => {
+      const listings = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Listing));
+      callback(listings);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, this.listingsPath);
+    });
+  }
+
+  getAllListings(callback: (listings: Listing[]) => void) {
+    const q = query(
+      collection(db, this.listingsPath),
       orderBy('createdAt', 'desc')
     );
 

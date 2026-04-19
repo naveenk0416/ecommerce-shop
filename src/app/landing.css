@@ -1,6 +1,11 @@
 .landing-container {
   min-height: 100vh;
-  background-color: #fffbf5;
+  background-color: #ffffff;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(255, 126, 51, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(0, 150, 136, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(255, 126, 51, 0.05) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(0, 150, 136, 0.05) 0px, transparent 50%);
   color: #1a1a1a;
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
@@ -180,28 +185,53 @@
 }
 
 .feature-card {
-  background: #fffcf5;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
   padding: 2.5rem;
-  border-radius: 2rem;
-  border: 1px solid #f0f0f0;
-  transition: all 0.3s ease;
+  border-radius: 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #ff7e33, #009688);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .feature-card:hover {
-  transform: translateY(-5px);
-  border-color: #ff7e33;
-  box-shadow: 0 20px 40px -20px rgba(255, 126, 51, 0.15);
+  transform: translateY(-12px) scale(1.02);
+  border-color: rgba(255, 126, 51, 0.3);
+  background: white;
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card:hover::before {
+  opacity: 1;
+}
+
+.feature-card:hover .feature-icon {
+  transform: scale(1.1) rotate(5deg);
 }
 
 .feature-icon {
   width: 3.5rem;
   height: 3.5rem;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.75rem;
   margin-bottom: 1.5rem;
+  transition: transform 0.3s ease;
 }
 
 .feature-title {
@@ -217,7 +247,52 @@
   color: #6b7280;
 }
 
-/* CTA Section */
+/* Trust Section */
+.trust-section {
+  padding: 4rem 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #111827;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #ff7e33 0%, #d946ef 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #6b7280;
+  letter-spacing: 0.1em;
+}
+
+.partner-logos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  opacity: 0.5;
+  filter: grayscale(1);
+  transition: opacity 0.3s ease;
+}
+
+.partner-logos:hover {
+  opacity: 0.8;
+  filter: grayscale(0.5);
+}
 .cta-banner {
   background: linear-gradient(135deg, #ff7e33 0%, #009688 100%);
   border-radius: 3.5rem;

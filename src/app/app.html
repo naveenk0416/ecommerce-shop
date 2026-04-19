@@ -7,7 +7,7 @@
         </div>
         
         <div slot="end" class="flex items-center gap-2">
-          <ion-button (click)="isGstModalOpen.set(true)" fill="clear" color="medium" class="font-bold text-xs">
+          <ion-button (click)="mainView.set('gst'); showLanding.set(false)" fill="clear" [color]="mainView() === 'gst' ? 'primary' : 'medium'" class="font-bold text-xs">
             <ion-icon name="calculator" slot="start"></ion-icon>
             GST Calculator
           </ion-button>
@@ -50,52 +50,21 @@
     </ion-toolbar>
   </ion-header>
 
-  <ion-content [fullscreen]="true" class="bg-slate-50">
+  <ion-content [fullscreen]="true">
     @if (showLanding() && !auth.user()) {
       <app-landing (login)="showLanding.set(false)" (getStarted)="showLanding.set(false)"></app-landing>
     } @else {
-      <div class="max-w-2xl mx-auto space-y-12 pb-20">
-        
-        <!-- Quick Tools -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-12">
-          <div (click)="isGstModalOpen.set(true)" 
-               tabindex="0"
-               (keydown.enter)="isGstModalOpen.set(true)"
-               class="bg-white p-8 rounded-3xl border border-slate-100 hover:border-orange-500 hover:shadow-xl transition-all cursor-pointer group shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
-            <div class="flex items-center gap-6">
-              <div class="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
-                <ion-icon name="calculator" class="text-3xl"></ion-icon>
-              </div>
-              <div class="text-left">
-                <h3 class="text-xl font-bold text-slate-800">GST Calc</h3>
-                <p class="text-sm text-slate-500">Tax tools for sellers</p>
-              </div>
-            </div>
-          </div>
-          
-          <div (click)="mainView.set('products')" 
-               tabindex="0"
-               (keydown.enter)="mainView.set('products')"
-               class="bg-white p-8 rounded-3xl border border-slate-100 hover:border-orange-500 hover:shadow-xl transition-all cursor-pointer group shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <div class="flex items-center gap-6">
-              <div class="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                <ion-icon name="list" class="text-3xl"></ion-icon>
-              </div>
-              <div class="text-left">
-                <h3 class="text-xl font-bold text-slate-800">Inventory</h3>
-                <p class="text-sm text-slate-500">Manage your listings</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="max-w-2xl mx-auto space-y-12 pb-20 pt-12">
         
         @if (!auth.isAuthReady()) {
-        <div class="flex flex-col items-center justify-center py-20">
-          <ion-spinner name="crescent" color="primary"></ion-spinner>
-          <p class="text-slate-500 mt-4">Initializing...</p>
-        </div>
-      } @else if (!auth.user()) {
-        <section class="max-w-md mx-auto py-16 px-10 bg-white rounded-[3rem] shadow-sm border border-orange-50">
+          <div class="flex flex-col items-center justify-center py-20">
+            <ion-spinner name="crescent" color="primary"></ion-spinner>
+            <p class="text-slate-500 mt-4">Initializing...</p>
+          </div>
+        } @else if (mainView() === 'gst') {
+          <app-gst-calculator></app-gst-calculator>
+        } @else if (!auth.user()) {
+          <section class="max-w-md mx-auto py-16 px-10 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
           <div class="text-center mb-10 relative">
             <button (click)="showLanding.set(true)" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600">
               <ion-icon name="close" class="text-2xl"></ion-icon>
@@ -167,7 +136,8 @@
         <app-products 
           [listings]="myListings()" 
           (view)="viewListing($event)" 
-          (delete)="deleteListing($event)">
+          (delete)="deleteListing($event)"
+          (addManual)="handleAddManualProduct($event)">
         </app-products>
       } @else if (mainView() === 'admin') {
         <app-admin></app-admin>
@@ -635,20 +605,4 @@
     </footer>
   }
 </ion-content>
-  <!-- GST Calculator Modal -->
-  <ion-modal [isOpen]="isGstModalOpen()" (didDismiss)="isGstModalOpen.set(false)" class="gst-modal">
-    <ng-template>
-      <ion-header class="ion-no-border">
-        <ion-toolbar>
-          <ion-title>Tax Tools</ion-title>
-          <ion-button slot="end" fill="clear" (click)="isGstModalOpen.set(false)" color="medium">
-            <ion-icon name="close"></ion-icon>
-          </ion-button>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content>
-        <app-gst-calculator></app-gst-calculator>
-      </ion-content>
-    </ng-template>
-  </ion-modal>
 </ion-app>
