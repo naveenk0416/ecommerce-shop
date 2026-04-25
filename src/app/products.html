@@ -1,151 +1,104 @@
 <div class="products-dashboard animate-in fade-in max-w-7xl mx-auto px-4 py-8">
-  <!-- Stats Header -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-    <div class="stats-card dark group">
-      <div class="stats-info">
-        <span class="stats-label text-slate-400">Total Inventory</span>
-        <h2 class="stats-value font-mono">{{ listings().length }}</h2>
-        <span class="stats-delta text-emerald-400">Live Status</span>
+  <!-- Modern Stats Bento -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div class="bento-card bg-slate-900 border-none relative overflow-hidden group">
+      <div class="relative z-10">
+        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-2">Total Inventory</span>
+        <h2 class="text-4xl font-black text-white tracking-tighter italic font-mono">{{ listings().length }}</h2>
+        <div class="flex items-center gap-1.5 mt-4">
+          <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Live Vault Status</span>
+        </div>
       </div>
-      <div class="stats-icon-bg bg-white/5">
-        <ion-icon name="cube" class="text-white opacity-40"></ion-icon>
-      </div>
+      <ion-icon name="cube" class="absolute -right-6 -bottom-6 text-8xl text-white/5 rotate-12 transition-transform duration-700 group-hover:scale-110"></ion-icon>
     </div>
 
-    <div class="stats-card group">
-      <div class="stats-info">
-        <span class="stats-label text-slate-500">Asset Valuation</span>
-        <h2 class="stats-value text-slate-900 font-mono">₹{{ totalValue | number:'1.0-0' }}</h2>
-        <span class="stats-delta text-slate-400">Total Portfolio</span>
-      </div>
-      <div class="stats-icon-bg bg-emerald-50">
-        <ion-icon name="stats-chart" class="text-emerald-600 opacity-40"></ion-icon>
-      </div>
+    <div class="bento-card">
+      <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-2">Portfolio Value</span>
+      <h2 class="text-4xl font-black text-slate-900 tracking-tighter italic font-mono">₹{{ totalValue | number:'1.0-0' }}</h2>
+      <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-4">Calculated Asset Density</p>
     </div>
 
-    <div class="stats-card group">
-      <div class="stats-info">
-        <span class="stats-label text-slate-500">Avg. Listing Unit</span>
-        <h2 class="stats-value text-slate-900 font-mono">₹{{ averagePrice | number:'1.0-0' }}</h2>
-        <span class="stats-delta text-slate-400">Unit Density</span>
-      </div>
-      <div class="stats-icon-bg bg-orange-50">
-        <ion-icon name="flash" class="text-orange-600 opacity-40"></ion-icon>
+    <div class="bento-card border-dashed border-slate-200 bg-slate-50/50 hover:border-orange-200 transition-all cursor-pointer group" (click)="openAddModal()">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-[10px] font-black uppercase tracking-widest text-orange-600 block mb-1">New Entry</span>
+          <h3 class="text-2xl font-black text-slate-900 tracking-tight">Post Stock</h3>
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">Manual Inventory Control</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center group-hover:rotate-90 transition-all duration-500 shadow-lg shadow-orange-500/20">
+          <ion-icon name="add" class="text-3xl"></ion-icon>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Management Table -->
-  <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 overflow-hidden border border-slate-100">
-    <div class="p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-      <div>
-        <h1 class="text-2xl font-black text-slate-900 tracking-tighter italic lg:text-3xl">Stock Distribution</h1>
-        <div class="flex items-center gap-2 mt-2">
-          <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-          <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Global Vault Synchronized</p>
-        </div>
+  <!-- Management Center -->
+  <div class="space-y-4">
+    <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm flex flex-wrap items-center gap-4">
+      <div class="flex-grow relative">
+        <ion-icon name="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></ion-icon>
+        <input type="text" [(ngModel)]="searchQuery" 
+          placeholder="Filter stock by SKU, name or category..." 
+          class="w-full h-12 pl-11 pr-4 bg-slate-50 rounded-[1.25rem] text-sm font-bold placeholder:text-slate-300 focus:outline-none transition-all focus:ring-4 focus:ring-slate-900/5 focus:bg-white">
       </div>
-      
-      <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-        <div class="relative flex-1 md:w-72">
-          <label for="inventory-search" class="sr-only">Search Records</label>
-          <ion-icon name="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10"></ion-icon>
-          <input 
-            id="inventory-search"
-            type="text" 
-            [(ngModel)]="searchQuery"
-            placeholder="Search records..." 
-            class="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all"
-          >
-        </div>
-        <ion-button (click)="openAddModal()" class="h-11 ion-no-margin" fill="solid" [style.--background]="'#0f172a'" [style.--border-radius]="'16px'">
-          <ion-icon slot="start" name="add" class="text-lg"></ion-icon>
-          <span class="text-xs font-black px-1 uppercase tracking-tight">Post Inventory</span>
-        </ion-button>
-      </div>
+      <button class="h-12 px-6 rounded-[1.25rem] bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-900 hover:text-white transition-all border border-slate-100 hover:border-slate-900">
+        Sync Data
+      </button>
     </div>
 
-    <div class="overflow-x-auto">
+    <!-- Inventory Table -->
+    <div class="modern-table overflow-x-auto">
       <table class="w-full text-left border-collapse min-w-[800px]">
         <thead>
-          <tr class="bg-slate-50/80 backdrop-blur-sm text-slate-400 text-[10px] font-black uppercase tracking-widest border-y border-slate-100/50">
-            <th class="px-10 py-5 border-r border-slate-100/50">Core Identity</th>
-            <th class="px-8 py-5 border-r border-slate-100/50">Metadata Hub</th>
-            <th class="px-8 py-5 border-r border-slate-100/50 text-center">Volume</th>
-            <th class="px-8 py-5 border-r border-slate-100/50">Economic Analysis</th>
-            <th class="px-10 py-5 text-right">Actions</th>
+          <tr>
+            <th>Product Identity</th>
+            <th>Category & SKU</th>
+            <th class="text-center">Units</th>
+            <th>Commercials</th>
+            <th class="text-right">Management</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-slate-50">
           @for (listing of filteredListings; track listing.id) {
-            <tr class="group hover:bg-slate-50/80 transition-all duration-300">
-              <td class="px-10 py-8 border-r border-slate-50/50">
-                <div class="flex items-center gap-5">
-                  <div class="product-avatar group-hover:scale-110 transition-transform duration-500">
-                    @if (listing.processedImage || listing.originalImage) {
-                      <img [src]="listing.processedImage || listing.originalImage" [alt]="listing.name" class="w-full h-full object-cover" referrerpolicy="no-referrer">
-                    } @else {
-                      <div class="w-full h-full flex items-center justify-center bg-slate-50">
-                        <ion-icon name="cube" class="text-2xl text-slate-200"></ion-icon>
-                      </div>
-                    }
+            <tr class="group">
+              <td class="py-6 px-10">
+                <div class="flex items-center gap-4">
+                  <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden shadow-inner group-hover:scale-105 transition-transform duration-300 flex-shrink-0">
+                    <img [src]="listing.processedImage || listing.originalImage" class="w-full h-full object-cover" referrerpolicy="no-referrer">
                   </div>
                   <div>
-                    <h3 class="text-sm font-black text-slate-900 leading-tight">{{ listing.name }}</h3>
-                    <div class="flex items-center gap-2 mt-1">
-                      @if (auth.isPro()) {
-                        <span class="text-[9px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase">{{ listing.hsnCode || 'HSN-PENDING' }}</span>
-                      }
-                      @if (listing.material) {
-                        <span class="text-[9px] font-bold text-slate-400 italic">#{{ listing.material }}</span>
-                      }
-                    </div>
+                    <h4 class="text-sm font-black text-slate-900 group-hover:text-orange-600 transition-colors">{{ listing.name }}</h4>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1 block">Created {{ listing.createdAt | date:'shortDate' }}</span>
                   </div>
                 </div>
               </td>
-              <td class="px-8 py-8 border-r border-slate-50/50">
-                <div class="flex flex-col gap-1.5">
-                  <span class="text-[10px] font-black text-slate-700 uppercase tracking-tighter px-2 py-1 bg-slate-100 rounded-lg w-fit">
-                    {{ listing.category || 'Standard Entry' }}
+              <td class="py-6 px-8">
+                <div class="flex flex-col gap-1">
+                  <span class="text-[10px] font-black text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg w-fit border border-slate-100 uppercase tracking-tight">
+                    {{ listing.category || 'General' }}
                   </span>
-                  <div class="flex items-center gap-2 text-[9px] text-slate-400 font-bold">
-                    <ion-icon name="pricetag" class="text-[10px]"></ion-icon>
-                    <span>ID: {{ listing.id?.substring(0, 8) }}</span>
-                  </div>
+                  <span class="text-[9px] font-mono text-slate-300 font-bold ml-1">ID: {{ listing.id?.substring(0,8) }}</span>
                 </div>
               </td>
-              <td class="px-8 py-8 border-r border-slate-50/50 text-center">
-                <div class="inline-flex flex-col items-center">
-                  <span class="text-lg font-black text-slate-900 leading-none">{{ listing.quantity || 1 }}</span>
-                  <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Reserve</span>
+              <td class="py-6 px-8 text-center">
+                <div class="flex flex-col items-center">
+                  <span class="text-lg font-black text-slate-900 font-mono">{{ listing.quantity || 1 }}</span>
+                  <span class="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Available</span>
                 </div>
               </td>
-              <td class="px-8 py-8 border-r border-slate-50/50">
-                <div class="space-y-1.5">
-                  <div class="flex items-center gap-2">
-                    <span class="text-[15px] font-black text-slate-900 font-mono tracking-tight">{{ listing.priceINR }}</span>
-                    @if (auth.isPro()) {
-                      <span class="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase border border-emerald-100">{{ listing.gstRate }} GST</span>
-                    }
-                  </div>
-                  @if (listing.costPrice) {
-                    <div class="flex items-center gap-2">
-                      <div class="h-1 w-12 bg-slate-100 rounded-full overflow-hidden">
-                        <div class="h-full bg-emerald-400" [style.width.%]="(+listing.sellingPrice! - +listing.costPrice!) / +listing.sellingPrice! * 100"></div>
-                      </div>
-                      <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest">
-                        Net: ₹{{ (+listing.sellingPrice! - +listing.costPrice!) | number:'1.0-0' }}
-                      </span>
-                    </div>
-                  }
+              <td class="py-6 px-8">
+                <div class="flex flex-col">
+                  <span class="text-sm font-black text-slate-900 font-mono italic">₹{{ listing.priceINR | number }}</span>
+                  <span class="text-[9px] font-black text-emerald-600 uppercase tracking-widest mt-1">₹{{ (+listing.priceINR! * (listing.quantity || 1)) | number }} Total</span>
                 </div>
               </td>
-              <td class="px-10 py-8 text-right">
-                <div class="flex justify-end gap-2 sm:opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
-                  <button (click)="view.emit(listing)" class="action-trigger primary">
+              <td class="py-6 px-10 text-right">
+                <div class="flex justify-end gap-2">
+                  <button (click)="view.emit(listing)" class="action-btn">
                     <ion-icon name="eye"></ion-icon>
                   </button>
-                  <button (click)="delete.emit(listing.id!)" class="action-trigger danger">
+                  <button (click)="delete.emit(listing.id!)" class="action-btn hover:bg-red-500 hover:text-white">
                     <ion-icon name="trash"></ion-icon>
                   </button>
                 </div>
@@ -153,15 +106,14 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="5" class="px-6 py-40 text-center bg-slate-50/20">
+              <td colspan="5" class="py-32 text-center">
                 <div class="flex flex-col items-center max-w-sm mx-auto">
-                  <div class="empty-state-icon">
-                    <ion-icon name="cube" class="text-5xl text-slate-200"></ion-icon>
-                    <div class="pulse-ring"></div>
+                  <div class="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-6 border border-slate-100">
+                    <ion-icon name="cube" class="text-4xl text-slate-200"></ion-icon>
                   </div>
-                  <h3 class="text-2xl font-black text-slate-900 tracking-tighter mt-8">No matching records</h3>
-                  <p class="text-sm text-slate-400 mt-2 font-medium">Your inventory query returned zero results. Try adjusting filters or adding new stock.</p>
-                  <ion-button (click)="openAddModal()" fill="solid" [style.--background]="'#0f172a'" class="mt-10 h-14 w-full rounded-[1.25rem] text-xs font-black uppercase tracking-widest overflow-hidden">
+                  <h3 class="text-xl font-black text-slate-900 tracking-tight">Vault Empty</h3>
+                  <p class="text-xs text-slate-400 mt-2 font-medium">Capture or manually add inventory to populate this hub.</p>
+                  <ion-button (click)="openAddModal()" fill="solid" [style.--background]="'#0f172a'" class="mt-8 h-12 w-full text-[10px] font-black uppercase tracking-widest" style="--border-radius: 16px;">
                     Initialize Stock
                   </ion-button>
                 </div>

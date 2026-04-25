@@ -1,22 +1,90 @@
 ion-content {
-  --background: #ffffff;
-  background: linear-gradient(135deg, rgba(255, 126, 51, 0.06) 0%, rgba(220, 38, 38, 0.06) 100%) fixed;
+  --background: #fdfdfd;
+  background: radial-gradient(at 0% 0%, rgba(255, 126, 51, 0.03) 0px, transparent 50%),
+              radial-gradient(at 100% 100%, rgba(220, 38, 38, 0.03) 0px, transparent 50%) !important;
 }
 
 ion-toolbar {
-  --background: #ffffff;
-  --color: #111827;
-  border-bottom: 1px solid #f3f4f6;
+  --background: rgba(255, 255, 255, 0.8);
+  --color: #0f172a;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
 }
 
-ion-button[color="primary"] {
-  --background: #ff7e33;
-  --color: white;
+.modern-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  background-color: white;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  border: 1px solid #f1f5f9;
 }
 
-ion-button[color="warning"] {
-  --background: #ff8c00;
-  --color: white;
+.modern-table th {
+  padding: 1rem 1.5rem;
+  background-color: rgba(248, 250, 252, 0.5);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.modern-table td {
+  padding: 1rem 1.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+  border-bottom: 1px solid #f8fafc;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+.modern-table tr:last-child td {
+  border-bottom-width: 0px;
+}
+
+.modern-table tr:hover td {
+  background-color: rgba(248, 250, 252, 0.3);
+}
+
+.bento-card {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 2.5rem;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 500ms;
+}
+
+.bento-card:hover {
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  box-shadow: 0 20px 25px -5px rgba(226, 232, 240, 0.5), 0 8px 10px -6px rgba(226, 232, 240, 0.5);
+  transform: translateY(-0.25rem);
+}
+
+.action-btn {
+  height: 2.5rem;
+  width: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background-color: #f8fafc;
+  color: #94a3b8;
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+.action-btn:hover {
+  background-color: #0f172a;
+  color: white;
 }
 
 .login-card {
