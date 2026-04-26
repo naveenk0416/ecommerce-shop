@@ -20,6 +20,7 @@
           "builder": "@angular/build:application",
           "options": {
             "define": {
+              "RAZORPAY_KEY_ID": "process.env.RAZORPAY_KEY_ID"
             },
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",

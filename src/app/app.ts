@@ -8,7 +8,7 @@ import { IonApp, IonHeader, IonToolbar, IonContent,
   ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
@@ -16,6 +16,7 @@ import { TemplateService } from './services/template';
 import { Landing } from './landing';
 import { Products } from './products';
 import { AdminComponent } from './admin';
+import { Pricing } from './pricing';
 import { GstCalculator } from './gst-calculator';
 import { resizeImage } from './utils/image';
 
@@ -24,7 +25,7 @@ import { resizeImage } from './utils/image';
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, Landing, Products, AdminComponent, GstCalculator,
+    CommonModule, FormsModule, Landing, Products, AdminComponent, GstCalculator, Pricing,
     IonApp, IonHeader, IonToolbar, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
@@ -49,7 +50,7 @@ export class App {
   isSaving = signal(false);
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<string>('details');
-  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst'>('home');
+  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst' | 'pricing'>('home');
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
   editingField = signal<string | null>(null);
@@ -68,7 +69,7 @@ export class App {
 
   constructor() {
 
-    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh });
+    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star });
     
     if (isPlatformBrowser(this.platformId)) {
       // Reactively fetch listings when user changes
@@ -255,12 +256,42 @@ export class App {
   }
 
   async processImage(base64WithPrefix: string, mimeType: string) {
+    const profile = this.auth.profile();
+    if (profile) {
+      if (profile.role === 'FREE' && profile.usageCount >= 5) {
+        const toast = await this.toastController.create({
+          message: 'Free limit reached (5 listings). Please upgrade to PAID_PRO for more.',
+          duration: 5000,
+          color: 'warning',
+          position: 'top',
+          buttons: [{ text: 'Upgrade', handler: () => this.mainView.set('settings') }]
+        });
+        await toast.present();
+        return;
+      }
+
+      if (profile.role === 'PAID_PRO') {
+        const today = new Date().toISOString().split('T')[0];
+        if (profile.dailyStats?.date === today && profile.dailyStats.count >= 50) {
+          const toast = await this.toastController.create({
+            message: 'Daily limit reached (50 listings). See you tomorrow!',
+            duration: 5000,
+            color: 'warning',
+            position: 'top'
+          });
+          await toast.present();
+          return;
+        }
+      }
+    }
+
     const base64 = base64WithPrefix.split(',')[1];
     this.isProcessing.set(true);
     
     try {
-      const details = await this.gemini.extractProductDetails(base64, mimeType, this.templateService.templates());
+      const details = await this.gemini.extractProductDetails(base64, mimeType, this.templateService.templates(), this.auth.isPro());
       this.productDetails.set(details);
+      await this.auth.incrementUsage();
       
       // Start generating white background in parallel
       this.generateWhiteBg(base64, mimeType);

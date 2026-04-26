@@ -20,6 +20,7 @@ import { camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoL
 export class Landing {
   login = output<void>();
   getStarted = output<void>();
+  goPricing = output<void>();
 
   constructor() {
     addIcons({school,arrowForward,checkmarkCircle,camera,text,documentText,cash,logoInstagram,time,trendingUp,logoFacebook,logoTwitter,analytics,globe,logoAmazon,logoLinkedin,sparkles,flash,rocket,shieldCheckmark,logoGoogle,image,copy,settings,chevronForward,statsChart});

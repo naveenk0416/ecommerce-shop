@@ -1,10 +1,11 @@
-import { Component, input, output, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { 
   IonButton, IonIcon, IonModal
 } from '@ionic/angular/standalone';
 import { Listing } from './services/listing';
+import { AuthService } from './services/auth';
 import { addIcons } from 'ionicons';
 import { 
   cube, search, filter, ellipsisVertical, 
@@ -26,11 +27,21 @@ import {
   styleUrl: './products.css'
 })
 export class Products {
+  public auth = inject(AuthService);
   listings = input<Listing[]>([]);
   view = output<Listing>();
   delete = output<string>();
   addManual = output<Partial<Listing>>();
+  goPricing = output<void>();
   searchQuery = signal<string>('');
+
+  constructor() {
+    addIcons({ 
+      cube, search, filter, ellipsisVertical, eye, trash, 
+      trendingUp, alertCircle, add, pricetag, statsChart,
+      chevronDown, close, save, list
+    });
+  }
 
   isAddModalOpen = signal(false);
   newProduct = signal<Partial<Listing>>({
@@ -47,14 +58,6 @@ export class Products {
     variations: [],
     platformContent: {}
   });
-
-  constructor() {
-    addIcons({ 
-      cube, search, filter, ellipsisVertical, eye, trash, 
-      trendingUp, alertCircle, add, pricetag, statsChart,
-      chevronDown, close, save, list
-    });
-  }
 
   openAddModal() {
     this.resetNewProduct();

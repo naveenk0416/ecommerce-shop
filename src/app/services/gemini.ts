@@ -35,7 +35,7 @@ export class GeminiService {
     return this.aiClient;
   }
 
-  async extractProductDetails(base64Image: string, mimeType: string, templates: PlatformTemplate[]): Promise<ProductDetails> {
+  async extractProductDetails(base64Image: string, mimeType: string, templates: PlatformTemplate[], isPro = false): Promise<ProductDetails> {
     const model = "gemini-3-flash-preview";
     
     // Build parts of the prompt based on templates
@@ -48,7 +48,10 @@ export class GeminiService {
     `;
 
     if (detailTemplate) {
-      detailTemplate.fields.filter(f => f.enabled).forEach((f, i) => {
+      detailTemplate.fields.filter(f => {
+        if (!isPro && (f.id === 'hsnCode' || f.id === 'gstRate')) return false;
+        return f.enabled;
+      }).forEach((f, i) => {
         prompt += `${i + 1}. ${f.label} (${f.customPrompt || 'provide relevant value'})\n`;
       });
     }
@@ -65,7 +68,10 @@ export class GeminiService {
     const required: string[] = [];
 
     if (detailTemplate) {
-      detailTemplate.fields.filter(f => f.enabled).forEach(f => {
+      detailTemplate.fields.filter(f => {
+        if (!isPro && (f.id === 'hsnCode' || f.id === 'gstRate')) return false;
+        return f.enabled;
+      }).forEach(f => {
         properties[f.id] = { type: f.type === 'array' ? 'array' : 'string' };
         if (f.type === 'array') {
           (properties[f.id] as Record<string, unknown>)['items'] = { type: 'string' };

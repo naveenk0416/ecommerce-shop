@@ -17,12 +17,14 @@
               <ion-button (click)="mainView.set('home')" fill="clear" [color]="mainView() === 'home' ? 'primary' : 'medium'" class="font-bold text-xs">
                 Optimize
               </ion-button>
-              <ion-button (click)="mainView.set('listings')" fill="clear" [color]="mainView() === 'listings' ? 'primary' : 'medium'" class="font-bold text-xs">
-                History
-              </ion-button>
-              <ion-button (click)="mainView.set('products')" fill="clear" [color]="mainView() === 'products' ? 'primary' : 'medium'" class="font-bold text-xs">
-                Inventory
-              </ion-button>
+              @if (auth.isPro()) {
+                <ion-button (click)="mainView.set('listings')" fill="clear" [color]="mainView() === 'listings' ? 'primary' : 'medium'" class="font-bold text-xs">
+                  History
+                </ion-button>
+                <ion-button (click)="mainView.set('products')" fill="clear" [color]="mainView() === 'products' ? 'primary' : 'medium'" class="font-bold text-xs">
+                  Inventory
+                </ion-button>
+              }
               @if (auth.isAdmin()) {
                 <ion-button (click)="mainView.set('admin')" fill="clear" [color]="mainView() === 'admin' ? 'primary' : 'medium'" class="font-bold text-xs text-orange-600">
                   <ion-icon name="shield-checkmark" slot="start" class="mr-1"></ion-icon>
@@ -52,10 +54,56 @@
 
   <ion-content [fullscreen]="true">
     @if (showLanding() && !auth.user()) {
-      <app-landing (login)="showLanding.set(false)" (getStarted)="showLanding.set(false)"></app-landing>
+      <app-landing (login)="showLanding.set(false)" (getStarted)="showLanding.set(false)" (goPricing)="mainView.set('pricing'); showLanding.set(false)"></app-landing>
     } @else {
-      <div class="max-w-2xl mx-auto space-y-12 pb-20 pt-12">
+      <div class="max-w-2xl mx-auto space-y-8 pb-20 pt-12 px-4">
         
+        @if (auth.user()) {
+          <!-- User Status Banner -->
+          <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 flex items-center justify-between mb-8">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl flex items-center justify-center" 
+                [ngClass]="{
+                  'bg-slate-100 text-slate-600': auth.profile()?.role === 'FREE',
+                  'bg-orange-100 text-orange-600': auth.isPro() && !auth.isAdmin(),
+                  'bg-indigo-100 text-indigo-600': auth.isAdmin()
+                }">
+                <ion-icon [name]="auth.isPro() ? 'sparkles' : 'person'" class="text-2xl"></ion-icon>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-black text-slate-900 tracking-tight">{{ auth.profile()?.displayName || 'User' }}</span>
+                  <ion-badge [color]="auth.isAdmin() ? 'tertiary' : (auth.isPro() ? 'warning' : 'medium')" class="text-[9px] uppercase tracking-widest px-2">
+                    {{ auth.profile()?.role }}
+                  </ion-badge>
+                </div>
+                <div class="flex items-center gap-3 mt-1">
+                  @if (auth.profile()?.role === 'FREE') {
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Usage: {{ auth.profile()?.usageCount }}/5
+                    </span>
+                    <div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div class="h-full bg-slate-400" [style.width.%]="(auth.profile()?.usageCount || 0) / 5 * 100"></div>
+                    </div>
+                  } @else if (auth.profile()?.role === 'PAID_PRO') {
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Daily: {{ auth.profile()?.dailyStats?.count || 0 }}/50
+                    </span>
+                    <div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div class="h-full bg-orange-400" [style.width.%]="(auth.profile()?.dailyStats?.count || 0) / 50 * 100"></div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+            @if (!auth.isPro()) {
+              <ion-button (click)="mainView.set('pricing')" fill="solid" color="warning" size="small" class="font-black text-[10px] rounded-xl overflow-hidden shadow-sm uppercase tracking-widest px-2" style="--border-radius: 12px;">
+                Upgrade
+              </ion-button>
+            }
+          </div>
+        }
+
         @if (!auth.isAuthReady()) {
           <div class="flex flex-col items-center justify-center py-20">
             <ion-spinner name="crescent" color="primary"></ion-spinner>
@@ -63,6 +111,8 @@
           </div>
         } @else if (mainView() === 'gst') {
           <app-gst-calculator></app-gst-calculator>
+        } @else if (mainView() === 'pricing') {
+          <app-pricing (dismiss)="mainView.set('home')"></app-pricing>
         } @else if (!auth.user()) {
           <section class="max-w-md mx-auto py-16 px-10 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
           <div class="text-center mb-10 relative">
@@ -137,7 +187,8 @@
           [listings]="myListings()" 
           (view)="viewListing($event)" 
           (delete)="deleteListing($event)"
-          (addManual)="handleAddManualProduct($event)">
+          (addManual)="handleAddManualProduct($event)"
+          (goPricing)="mainView.set('pricing')">
         </app-products>
       } @else if (mainView() === 'admin') {
         <app-admin></app-admin>
@@ -569,15 +620,22 @@
         }
 
         <div class="flex gap-2 mt-6">
-          <ion-button (click)="saveListing()" [disabled]="isSaving()" expand="block" class="flex-grow h-12 font-bold" shape="round">
-            @if (isSaving()) {
-              <ion-spinner name="crescent" slot="start"></ion-spinner>
-              Saving...
-            } @else {
-              <ion-icon slot="start" name="save"></ion-icon>
-              Save Listing
-            }
-          </ion-button>
+          @if (auth.isPro()) {
+            <ion-button (click)="saveListing()" [disabled]="isSaving()" expand="block" class="flex-grow h-12 font-bold" shape="round">
+              @if (isSaving()) {
+                <ion-spinner name="crescent" slot="start"></ion-spinner>
+                Saving...
+              } @else {
+                <ion-icon slot="start" name="save"></ion-icon>
+                Save Listing
+              }
+            </ion-button>
+          } @else {
+            <div class="flex-grow bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex items-center justify-between px-4 py-2">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upgrade to Save History</span>
+              <ion-button (click)="mainView.set('pricing')" size="small" color="warning" class="text-[9px] font-black uppercase tracking-tight">Upgrade</ion-button>
+            </div>
+          }
           <ion-button (click)="reset()" fill="outline" color="medium" class="h-12" shape="round">
             <ion-icon slot="icon-only" name="close"></ion-icon>
           </ion-button>
