@@ -5,7 +5,7 @@ import { IonApp, IonHeader, IonToolbar, IonContent,
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
   IonCardContent, IonLabel, IonBadge, IonSpinner,
   IonSegment, IonSegmentButton, IonInput, IonTextarea,
-  ToastController
+  ToastController, AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, trash } from 'ionicons/icons';
@@ -18,6 +18,7 @@ import { Products } from './products';
 import { AdminComponent } from './admin';
 import { Pricing } from './pricing';
 import { GstCalculator } from './gst-calculator';
+import { ImageEditor } from './image-editor';
 import { resizeImage } from './utils/image';
 
 @Component({
@@ -25,7 +26,7 @@ import { resizeImage } from './utils/image';
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, Landing, Products, AdminComponent, GstCalculator, Pricing,
+    CommonModule, FormsModule, Landing, Products, AdminComponent, GstCalculator, Pricing, ImageEditor,
     IonApp, IonHeader, IonToolbar, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
@@ -41,10 +42,12 @@ export class App {
   public templateService = inject(TemplateService);
   private platformId = inject(PLATFORM_ID);
   private toastController = inject(ToastController);
+  private alertController = inject(AlertController);
 
   showLanding = signal(true);
   selectedImage = signal<string | null>(null);
   processedImage = signal<string | null>(null);
+  isEditingImage = signal(false);
   isProcessing = signal(false);
   isGeneratingImage = signal(false);
   isDragging = signal(false);
@@ -118,29 +121,75 @@ export class App {
        return;
     }
 
-    this.isSaving.set(true);
-    try {
-      await this.listingService.saveListing(details, original, this.processedImage());
-      const toast = await this.toastController.create({
-        message: 'Listing saved successfully to SellAssist!',
-        duration: 2000,
-        color: 'success',
-        position: 'bottom'
-      });
-      await toast.present();
-      this.mainView.set('listings');
-    } catch (error) {
-      console.error('Failed to save listing:', error);
-      const toast = await this.toastController.create({
-        message: 'Failed to save listing. Please try again.',
-        duration: 3000,
-        color: 'danger',
-        position: 'bottom'
-      });
-      await toast.present();
-    } finally {
-      this.isSaving.set(false);
-    }
+    const alert = await this.alertController.create({
+      header: 'Inventory Details',
+      subHeader: 'Set price and stock level',
+      inputs: [
+        {
+          name: 'price',
+          type: 'number',
+          placeholder: 'Selling Price (₹)',
+          value: details.priceINR || details.sellingPrice || ''
+        },
+        {
+          name: 'cost',
+          type: 'number',
+          placeholder: 'Cost Price (₹)',
+          value: details.costPrice || ''
+        },
+        {
+          name: 'quantity',
+          type: 'number',
+          placeholder: 'Quantity in Stock',
+          value: details.quantity || '0'
+        }
+      ],
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Save to Inventory',
+          handler: async (data) => {
+            this.isSaving.set(true);
+            try {
+              const updatedDetails: ProductDetails = {
+                ...details,
+                priceINR: data.price.startsWith('₹') ? data.price : `₹${data.price}`,
+                sellingPrice: data.price,
+                costPrice: data.cost,
+                quantity: parseInt(data.quantity || '0', 10)
+              };
+
+              await this.listingService.saveListing(updatedDetails, original, this.processedImage());
+              const toast = await this.toastController.create({
+                message: 'Listing saved successfully to Inventory!',
+                duration: 2000,
+                color: 'success',
+                position: 'bottom'
+              });
+              await toast.present();
+              this.mainView.set('listings');
+              this.reset();
+            } catch (error) {
+              console.error('Failed to save listing:', error);
+              const toast = await this.toastController.create({
+                message: 'Failed to save listing. Please try again.',
+                duration: 3000,
+                color: 'danger',
+                position: 'bottom'
+              });
+              await toast.present();
+            } finally {
+              this.isSaving.set(false);
+            }
+          }
+        }
+      ]
+    });
+
+    await alert.present();
   }
 
   async deleteListing(id: string | undefined) {
@@ -254,8 +303,9 @@ export class App {
         position: 'bottom'
       });
       await toast.present();
-    } catch (error: any) {
-      this.authError.set('Failed to send OTP. ' + (error.message || ''));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.authError.set('Failed to send OTP. ' + (message || ''));
     } finally {
       this.isSendingOTP.set(false);
     }
@@ -317,80 +367,36 @@ export class App {
       this.selectedImage.set(base64);
       this.processedImage.set(null);
       this.productDetails.set(null);
-      await this.processImage(base64, file.type);
+      this.isEditingImage.set(true);
+      // Start AI analysis in background while user edits
+      this.extractDetailsBackground(base64, file.type);
     };
     reader.readAsDataURL(file);
   }
 
-  async processImage(base64WithPrefix: string, mimeType: string) {
-    const profile = this.auth.profile();
-    if (profile) {
-      if (profile.role === 'FREE' && profile.usageCount >= 5) {
-        const toast = await this.toastController.create({
-          message: 'Free limit reached (5 listings). Please upgrade to PAID_PRO for more.',
-          duration: 5000,
-          color: 'warning',
-          position: 'top',
-          buttons: [{ text: 'Upgrade', handler: () => this.mainView.set('settings') }]
-        });
-        await toast.present();
-        return;
-      }
-
-      if (profile.role === 'PAID_PRO') {
-        const today = new Date().toISOString().split('T')[0];
-        if (profile.dailyStats?.date === today && profile.dailyStats.count >= 50) {
-          const toast = await this.toastController.create({
-            message: 'Daily limit reached (50 listings). See you tomorrow!',
-            duration: 5000,
-            color: 'warning',
-            position: 'top'
-          });
-          await toast.present();
-          return;
-        }
-      }
-    }
-
+  async extractDetailsBackground(base64WithPrefix: string, mimeType: string) {
     const base64 = base64WithPrefix.split(',')[1];
     this.isProcessing.set(true);
-    this.processingStage.set('analyzing');
-    
     try {
       const details = await this.gemini.extractProductDetails(base64, mimeType, this.templateService.templates(), this.auth.isPro());
       this.productDetails.set(details);
       await this.auth.incrementUsage();
-      
-      // Start generating white background in parallel
-      this.generateWhiteBg(base64, mimeType);
     } catch (error) {
-      console.error("Error processing image:", error);
-      this.processingStage.set('idle');
+      console.error("Error extracting details:", error);
     } finally {
       this.isProcessing.set(false);
     }
   }
 
-  async generateWhiteBg(base64: string, mimeType: string) {
-    this.isGeneratingImage.set(true);
-    const prevStage = this.processingStage();
-    this.processingStage.set('background');
-    try {
-      let newImage = await this.gemini.generateWhiteBackground(base64, mimeType);
-      try {
-        newImage = await resizeImage(newImage, 1200, 1200);
-      } catch (e) {
-        console.warn('Processed image resize failed', e);
-      }
-      this.processedImage.set(newImage);
-      this.processingStage.set('complete');
-      setTimeout(() => this.processingStage.set('idle'), 3000);
-    } catch (error) {
-      console.error("Error generating white background:", error);
-      this.processingStage.set(prevStage);
-    } finally {
-      this.isGeneratingImage.set(false);
-    }
+  onEditorComplete(editedImage: string) {
+    this.processedImage.set(editedImage);
+    this.isEditingImage.set(false);
+    this.processingStage.set('idle');
+  }
+
+  onEditorCancel() {
+    this.isEditingImage.set(false);
+    this.reset();
   }
 
   copyToClipboard(text: string, field: string) {

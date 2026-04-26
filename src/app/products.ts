@@ -2,7 +2,7 @@ import { Component, input, output, ChangeDetectionStrategy, signal, inject } fro
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { 
-  IonButton, IonIcon, IonModal
+  IonButton, IonIcon, IonModal, IonBadge, IonLabel, IonSpinner, IonRange, IonSegment, IonSegmentButton, IonInput, IonTextarea
 } from '@ionic/angular/standalone';
 import { Listing } from './services/listing';
 import { AuthService } from './services/auth';
@@ -21,7 +21,7 @@ import {
   imports: [
     CommonModule,
     FormsModule,
-    IonButton, IonIcon, IonModal
+    IonButton, IonIcon, IonModal, IonBadge, IonLabel, IonSpinner, IonRange, IonSegment, IonSegmentButton, IonInput, IonTextarea
   ],
   templateUrl: './products.html',
   styleUrl: './products.css'

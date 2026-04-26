@@ -14,12 +14,12 @@ import { Listing } from './services/listing';
   template: `
     <div class="admin-panel p-10 space-y-12 pb-20">
       <header class="flex items-center justify-between mb-2">
-        <h2 class="text-3xl font-black text-slate-900 tracking-tight">Admin Control Center</h2>
+        <h2 class="text-3xl font-black text-slate-900 tracking-tight font-display italic uppercase">Admin Control Center</h2>
         <div class="flex gap-2">
-          <ion-button (click)="loadData()" fill="outline" size="small" [disabled]="loading()" class="h-10">
-            <ion-icon slot="start" name="refresh"></ion-icon>
+          <button (click)="loadData()" [disabled]="loading()" class="btn-secondary h-10 px-4">
+            <ion-icon name="refresh" class="mr-2"></ion-icon>
             Reload
-          </ion-button>
+          </button>
         </div>
       </header>
 
@@ -30,18 +30,24 @@ import { Listing } from './services/listing';
       } @else {
         <!-- Stats Row -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="bg-orange-50 p-6 rounded-[2rem] border border-orange-100">
-            <h3 class="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1">Total Users</h3>
-            <p class="text-3xl font-black text-slate-900">{{ users().length }}</p>
+          <div class="bg-orange-600 p-8 rounded-[2.5rem] border-none shadow-xl shadow-orange-600/20 text-white relative overflow-hidden group">
+            <div class="relative z-10">
+              <h3 class="text-[10px] font-black uppercase tracking-[0.25em] text-orange-200 mb-1">Total Users</h3>
+              <p class="text-5xl font-black font-display italic">{{ users().length }}</p>
+            </div>
+            <ion-icon name="people" class="absolute -right-6 -bottom-6 text-8xl text-white/10 rotate-12 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-0"></ion-icon>
           </div>
-          <div class="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100">
-            <h3 class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Total Listings</h3>
-            <p class="text-3xl font-black text-slate-900">{{ listings().length }}</p>
+          <div class="bg-slate-950 p-8 rounded-[2.5rem] border-none shadow-xl shadow-slate-950/20 text-white relative overflow-hidden group">
+            <div class="relative z-10">
+              <h3 class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 mb-1">Total Listings</h3>
+              <p class="text-5xl font-black font-display italic">{{ listings().length }}</p>
+            </div>
+            <ion-icon name="cube" class="absolute -right-6 -bottom-6 text-8xl text-white/5 rotate-12 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-0"></ion-icon>
           </div>
         </div>
 
         <!-- Users List -->
-        <section class="space-y-4">
+        <section class="space-y-4 pt-4">
           <div class="flex items-center justify-between px-2">
             <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Recent Access Activity</h3>
             <span class="text-[9px] font-bold text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">Live Updates</span>
@@ -50,45 +56,45 @@ import { Listing } from './services/listing';
           <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
             <div class="divide-y divide-slate-50">
               @for (user of users(); track user.uid) {
-                <div class="group flex items-center gap-4 px-6 py-4 hover:bg-slate-50/50 transition-colors cursor-default">
+                <div class="group flex items-center gap-4 px-8 py-6 hover:bg-slate-50/50 transition-colors cursor-default">
                   <div class="relative flex-shrink-0">
-                    <div class="w-12 h-12 rounded-2xl overflow-hidden shadow-sm border border-slate-100 ring-2 ring-white ring-offset-2 ring-offset-slate-50 group-hover:ring-orange-100 transition-all">
+                    <div class="w-14 h-14 rounded-2xl overflow-hidden shadow-sm border border-slate-100 ring-2 ring-white ring-offset-2 ring-offset-slate-50 group-hover:ring-orange-100 transition-all">
                       <img [src]="user.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.uid" 
                            [alt]="user.displayName" 
                            referrerpolicy="no-referrer"
                            class="w-full h-full object-cover">
                     </div>
                     @if (user.lastLogin) {
-                      <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></div>
+                      <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
                     }
                   </div>
 
                   <div class="flex-grow min-w-0">
                     <div class="flex items-center gap-2">
-                      <h4 class="font-bold text-slate-800 tracking-tight truncate leading-tight">
+                      <h4 class="font-bold text-slate-800 tracking-tight truncate leading-tight text-lg">
                         {{ user.displayName || 'Anonymous User' }}
                       </h4>
                       @if (!user.displayName) {
-                        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-[8px] font-black text-slate-400 uppercase tracking-tighter">Guest</span>
+                        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-[8px] font-black text-slate-400 uppercase tracking-widest">Guest</span>
                       }
                     </div>
-                    <p class="text-[11px] text-slate-400 font-medium truncate flex items-center gap-1.5">
-                      <ion-icon name="mail-outline" class="text-[10px]"></ion-icon>
+                    <p class="text-[11px] text-slate-400 font-medium truncate flex items-center gap-1.5 mt-1 border-dotted border-b border-slate-200 pb-0.5 w-fit">
+                      <ion-icon name="mail-outline" class="text-[10px] text-orange-500"></ion-icon>
                       {{ user.email }}
                     </p>
                   </div>
 
                   <div class="text-right flex-shrink-0">
-                    <p class="text-[10px] font-black text-slate-900 leading-none">
+                    <p class="text-sm font-black text-slate-900 leading-none tabular-nums font-mono">
                       {{ user.lastLogin | date:'shortTime' }}
                     </p>
-                    <p class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                    <p class="text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-widest">
                       {{ user.lastLogin | date:'dd MMM yyyy' }}
                     </p>
                   </div>
 
                   <div class="opacity-0 group-hover:opacity-100 transition-opacity pl-2">
-                    <button class="w-8 h-8 rounded-full bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-400 hover:text-orange-500 hover:border-orange-100 hover:bg-orange-50 transition-all">
+                    <button class="btn-icon-premium w-10 h-10">
                       <ion-icon name="chevron-forward-outline"></ion-icon>
                     </button>
                   </div>
@@ -99,19 +105,19 @@ import { Listing } from './services/listing';
         </section>
 
         <!-- Listings List -->
-        <section class="space-y-4">
+        <section class="space-y-4 pt-4">
           <div class="flex items-center justify-between px-2">
-            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Inventory (Global)</h3>
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Global Asset Stream</h3>
             <div class="flex gap-1.5">
                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mt-1"></div>
                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Monitoring Active</span>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-3">
+          <div class="grid grid-cols-1 gap-4">
             @for (listing of listings(); track listing.id) {
-              <div class="group bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md hover:border-orange-100 transition-all flex gap-5 items-center">
-                <div class="w-24 h-24 rounded-3xl overflow-hidden bg-slate-50 flex-shrink-0 shadow-inner border border-slate-50 group-hover:scale-105 transition-transform">
+              <div class="group bg-white p-6 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-premium transition-all flex gap-6 items-center">
+                <div class="w-28 h-28 rounded-3xl overflow-hidden bg-slate-50 flex-shrink-0 shadow-inner border border-slate-50 group-hover:scale-105 transition-transform duration-700">
                   <img [src]="listing.processedImage || listing.originalImage" 
                        [alt]="listing.name" 
                        referrerpolicy="no-referrer" 
@@ -119,40 +125,39 @@ import { Listing } from './services/listing';
                 </div>
                 
                 <div class="flex-grow min-w-0 flex flex-col justify-center">
-                  <div class="flex items-center gap-2 mb-1">
-                    <h4 class="font-black text-slate-800 tracking-tight truncate leading-tight text-lg">{{ listing.name }}</h4>
-                    <span class="px-1.5 py-0.5 rounded-full bg-orange-50 text-[8px] font-black text-orange-600 uppercase tracking-tighter border border-orange-100">Live</span>
+                  <div class="flex items-center gap-3 mb-2">
+                    <h4 class="font-black text-slate-900 tracking-tight truncate leading-tight text-xl font-display italic uppercase">{{ listing.name }}</h4>
+                    <span class="px-2 py-0.5 rounded-lg bg-orange-600 text-white text-[8px] font-black uppercase tracking-widest shadow-lg shadow-orange-600/20">Active</span>
                   </div>
                   
-                  <div class="flex items-center gap-3 text-slate-400">
-                    <p class="text-[10px] font-bold truncate flex items-center gap-1">
-                      <ion-icon name="finger-print-outline" class="text-[10px]"></ion-icon>
+                  <div class="flex items-center gap-4 text-slate-400 mb-6">
+                    <p class="text-[10px] font-bold truncate flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg">
+                      <ion-icon name="finger-print-outline" class="text-slate-950"></ion-icon>
                       {{ listing.uid.substring(0, 12) }}...
                     </p>
-                    <div class="w-1 h-1 rounded-full bg-slate-200"></div>
-                    <p class="text-[10px] font-bold flex items-center gap-1">
-                      <ion-icon name="calendar-outline" class="text-[10px]"></ion-icon>
+                    <p class="text-[10px] font-bold flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg">
+                      <ion-icon name="calendar-outline" class="text-orange-500"></ion-icon>
                       {{ listing.createdAt | date:'dd MMM' }}
                     </p>
                   </div>
 
-                  <div class="flex gap-2 mt-4">
+                  <div class="flex gap-2">
                     <button (click)="viewListing(listing)" 
-                            class="px-4 py-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-orange-600 transition-colors shadow-sm">
-                      Inspect
+                            class="btn-primary h-9 px-6 text-[9px]">
+                      Inspect Asset
                     </button>
                     <button (click)="deleteListing(listing.id!)" 
-                            class="px-4 py-1.5 rounded-full bg-white border border-red-50 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-colors">
+                            class="btn-secondary h-9 px-6 text-[9px] text-red-500 border-red-50 hover:bg-red-50">
                       Unlist
                     </button>
                   </div>
                 </div>
 
-                <div class="text-right flex flex-col justify-between h-20 items-end">
-                   <div class="bg-orange-50 px-3 py-1.5 rounded-2xl border border-orange-100">
-                     <p class="text-sm font-black text-orange-600">₹{{ listing.priceINR }}</p>
+                <div class="text-right flex flex-col justify-between h-24 items-end py-1">
+                   <div class="bg-slate-950 px-4 py-2 rounded-2xl shadow-xl shadow-slate-950/10">
+                     <p class="text-lg font-black text-white tabular-nums">₹{{ listing.priceINR }}</p>
                    </div>
-                   <button class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 transition-all">
+                   <button class="btn-icon-premium w-10 h-10 opacity-0 group-hover:opacity-100 transition-all">
                      <ion-icon name="ellipsis-horizontal"></ion-icon>
                    </button>
                 </div>

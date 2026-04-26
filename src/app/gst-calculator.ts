@@ -1,80 +1,103 @@
 import { ChangeDetectionStrategy, Component, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { IonIcon } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { chevronDown, swapVertical } from 'ionicons/icons';
 
 @Component({
   selector: 'app-gst-calculator',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, FormsModule
+    CommonModule, FormsModule, IonIcon
   ],
   template: `
-    <div class="max-w-4xl mx-auto py-12 px-6 space-y-20 animate-in fade-in slide-in-from-bottom-4">
+  <div class="max-w-4xl mx-auto py-20 px-6 space-y-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
       <!-- Hero Header -->
-      <div class="text-center space-y-4">
-        <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight uppercase">Free GST Calculator</h1>
-        <p class="text-slate-500 max-w-2xl mx-auto font-medium">
-          SellAssist introduces a free GST calculator made just for small businesses! With this tool, you'll be able to calculate GST in minutes without any complex math.
+      <div class="text-center space-y-6">
+        <div class="badge mx-auto">Free Tooling »</div>
+        <h1 class="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter uppercase font-display italic leading-none">Bharat GST <br> <span class="text-orange">Calculator</span></h1>
+        <p class="text-slate-500 max-w-xl mx-auto font-medium text-lg leading-relaxed">
+          Zero math. Peak accuracy. Calculated for small businesses across Bharat.
         </p>
       </div>
 
       <!-- Calculator Card (Zoho/Modern Inspired) -->
-      <div class="bg-white rounded-[3rem] shadow-2xl shadow-orange-500/10 border border-orange-50 overflow-hidden">
-        <div class="p-8 md:p-12 space-y-12">
+      <div class="bg-white rounded-[3.5rem] shadow-premium border border-slate-100 overflow-hidden group">
+        <div class="p-10 md:p-16 space-y-16">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <!-- Amount -->
-            <div class="space-y-3">
-              <label for="gst-amount-main" class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Amount</label>
-              <input type="number" 
-                     id="gst-amount-main"
-                     [(ngModel)]="amount" 
-                     class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
-                     placeholder="0.00">
+            <div class="space-y-4">
+              <label for="gst-amount-main" class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 ml-1">Valuation (INR)</label>
+              <div class="relative">
+                 <span class="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 font-bold">₹</span>
+                 <input type="number" 
+                        id="gst-amount-main"
+                        [(ngModel)]="amount" 
+                        class="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-6 py-5 text-xl font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-950/5 focus:bg-white transition-all"
+                        placeholder="0.00">
+              </div>
             </div>
 
             <!-- GST % -->
-            <div class="space-y-3">
-              <label for="gst-pct-select" class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">GST %</label>
-              <select id="gst-pct-select"
-                      (change)="gstRate.set($any($event).target.value)"
-                      class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all appearance-none cursor-pointer">
-                <option value="0">0%</option>
-                <option value="5" selected>5%</option>
-                <option value="12">12%</option>
-                <option value="18">18%</option>
-                <option value="28">28%</option>
-              </select>
+            <div class="space-y-4">
+              <label for="gst-pct-select" class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 ml-1">GST Logic</label>
+              <div class="relative">
+                <select id="gst-pct-select"
+                        (change)="gstRate.set($any($event).target.value)"
+                        class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 text-xl font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-950/5 focus:bg-white transition-all appearance-none cursor-pointer">
+                  <option value="0">0% Zero Rated</option>
+                  <option value="5" selected>5% Basic</option>
+                  <option value="12">12% Standard</option>
+                  <option value="18">18% Standard+</option>
+                  <option value="28">28% Luxury</option>
+                </select>
+                <div class="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                   <ion-icon name="chevron-down" class="text-slate-400"></ion-icon>
+                </div>
+              </div>
             </div>
 
             <!-- Tax Type -->
-            <div class="space-y-3">
-              <label for="tax-type-select" class="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Tax</label>
-              <select id="tax-type-select"
-                      (change)="calcType.set($any($event).target.value)"
-                      class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all appearance-none cursor-pointer">
-                <option value="exclusive">Exclusive</option>
-                <option value="inclusive">Inclusive</option>
-              </select>
+            <div class="space-y-4">
+              <label for="tax-type-select" class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 ml-1">Computation</label>
+              <div class="relative">
+                <select id="tax-type-select"
+                        (change)="calcType.set($any($event).target.value)"
+                        class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 text-xl font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-950/5 focus:bg-white transition-all appearance-none cursor-pointer">
+                  <option value="exclusive">Exclusive (+Tax)</option>
+                  <option value="inclusive">Inclusive (-Tax)</option>
+                </select>
+                <div class="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                   <ion-icon name="swap-vertical" class="text-slate-400"></ion-icon>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Visual Equation -->
-          <div class="grid grid-cols-5 items-center text-center">
-            <div class="space-y-1">
-              <div class="text-3xl font-black text-slate-900">₹{{results().base.toFixed(0)}}</div>
-              <div class="text-[10px] font-bold uppercase tracking-widest text-blue-500">Actual Amount</div>
+          <div class="bg-slate-50 rounded-[2.5rem] p-10 grid grid-cols-1 md:grid-cols-5 items-center text-center gap-8 md:gap-4 relative overflow-hidden">
+            <div class="absolute inset-0 bg-linear-to-r from-orange-500/5 to-transparent"></div>
+            
+            <div class="space-y-2 relative z-10">
+              <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Net Principal</div>
+              <div class="text-3xl font-extrabold text-slate-900 tracking-tighter">₹{{results().base.toFixed(0)}}</div>
             </div>
-            <div class="text-2xl font-light text-slate-300">+</div>
-            <div class="space-y-1">
-              <div class="text-3xl font-black text-emerald-600">₹{{results().gst.toFixed(0)}}</div>
-              <div class="text-[10px] font-bold uppercase tracking-widest text-emerald-500">GST Amount</div>
+            
+            <div class="text-2xl font-light text-slate-200 hidden md:block">+</div>
+            
+            <div class="space-y-2 relative z-10">
+              <div class="text-[10px] font-bold uppercase tracking-widest text-orange-500">GST Portion</div>
+              <div class="text-3xl font-extrabold text-orange-600 tracking-tighter">₹{{results().gst.toFixed(0)}}</div>
             </div>
-            <div class="text-2xl font-light text-slate-300">=</div>
-            <div class="space-y-1">
-              <div class="text-4xl font-black text-slate-900">₹{{results().total.toFixed(0)}}</div>
-              <div class="text-[10px] font-bold uppercase tracking-widest text-indigo-500">Total Amount</div>
+            
+            <div class="text-2xl font-light text-slate-200 hidden md:block">=</div>
+            
+            <div class="space-y-2 relative z-10">
+              <div class="text-[10px] font-bold uppercase tracking-widest text-slate-900">Gross Total</div>
+              <div class="text-5xl font-extrabold text-slate-950 font-display tracking-tighter italic">₹{{results().total.toFixed(0)}}</div>
             </div>
           </div>
         </div>
@@ -174,6 +197,10 @@ import { FormsModule } from '@angular/forms';
   `
 })
 export class GstCalculator {
+  constructor() {
+    addIcons({ chevronDown, swapVertical });
+  }
+
   amount = signal<number>(0);
   gstRate = signal<number>(18);
   customRate: number | null = null;

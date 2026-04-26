@@ -4,51 +4,63 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
-import express from 'express';
-import {join} from 'node:path';
+import express, { Request, Response, NextFunction } from 'express';
+import {fileURLToPath} from 'node:url';
+import {dirname, join} from 'node:path';
 import nodemailer from 'nodemailer';
 
-const browserDistFolder = join(import.meta.dirname, '../browser');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const browserDistFolder = join(__dirname, '../browser');
 
 const app = express();
 app.use(express.json());
 
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`[REQUEST LOG] ${req.method} ${req.url}`);
   if (req.url.startsWith('/api/')) {
     console.log(`[API Request] ${req.method} ${req.url}`);
   }
   next();
 });
 
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`[DEBUG] Request: ${req.method} ${req.url}`);
   next();
 });
 
-const angularApp = new AngularNodeAppEngine();
+let angularApp: AngularNodeAppEngine | undefined;
+try {
+  angularApp = new AngularNodeAppEngine();
+} catch (err) {
+  console.warn('AngularNodeAppEngine could not be initialized. Prerendering/SSR might be unavailable.', err);
+}
 
-app.get('/api/debug', (req, res) => {
+app.get('/debug', (req: Request, res: Response) => {
   res.json({ url: req.url, headers: req.headers });
 });
 
 /**
  * Endpoint to send OTP via email.
  */
-app.post('/api/send-otp', async (req: any, res: any) => {
+app.post('/send-otp', async (req: Request, res: Response) => {
   const { email, otp } = req.body;
+  console.log(`[API] Received OTP request for ${email}`);
 
   if (!email || !otp) {
-    return res.status(400).json({ error: 'Email and OTP are required' });
+    res.status(400).json({ error: 'Email and OTP are required' });
+    return;
   }
 
   // Use environment variables for SMTP configuration
   const transporter = nodemailer.createTransport({
-    host: process.env['SMTP_HOST'],
+    host: process.env['SMTP_HOST'] as string,
     port: parseInt(process.env['SMTP_PORT'] || '587'),
     secure: process.env['SMTP_PORT'] === '465',
     auth: {
-      user: process.env['SMTP_USER'],
-      pass: process.env['SMTP_PASS'],
+      user: process.env['SMTP_USER'] as string,
+      pass: process.env['SMTP_PASS'] as string,
     },
   });
 
@@ -81,24 +93,31 @@ app.post('/api/send-otp', async (req: any, res: any) => {
       console.log(`Subject: ${mailOptions.subject}`);
       console.log(`OTP: ${otp}`);
       console.log('------------------------');
-      return res.json({ success: true, message: 'OTP simulated (No SMTP config)' });
+      res.json({ success: true, message: 'OTP simulated (No SMTP config)' });
+      return;
     }
 
     await transporter.sendMail(mailOptions);
     res.json({ success: true });
+    return;
   } catch (error) {
     console.error('Error sending email:', error);
     res.status(500).json({ error: 'Failed to send email' });
+    return;
   }
 });
 
-app.get('/api/test', (req, res) => {
+app.get('/test', (req: Request, res: Response) => {
   res.json({ message: 'API is working' });
 });
 
-app.all('/api/*', (req, res) => {
-  console.log(`[API] 404 Not Found: ${req.method} ${req.url}`);
-  res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
+app.all('/*', (req: Request, res: Response, next: NextFunction) => {
+  if (req.url.startsWith('/api/')) {
+     console.log(`[API] 404 Not Found: ${req.method} ${req.url}`);
+     res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
+     return;
+  }
+  next();
 });
 
 /**
@@ -127,13 +146,20 @@ app.use(
 /**
  * Handle all other requests by rendering the Angular application.
  */
-app.use((req, res, next) => {
-  angularApp
-    .handle(req)
-    .then((response) =>
-      response ? writeResponseToNodeResponse(response, res) : next(),
-    )
-    .catch(next);
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (angularApp) {
+    angularApp
+      .handle(req)
+      .then((response) =>
+        response ? writeResponseToNodeResponse(response, res) : next(),
+      )
+      .catch((err) => {
+        console.error('Angular rendering error:', err);
+        next();
+      });
+  } else {
+    next();
+  }
 });
 
 /**
@@ -141,13 +167,9 @@ app.use((req, res, next) => {
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
  */
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
-  const port = process.env['PORT'] || 4000;
-  app.listen(port, (error) => {
-    if (error) {
-      throw error;
-    }
-
-    console.log(`Node Express server listening on http://localhost:${port}`);
+  const port = process.env['PORT'] || 3000;
+  app.listen(port, () => {
+    console.log(`Node Express server listening on http://0.0.0.0:${port}`);
   });
 }
 

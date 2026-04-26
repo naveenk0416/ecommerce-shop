@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "dev": "[ ! -f src/app/env.ts ] || grep -q \"''\" src/app/env.ts || grep -q \"MY_GEMINI_API_KEY\" src/app/env.ts && [ -n \"$GEMINI_API_KEY\" ] && printf \"export const GEMINI_API_KEY = '%s';\\n\" \"$GEMINI_API_KEY\" > src/app/env.ts; npx ng serve --host 0.0.0.0 --port 3000 --live-reload=false",
+    "dev": "[ ! -f src/app/env.ts ] || grep -q \"''\" src/app/env.ts || grep -q \"MY_GEMINI_API_KEY\" src/app/env.ts && [ -n \"$GEMINI_API_KEY\" ] && printf \"export const GEMINI_API_KEY = '%s';\\n\" \"$GEMINI_API_KEY\" > src/app/env.ts; PORT=4000 npx tsx src/server.ts & npx ng serve --host 0.0.0.0 --port 3000 --live-reload=false",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
@@ -27,13 +27,15 @@
     "@ionic/angular": "^8.8.3",
     "@ionic/core": "^8.8.3",
     "express": "^5.1.0",
-    "firebase": "^12.12.0",
+    "fabric": "^7.3.1",
+    "firebase": "^11.1.0",
     "ionicons": "^8.0.13",
     "lucide-angular": "^1.0.0",
     "motion": "^12.23.24",
     "nodemailer": "^8.0.6",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@angular/build": "^21.0.0",

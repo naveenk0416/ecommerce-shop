@@ -7,174 +7,63 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Stats Cards */
-.stats-card {
-  position: relative;
-  overflow: hidden;
-  background-color: white;
-  padding: 2rem;
-  border-radius: 2rem;
+.bento-card {
+  padding: 2.5rem;
+  border-radius: 2.5rem;
   border: 1px solid #f1f5f9;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 500ms;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.stats-card:hover {
-  box-shadow: 0 20px 25px -5px rgba(226, 232, 240, 0.5), 0 8px 10px -6px rgba(226, 232, 240, 0.5);
-  transform: translateY(-0.25rem);
+.bento-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
 }
 
-.stats-card.dark {
-  background-color: #0f172a;
-  border-style: none;
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.2);
-}
-
-.stats-info {
-  position: relative;
-  z-index: 10;
-}
-
-.stats-label {
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.stats-value {
-  font-size: 2.25rem;
-  font-weight: 900;
-  letter-spacing: -0.05em;
-  display: block;
-  margin-bottom: 0.25rem;
-}
-
-.product-avatar {
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 1rem;
-  background-color: #f8fafc;
-  border: 1px solid #f1f5f9;
-  overflow: hidden;
-  flex-shrink: 0;
-  box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.action-trigger {
-  width: 2.5rem;
-  height: 2.5rem;
+.action-btn-refined {
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 300ms;
-  border: 1px solid transparent;
-}
-
-.action-trigger:active {
-  transform: scale(0.95);
-}
-
-.action-trigger.primary {
-  background-color: #f8fafc;
-  border-color: #f1f5f9;
-  color: #94a3b8;
-}
-
-.action-trigger.primary:hover {
-  background-color: #0f172a;
-  color: white;
-  border-color: #0f172a;
-}
-
-.action-trigger.danger {
-  background-color: #f8fafc;
-  border-color: #f1f5f9;
-  color: #94a3b8;
-}
-
-.action-trigger.danger:hover {
-  background-color: #ef4444;
-  color: white;
-  border-color: #ef4444;
-}
-
-/* Modal Premium Styling */
-.product-modal-premium {
-  --width: 900px;
-  --height: 750px;
-  --max-width: 95%;
-  --max-height: 90%;
-  --border-radius: 40px;
-}
-
-.premium-field {
-  margin-bottom: 1rem;
-}
-
-.premium-label {
-  font-size: 10px;
-  font-weight: 900;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding-left: 0.25rem;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.input-wrapper {
-  position: relative;
-  background-color: white;
-  border: 1px solid #f1f5f9;
-  border-radius: 1rem;
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 300ms;
-}
-
-.input-wrapper:focus-within {
-  box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.05);
-  border-color: #0f172a;
-}
-
-.premium-input {
-  width: 100%;
-  height: 3rem;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
+  font-size: 1.25rem;
   background-color: transparent;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #1e293b;
-  border: none;
+  color: #94a3b8;
+  border: 1px solid #f1f5f9;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.premium-input:focus {
-  outline: none;
+.action-btn-refined:active {
+  transform: scale(0.9);
 }
 
-.input-icon {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #cbd5e1;
-  transition-property: color;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 300ms;
+/* Modal Refined Styling */
+.product-modal-refined {
+  --width: 1000px;
+  --height: 850px;
+  --max-width: 95%;
+  --max-height: 95%;
+  --border-radius: 48px;
 }
 
-.premium-field:focus-within .input-icon {
-  color: #0f172a;
+.product-modal-refined::part(content) {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Custom Scrollbar for Modal content */
+.flex-1.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.flex-1.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.flex-1.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #e2e8f0;
 }
