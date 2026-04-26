@@ -1,5 +1,7 @@
 import { Injectable, signal, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { 
   GoogleAuthProvider, 
   signInWithPopup, 
@@ -37,6 +39,7 @@ export interface AdditionalUserData {
 })
 export class AuthService {
   private platformId = inject(PLATFORM_ID);
+  private http = inject(HttpClient);
   user = signal<User | null>(null);
   profile = signal<UserProfile | null>(null);
   isAuthReady = signal(false);
@@ -163,6 +166,58 @@ export class AuthService {
     } catch (error) {
       console.error('Logout failed:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Generates and sends an OTP to the specified email.
+   * Stores the OTP in Firestore for verification.
+   */
+  async sendOTP(email: string): Promise<string> {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    const otpData = {
+      email,
+      code: otp,
+      expiresAt: expiresAt.toISOString()
+    };
+
+    try {
+      const otpRef = doc(db, 'verificationCodes', email);
+      await setDoc(otpRef, otpData);
+      
+      // Call the server endpoint to send the actual email
+      await firstValueFrom(this.http.post('/api/send-otp', { email, otp }));
+      
+      return otp;
+    } catch (error) {
+      console.error('Failed to send OTP:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verifies the OTP provided by the user.
+   */
+  async verifyOTP(email: string, otp: string): Promise<boolean> {
+    try {
+      const otpRef = doc(db, 'verificationCodes', email);
+      const snap = await getDoc(otpRef);
+      
+      if (!snap.exists()) return false;
+      
+      const data = snap.data();
+      if (data['code'] !== otp) return false;
+      
+      const expiresAt = new Date(data['expiresAt']);
+      if (new Date() > expiresAt) return false;
+      
+      return true;
+    } catch (error) {
+      console.error('OTP verification failed:', error);
+      return false;
     }
   }
 

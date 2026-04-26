@@ -18,10 +18,17 @@
         </p>
         
         <div class="hero-actions">
-          <ion-button (click)="getStarted.emit()" class="btn-orange" shape="round">
-            Start Free
-            <ion-icon slot="end" name="arrow-forward"></ion-icon>
-          </ion-button>
+          @if (isLoggedIn()) {
+            <ion-button (click)="goDashboard.emit()" class="btn-orange" shape="round">
+              Go to Dashboard
+              <ion-icon slot="end" name="rocket"></ion-icon>
+            </ion-button>
+          } @else {
+            <ion-button (click)="getStarted.emit()" class="btn-orange" shape="round">
+              Start Free
+              <ion-icon slot="end" name="arrow-forward"></ion-icon>
+            </ion-button>
+          }
           
           <ion-button fill="outline" color="dark" class="btn-outline" shape="round">
             See how it works
@@ -174,10 +181,17 @@
       <div class="cta-banner">
         <h2 class="cta-title">Ready to sell smarter?</h2>
         <p class="cta-text">Join thousands of Indian sellers using SellAssist to list faster and earn more.</p>
-        <ion-button (click)="getStarted.emit()" class="btn-white" shape="round">
-          Create your free account
-          <ion-icon slot="end" name="arrow-forward"></ion-icon>
-        </ion-button>
+        @if (isLoggedIn()) {
+          <ion-button (click)="goDashboard.emit()" class="btn-white" shape="round">
+            Go to Dashboard
+            <ion-icon slot="end" name="rocket"></ion-icon>
+          </ion-button>
+        } @else {
+          <ion-button (click)="getStarted.emit()" class="btn-white" shape="round">
+            Create your free account
+            <ion-icon slot="end" name="arrow-forward"></ion-icon>
+          </ion-button>
+        }
       </div>
     </div>
   </section>

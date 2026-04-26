@@ -90,5 +90,14 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow write: if false; // Only manageable via Firebase Console for security
     }
+
+    match /verificationCodes/{email} {
+      allow get: if true;
+      allow create, update: if incoming().keys().hasAll(['email', 'code', 'expiresAt']) &&
+                             incoming().email == email &&
+                             incoming().code is string && 
+                             incoming().code.size() == 6;
+      allow list, delete: if false;
+    }
   }
 }

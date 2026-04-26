@@ -53,6 +53,17 @@
         }
       },
       "required": ["uid", "configs"]
+    },
+    "verificationCodes": {
+      "title": "Verification Codes",
+      "description": "Temporary OTP codes for email verification",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "code": { "type": "string" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "code", "expiresAt"]
     }
   },
   "firestore": {
@@ -67,6 +78,10 @@
     "/templates/{userId}": {
       "schema": "templates",
       "description": "User platform templates"
+    },
+    "/verificationCodes/{email}": {
+      "schema": "verificationCodes",
+      "description": "Temporary OTP codes"
     }
   }
 }

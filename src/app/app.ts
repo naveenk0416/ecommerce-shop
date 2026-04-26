@@ -4,11 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { IonApp, IonHeader, IonToolbar, IonContent, 
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
   IonCardContent, IonLabel, IonBadge, IonSpinner,
-  IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle,
+  IonSegment, IonSegmentButton, IonInput, IonTextarea,
   ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, trash } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
@@ -29,7 +29,7 @@ import { resizeImage } from './utils/image';
     IonApp, IonHeader, IonToolbar, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
-    IonSegment, IonSegmentButton, IonInput, IonTextarea, IonToggle
+    IonSegment, IonSegmentButton, IonInput, IonTextarea
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -42,11 +42,13 @@ export class App {
   private platformId = inject(PLATFORM_ID);
   private toastController = inject(ToastController);
 
-  showLanding = signal(false);
+  showLanding = signal(true);
   selectedImage = signal<string | null>(null);
   processedImage = signal<string | null>(null);
   isProcessing = signal(false);
   isGeneratingImage = signal(false);
+  isDragging = signal(false);
+  processingStage = signal<string>('idle'); // idle, resizing, uploading, analyzing, background
   isSaving = signal(false);
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<string>('details');
@@ -65,11 +67,13 @@ export class App {
   regGST = signal('');
 
   isRegistering = signal(false);
+  isVerifyingOTP = signal(false);
+  isSendingOTP = signal(false);
+  otpCode = signal('');
   authError = signal<string | null>(null);
 
   constructor() {
-
-    addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star });
+    addIcons({calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,logoGoogle,arrowForward,cloudUpload,sparkles,image,logoFacebook,logoTwitter,logoInstagram,save,list,eye,trash,camera,pricetag,copy,checkmark,logIn,logOutOutline,pencil,flash,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
     
     if (isPlatformBrowser(this.platformId)) {
       // Reactively fetch listings when user changes
@@ -184,6 +188,7 @@ export class App {
     this.authError.set(null);
     try {
       await this.auth.loginWithGoogle();
+      this.showLanding.set(false);
     } catch (error) {
       console.error('Login failed:', error);
       this.authError.set('Google login failed. Please try again.');
@@ -197,8 +202,19 @@ export class App {
       return;
     }
 
+    if (this.isRegistering() && !this.isVerifyingOTP()) {
+      this.resendOTP();
+      return;
+    }
+
     try {
       if (this.isRegistering()) {
+        const isValid = await this.auth.verifyOTP(this.email(), this.otpCode());
+        if (!isValid) {
+          this.authError.set('Invalid or expired verification code.');
+          return;
+        }
+
         await this.auth.registerWithEmail(
           this.email(), 
           this.password(), 
@@ -208,8 +224,12 @@ export class App {
             gstNumber: this.regGST() 
           }
         );
+        this.isVerifyingOTP.set(false);
+        this.otpCode.set('');
+        this.showLanding.set(false);
       } else {
         await this.auth.loginWithEmail(this.email(), this.password());
+        this.showLanding.set(false);
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -221,14 +241,38 @@ export class App {
     }
   }
 
+  async resendOTP() {
+    this.authError.set(null);
+    this.isSendingOTP.set(true);
+    try {
+      await this.auth.sendOTP(this.email());
+      this.isVerifyingOTP.set(true);
+      const toast = await this.toastController.create({
+        message: 'Verification code sent to your email!',
+        duration: 3000,
+        color: 'success',
+        position: 'bottom'
+      });
+      await toast.present();
+    } catch (error: any) {
+      this.authError.set('Failed to send OTP. ' + (error.message || ''));
+    } finally {
+      this.isSendingOTP.set(false);
+    }
+  }
+
   toggleRegister() {
     this.isRegistering.set(!this.isRegistering());
+    this.isVerifyingOTP.set(false);
+    this.otpCode.set('');
     this.authError.set(null);
   }
 
   async logout() {
     try {
       await this.auth.logout();
+      this.showLanding.set(true);
+      this.mainView.set('home');
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -238,7 +282,30 @@ export class App {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    await this.processSelectedFile(file);
+  }
 
+  async onDrop(event: DragEvent) {
+    event.preventDefault();
+    this.isDragging.set(false);
+    const file = event.dataTransfer?.files[0];
+    if (file && file.type.startsWith('image/')) {
+      await this.processSelectedFile(file);
+    }
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    this.isDragging.set(true);
+  }
+
+  onDragLeave(event: DragEvent) {
+    event.preventDefault();
+    this.isDragging.set(false);
+  }
+
+  private async processSelectedFile(file: File) {
+    this.processingStage.set('resizing');
     const reader = new FileReader();
     reader.onload = async () => {
       let base64 = reader.result as string;
@@ -287,6 +354,7 @@ export class App {
 
     const base64 = base64WithPrefix.split(',')[1];
     this.isProcessing.set(true);
+    this.processingStage.set('analyzing');
     
     try {
       const details = await this.gemini.extractProductDetails(base64, mimeType, this.templateService.templates(), this.auth.isPro());
@@ -297,6 +365,7 @@ export class App {
       this.generateWhiteBg(base64, mimeType);
     } catch (error) {
       console.error("Error processing image:", error);
+      this.processingStage.set('idle');
     } finally {
       this.isProcessing.set(false);
     }
@@ -304,6 +373,8 @@ export class App {
 
   async generateWhiteBg(base64: string, mimeType: string) {
     this.isGeneratingImage.set(true);
+    const prevStage = this.processingStage();
+    this.processingStage.set('background');
     try {
       let newImage = await this.gemini.generateWhiteBackground(base64, mimeType);
       try {
@@ -312,8 +383,11 @@ export class App {
         console.warn('Processed image resize failed', e);
       }
       this.processedImage.set(newImage);
+      this.processingStage.set('complete');
+      setTimeout(() => this.processingStage.set('idle'), 3000);
     } catch (error) {
       console.error("Error generating white background:", error);
+      this.processingStage.set(prevStage);
     } finally {
       this.isGeneratingImage.set(false);
     }

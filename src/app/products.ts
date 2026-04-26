@@ -98,14 +98,16 @@ export class Products {
 
   get totalValue(): number {
     return this.listings().reduce((acc, curr) => {
-      const price = parseFloat(curr.priceINR.replace(/[^0-9.]/g, '')) || 0;
-      return acc + price;
+      const price = parseFloat(String(curr.priceINR || '0').replace(/[^0-9.]/g, '')) || 0;
+      const qty = curr.quantity || 1;
+      return acc + (price * qty);
     }, 0);
   }
 
   get averagePrice(): number {
-    if (this.listings().length === 0) return 0;
-    return this.totalValue / this.listings().length;
+    const totalQty = this.listings().reduce((acc, curr) => acc + (curr.quantity || 1), 0);
+    if (totalQty === 0) return 0;
+    return this.totalValue / totalQty;
   }
 
   get filteredListings(): Listing[] {

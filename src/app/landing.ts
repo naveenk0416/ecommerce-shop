@@ -1,4 +1,4 @@
-import { Component, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, output, input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { 
   IonButton, IonIcon
@@ -21,6 +21,9 @@ export class Landing {
   login = output<void>();
   getStarted = output<void>();
   goPricing = output<void>();
+  goDashboard = output<void>();
+
+  isLoggedIn = input<boolean>(false);
 
   constructor() {
     addIcons({school,arrowForward,checkmarkCircle,camera,text,documentText,cash,logoInstagram,time,trendingUp,logoFacebook,logoTwitter,analytics,globe,logoAmazon,logoLinkedin,sparkles,flash,rocket,shieldCheckmark,logoGoogle,image,copy,settings,chevronForward,statsChart});
