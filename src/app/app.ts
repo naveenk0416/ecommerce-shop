@@ -8,7 +8,7 @@ import { IonApp, IonHeader, IonToolbar, IonContent,
   ToastController, AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, trash } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, heart, trendingUp } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
@@ -76,7 +76,7 @@ export class App {
   authError = signal<string | null>(null);
 
   constructor() {
-    addIcons({calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,logoGoogle,arrowForward,cloudUpload,sparkles,image,logoFacebook,logoTwitter,logoInstagram,save,list,eye,trash,camera,pricetag,copy,checkmark,logIn,logOutOutline,pencil,flash,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
+    addIcons({calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,logoGoogle,arrowForward,sparkles,cloudUpload,colorPalette,image,pencil,save,time,add,albumsOutline,search,logoAmazon,flash,heart,eye,trash,trendingUp,logoFacebook,logoInstagram,logoTwitter,list,camera,pricetag,copy,checkmark,logIn,logOutOutline,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
     
     if (isPlatformBrowser(this.platformId)) {
       // Reactively fetch listings when user changes
