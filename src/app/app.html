@@ -79,7 +79,7 @@
         (goDashboard)="showLanding.set(false); mainView.set('home')">
       </app-landing>
     } @else {
-      <div class="max-w-2xl mx-auto space-y-8 pb-20 pt-12 px-4">
+      <div class="container max-w-7xl mx-auto space-y-8 pb-20 pt-12 px-6 md:px-12">
         @if (!auth.isAuthReady()) {
           <div class="flex flex-col items-center justify-center py-20">
             <ion-spinner name="crescent" color="primary"></ion-spinner>
