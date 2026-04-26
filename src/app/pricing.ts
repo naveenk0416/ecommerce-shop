@@ -48,14 +48,14 @@ import { checkmarkCircle, sparkles, rocket, flash, star, close } from 'ionicons/
                 </li>
               }
             </ul>
-            <ion-button expand="block" shape="round" fill="outline" color="dark" class="h-14 font-black" [disabled]="auth.profile()?.role === 'FREE'">
+            <button class="btn-secondary w-full" [disabled]="auth.profile()?.role === 'FREE'">
               {{ auth.profile()?.role === 'FREE' ? 'Current Plan' : 'Select Free' }}
-            </ion-button>
+            </button>
           </ion-card-content>
         </ion-card>
 
         <!-- Pro Plan -->
-        <ion-card class="pricing-card m-0 rounded-[2.5rem] border-2 border-orange-500 shadow-xl flex flex-col relative overflow-visible transform scale-105 z-10">
+        <ion-card class="pricing-card m-0 rounded-[2.5rem] border-2 border-orange-500 shadow-xl flex flex-col relative overflow-visible transform scale-105 z-10 transition-all">
           <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">
             Recommended
           </div>
@@ -83,10 +83,10 @@ import { checkmarkCircle, sparkles, rocket, flash, star, close } from 'ionicons/
                 </li>
               }
             </ul>
-            <ion-button expand="block" shape="round" color="warning" class="h-14 font-black shadow-lg" (click)="subscribe()">
+            <button class="btn-orange-premium w-full" (click)="subscribe()">
               {{ auth.profile()?.role === 'PAID_PRO' ? 'Renew Subscription' : 'Upgrade Now' }}
-              <ion-icon slot="end" name="sparkles"></ion-icon>
-            </ion-button>
+              <ion-icon name="sparkles" class="ml-2"></ion-icon>
+            </button>
           </ion-card-content>
         </ion-card>
       </div>

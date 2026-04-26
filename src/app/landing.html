@@ -19,20 +19,20 @@
         
         <div class="hero-actions">
           @if (isLoggedIn()) {
-            <ion-button (click)="goDashboard.emit()" class="btn-orange" shape="round">
+            <button (click)="goDashboard.emit()" class="btn-orange-premium">
               Go to Dashboard
-              <ion-icon slot="end" name="rocket"></ion-icon>
-            </ion-button>
+              <ion-icon name="rocket" class="ml-2"></ion-icon>
+            </button>
           } @else {
-            <ion-button (click)="getStarted.emit()" class="btn-orange" shape="round">
+            <button (click)="getStarted.emit()" class="btn-orange-premium">
               Start Free
-              <ion-icon slot="end" name="arrow-forward"></ion-icon>
-            </ion-button>
+              <ion-icon name="arrow-forward" class="ml-2"></ion-icon>
+            </button>
           }
           
-          <ion-button fill="outline" color="dark" class="btn-outline" shape="round">
+          <button class="btn-secondary">
             See how it works
-          </ion-button>
+          </button>
         </div>
         
         <div class="hero-checklist">
@@ -182,15 +182,15 @@
         <h2 class="cta-title">Ready to sell smarter?</h2>
         <p class="cta-text">Join thousands of Indian sellers using SellAssist to list faster and earn more.</p>
         @if (isLoggedIn()) {
-          <ion-button (click)="goDashboard.emit()" class="btn-white" shape="round">
+          <button (click)="goDashboard.emit()" class="btn-secondary px-12 mx-auto">
             Go to Dashboard
-            <ion-icon slot="end" name="rocket"></ion-icon>
-          </ion-button>
+            <ion-icon name="rocket" class="ml-2 text-orange-600"></ion-icon>
+          </button>
         } @else {
-          <ion-button (click)="getStarted.emit()" class="btn-white" shape="round">
+          <button (click)="getStarted.emit()" class="btn-secondary px-12 mx-auto">
             Create your free account
-            <ion-icon slot="end" name="arrow-forward"></ion-icon>
-          </ion-button>
+            <ion-icon name="arrow-forward" class="ml-2 text-orange-600"></ion-icon>
+          </button>
         }
       </div>
     </div>

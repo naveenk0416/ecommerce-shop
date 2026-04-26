@@ -16,13 +16,223 @@
 @import "@ionic/angular/css/display.css";
 
 @theme {
-  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --shadow-premium: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(249, 115, 22, 0.2);
 }
 
-@layer utilities {
-  .animate-stage-in {
-    animation: stageIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+@layer base {
+  .landing-container {
+    @apply bg-slate-50 min-h-screen overflow-x-hidden pt-10 font-sans;
+  }
+
+  .hero-section {
+    @apply relative pt-20 pb-32 overflow-hidden;
+  }
+
+  .hero-section::before {
+    content: "";
+    @apply absolute -top-40 -right-40 w-[600px] h-[600px] bg-orange-100 rounded-full blur-[120px] opacity-40;
+  }
+
+  .hero-section::after {
+    content: "";
+    @apply absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-red-100 rounded-full blur-[120px] opacity-30;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-4 py-2 bg-white rounded-2xl shadow-premium border border-slate-100 mb-8 animate-bounce transition-all hover:scale-105;
+    @apply text-[10px] font-black uppercase tracking-[0.25em] text-orange-600;
+  }
+
+  .hero-title {
+    @apply text-5xl md:text-7xl lg:text-8xl font-black text-slate-950 tracking-tighter leading-[0.95] mb-8 font-display italic;
+  }
+
+  .text-orange {
+    @apply text-transparent bg-clip-text bg-linear-to-r from-orange-500 to-red-600 drop-shadow-sm;
+  }
+
+  .hero-description {
+    @apply text-slate-500 leading-relaxed max-w-xl mb-12 font-medium;
+  }
+
+  .hero-actions {
+    @apply flex flex-wrap gap-4 mb-14;
+  }
+
+  .btn-orange {
+    --background: #f97316;
+    --color: #ffffff;
+    @apply h-16 px-8 text-sm font-black uppercase tracking-widest shadow-xl shadow-orange-500/20 transform hover:-translate-y-1 transition-all;
+  }
+
+  .btn-outline {
+    --border-color: #0f172a;
+    --color: #0f172a;
+    @apply h-16 px-8 text-sm font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all;
+  }
+
+  .hero-checklist {
+    @apply flex flex-wrap gap-x-8 gap-y-4;
+  }
+
+  .check-item {
+    @apply flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500;
+  }
+
+  .check-item ion-icon {
+    @apply text-emerald-500 text-lg;
+  }
+
+  .browser-mockup {
+    @apply bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden transform rotate-2 hover:rotate-0 transition-all duration-700 hover:scale-105;
+  }
+
+  .browser-header {
+    @apply bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between;
+  }
+
+  .dots {
+    @apply flex gap-2;
+  }
+
+  .dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+
+  .dot.red { @apply bg-red-400; }
+  .dot.yellow { @apply bg-yellow-400; }
+  .dot.green { @apply bg-green-400; }
+
+  .url-bar {
+    @apply bg-white border border-slate-100 rounded-lg px-4 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-64 text-center;
+  }
+
+  .mock-field {
+    @apply space-y-2 p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:bg-white hover:shadow-md;
+  }
+
+  .mock-label {
+    @apply text-[9px] font-black uppercase tracking-widest text-slate-400 block;
+  }
+
+  .mock-value {
+    @apply text-xs font-bold text-slate-900 leading-snug;
+  }
+
+  /* Trust Section */
+  .trust-section {
+    @apply py-20 border-y border-slate-100 bg-white/50 backdrop-blur-xl;
+  }
+
+  .stat-item {
+    @apply text-center p-6 rounded-3xl transition-all hover:bg-white hover:shadow-sm;
+  }
+
+  .stat-value {
+    @apply text-4xl font-black text-slate-950 tracking-tighter font-display italic mb-2 group-hover:text-orange-600 transition-colors;
+  }
+
+  .stat-label {
+    @apply text-[10px] font-black uppercase tracking-[0.2em] text-slate-400;
+  }
+
+  .partner-logos {
+    @apply flex flex-wrap justify-between items-center gap-12 mt-16 grayscale opacity-40;
+  }
+
+  /* Feature Cards */
+  .feature-card {
+    @apply bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm transition-all duration-500 hover:shadow-premium hover:-translate-y-2;
+  }
+
+  .feature-icon {
+    @apply w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-3xl mb-8 transition-transform group-hover:scale-110 group-hover:rotate-6;
+  }
+
+  .feature-title {
+    @apply text-2xl font-black text-slate-950 tracking-tight mb-4 font-display italic uppercase;
+  }
+
+  .feature-text {
+    @apply text-slate-500 font-medium leading-relaxed;
+  }
+
+  /* Sections */
+  .section-title {
+     @apply text-4xl md:text-5xl lg:text-6xl font-black text-slate-950 tracking-tighter text-center font-display italic uppercase leading-none mb-6;
+  }
+
+  .section-subtitle {
+     @apply text-slate-500 text-center max-w-2xl mx-auto font-medium text-lg;
+  }
+
+  /* CTA Section */
+  .cta-banner {
+    @apply bg-slate-950 rounded-[4rem] p-16 md:p-24 text-center relative overflow-hidden shadow-2xl;
+  }
+
+  .cta-banner::before {
+    content: "";
+    @apply absolute top-0 left-0 w-full h-full bg-linear-to-br from-orange-600/20 to-red-600/20;
+  }
+
+  .cta-title {
+    @apply text-4xl md:text-6xl font-black text-white tracking-tighter mb-8 font-display italic uppercase leading-none relative z-10;
+  }
+
+  .cta-text {
+    @apply text-slate-400 text-lg mb-12 max-w-xl mx-auto font-medium relative z-10;
+  }
+
+  .btn-white {
+    --background: #ffffff;
+    --color: #0f172a;
+    @apply h-16 px-10 text-sm font-black uppercase tracking-widest shadow-xl transition-all hover:scale-105 relative z-10;
+  }
+
+  .btn-white:hover {
+    --background: #f97316;
+    --color: #ffffff;
+  }
+
+  .detailed-footer {
+    @apply border-t border-slate-100 bg-white font-sans;
+  }
+}
+
+@layer components {
+  /* Premium Button System */
+  .btn-premium-base {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[15px] font-bold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none px-[30px] py-[15px];
+  }
+
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-linear-to-br from-[#F97316] to-[#FB923C] text-white py-[14px] px-[32px] shadow-[0_10px_25px_rgba(249,115,22,0.4)] hover:brightness-110 hover:-translate-y-0.5 active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-white border border-slate-100 text-slate-950 p-[14px] hover:bg-slate-50 hover:border-slate-200 active:scale-95 shadow-sm;
+  }
+
+  .btn-ghost {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none text-slate-400 p-[12px] hover:bg-slate-100 hover:text-slate-950 active:scale-95;
+  }
+
+  .btn-orange-premium {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-linear-to-br from-[#F97316] to-[#FB923C] text-white py-[14px] px-[32px] shadow-[0_10px_25px_rgba(249,115,22,0.4)] hover:brightness-110 hover:-translate-y-0.5 active:scale-95;
+  }
+
+  .btn-icon-premium {
+    @apply flex items-center justify-center w-12 h-12 rounded-[15px] transition-all duration-300 border border-slate-100 bg-white text-slate-400 hover:text-orange-600 hover:border-orange-100 hover:bg-orange-50 active:scale-90 shadow-sm;
+  }
+
+  .btn-icon-dark {
+    @apply flex items-center justify-center w-12 h-12 rounded-[15px] transition-all duration-300 bg-slate-950 text-white hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-600/20 active:scale-90;
   }
 }
 
