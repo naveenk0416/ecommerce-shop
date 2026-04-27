@@ -1,0 +1,3 @@
+## 2026-04-27 - [Title] Identifying Icon-Only Buttons Missing Context
+**Learning:** A common accessibility issue pattern across this application's components involves using purely icon-based `<button>` tags without any `aria-label` or `title` attributes. This leaves screen reader users and those navigating by keyboard (who rely on tooltips) without adequate context for the buttons' functions (like Edit, Save, Close, Admin).
+**Action:** When implementing new UI elements or reviewing existing ones, I will proactively search for and verify that any icon-only interactive element is accompanied by both an `aria-label` for screen readers and a `title` attribute for native tooltips.
