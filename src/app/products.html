@@ -118,10 +118,10 @@
                 </td>
                 <td class="py-6 px-8 text-right">
                   <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0 transition-transform">
-                    <button (click)="view.emit(listing)" class="btn-icon-premium" aria-label="View listing details">
+                    <button (click)="view.emit(listing)" class="btn-icon-premium" aria-label="View listing details" title="View listing details">
                       <ion-icon name="eye"></ion-icon>
                     </button>
-                    <button (click)="delete.emit(listing.id!)" class="btn-icon-premium text-red-500 hover:text-red-600 hover:border-red-100 hover:bg-red-50" aria-label="Delete listing">
+                    <button (click)="delete.emit(listing.id!)" class="btn-icon-premium text-red-500 hover:text-red-600 hover:border-red-100 hover:bg-red-50" aria-label="Delete listing" title="Delete listing">
                       <ion-icon name="trash"></ion-icon>
                     </button>
                   </div>
@@ -184,7 +184,7 @@
               <p class="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Awaiting Manual Data Commit</p>
             </div>
           </div>
-          <button (click)="closeAddModal()" class="btn-icon-premium w-12 h-12">
+          <button (click)="closeAddModal()" class="btn-icon-premium w-12 h-12" aria-label="Close modal" title="Close modal">
             <ion-icon name="close" class="text-2xl"></ion-icon>
           </button>
         </div>
