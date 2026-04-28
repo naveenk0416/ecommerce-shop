@@ -1,0 +1,1 @@
+## 2026-04-28 - ARIA labels on Icon Buttons\n**Learning:** Icon-only buttons without ARIA labels are a frequent accessibility issue in this app's components, especially with Ionic icons.\n**Action:** Always verify that buttons containing only icons have descriptive `aria-label` attributes to ensure screen reader accessibility.
