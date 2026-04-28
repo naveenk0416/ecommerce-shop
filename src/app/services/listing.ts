@@ -21,6 +21,15 @@ export interface Listing extends ProductDetails {
   createdAt: string;
 }
 
+export interface Feedback {
+  id?: string;
+  uid: string;
+  listingId: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -43,6 +52,24 @@ export class ListingService {
       return addDoc(collection(db, this.listingsPath), listing);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, this.listingsPath);
+      throw error;
+    }
+  }
+
+  submitFeedback(feedback: Omit<Feedback, 'id' | 'uid' | 'createdAt'>) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('User must be authenticated to submit feedback');
+
+    const data: Omit<Feedback, 'id'> = {
+      ...feedback,
+      uid: user.uid,
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      return addDoc(collection(db, 'feedback'), data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'feedback');
       throw error;
     }
   }

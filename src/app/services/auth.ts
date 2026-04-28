@@ -69,7 +69,7 @@ export class AuthService {
   }
 
   isAdmin = computed(() => this.profile()?.role === 'ADMIN');
-  isPro = computed(() => this.profile()?.role === 'PAID_PRO' || this.profile()?.role === 'ADMIN');
+  isPro = computed(() => true);
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {

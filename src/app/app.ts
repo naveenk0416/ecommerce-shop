@@ -55,10 +55,18 @@ export class App {
   isSaving = signal(false);
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<string>('details');
-  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst' | 'pricing'>('home');
+  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst'>('home');
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
   editingField = signal<string | null>(null);
+  today = signal<string>(new Date().toISOString().split('T')[0]);
+  
+  // Feedback State
+  ratingStars = [1, 2, 3, 4, 5];
+  showFeedbackModal = signal(false);
+  currentFeedbackRating = signal(0);
+  currentFeedbackComment = signal('');
+  pendingListingId = signal<string | null>(null);
 
   // Auth Form State
   email = signal('');
@@ -121,7 +129,72 @@ export class App {
     }
   }
 
+  setRating(rating: number) {
+    this.currentFeedbackRating.set(rating);
+  }
+
+  async submitFeedback() {
+    if (this.currentFeedbackRating() === 0) {
+      const toast = await this.toastController.create({
+        message: 'Please select a rating',
+        duration: 2000,
+        color: 'warning'
+      });
+      await toast.present();
+      return;
+    }
+
+    try {
+      await this.listingService.submitFeedback({
+        listingId: this.pendingListingId() || 'manual',
+        rating: this.currentFeedbackRating(),
+        comment: this.currentFeedbackComment()
+      });
+
+      const toast = await this.toastController.create({
+        message: 'Thank you for your feedback!',
+        duration: 2000,
+        color: 'success'
+      });
+      await toast.present();
+      this.closeFeedbackModal();
+    } catch (error) {
+      console.error('Feedback submission failed:', error);
+    }
+  }
+
+  closeFeedbackModal() {
+    this.showFeedbackModal.set(false);
+    this.currentFeedbackRating.set(0);
+    this.currentFeedbackComment.set('');
+    this.pendingListingId.set(null);
+  }
+
+  private async checkUploadLimit(): Promise<boolean> {
+    const profile = this.auth.profile();
+    if (!profile) return true;
+    
+    // Admins are exempt from limits
+    if (this.auth.isAdmin()) return true;
+
+    const todayStr = this.today();
+    const dailyCount = profile.dailyStats?.date === todayStr ? (profile.dailyStats?.count || 0) : 0;
+    
+    if (dailyCount >= 7) {
+      const alert = await this.alertController.create({
+        header: 'Daily Limit Reached',
+        subHeader: 'You have reached your limit of 7 product uploads for today.',
+        message: 'Scale your business with SellAssist. Please come back tomorrow for more optimizations.',
+        buttons: ['OK']
+      });
+      await alert.present();
+      return false;
+    }
+    return true;
+  }
+
   async saveListing() {
+    if (!(await this.checkUploadLimit())) return;
     const details = this.productDetails();
     const original = this.selectedImage();
     if (!details || !original) return;
@@ -179,14 +252,19 @@ export class App {
                 quantity: parseInt(data.quantity || '0', 10)
               };
 
-              await this.listingService.saveListing(updatedDetails, original, this.processedImage());
+              const docRef = await this.listingService.saveListing(updatedDetails, original, this.processedImage());
               const toast = await this.toastController.create({
-                message: 'Listing saved successfully to Inventory!',
+                message: 'Listing saved successfully!',
                 duration: 2000,
                 color: 'success',
                 position: 'bottom'
               });
               await toast.present();
+
+              // Trigger Feedback Flow
+              this.pendingListingId.set(docRef.id);
+              this.showFeedbackModal.set(true);
+
               this.mainView.set('listings');
               this.reset();
             } catch (error) {
@@ -273,8 +351,9 @@ export class App {
       await this.auth.loginWithEmail(this.email(), this.password());
       this.showLanding.set(false);
       this.resetAuthForm();
-    } catch (error: any) {
-      this.authError.set(this.getAuthErrorMessage(error.code || error.message));
+    } catch (error: unknown) {
+      const code = (error as { code?: string }).code || (error as Error).message;
+      this.authError.set(this.getAuthErrorMessage(code));
     } finally {
       this.isProcessing.set(false);
     }
@@ -301,8 +380,9 @@ export class App {
       });
       this.showLanding.set(false);
       this.resetAuthForm();
-    } catch (error: any) {
-      this.authError.set(this.getAuthErrorMessage(error.code || error.message));
+    } catch (error: unknown) {
+      const code = (error as { code?: string }).code || (error as Error).message;
+      this.authError.set(this.getAuthErrorMessage(code));
     } finally {
       this.isProcessing.set(false);
     }
