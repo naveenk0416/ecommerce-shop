@@ -95,66 +95,49 @@
                   <ion-icon name="person-circle" class="text-4xl text-orange-500"></ion-icon>
                 </div>
                 <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ isRegistering() ? 'Create Account' : 'Welcome Back' }}</h2>
-                <p class="text-slate-500 mt-2 text-sm font-medium">Sign in to start optimizing your listings.</p>
+                <p class="text-slate-500 mt-2 text-sm font-medium">
+                  {{ isRegistering() ? 'Join Bharat\'s AI Growth Partner today.' : 'Sign in to start optimizing your listings.' }}
+                </p>
               </div>
 
               <div class="space-y-4">
-                @if (isRegistering() && !isVerifyingOTP()) {
+                <div class="mb-2">
+                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
+                  <ion-input type="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                </div>
+
+                <div class="mb-2">
+                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Password</ion-label>
+                  <ion-input type="password" [value]="password()" (ionInput)="password.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                </div>
+
+                @if (isRegistering()) {
                   <div class="mb-2">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Full Name</ion-label>
-                    <ion-input type="text" [value]="regName()" (ionInput)="regName.set($any($event).target.value)" placeholder="Your Name" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Business Name</ion-label>
+                    <ion-input type="text" [value]="regName()" (ionInput)="regName.set($any($event).target.value)" placeholder="Your Store Name" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
                   </div>
                   <div class="mb-2">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Mobile Number</ion-label>
-                    <ion-input type="tel" [value]="regPhone()" (ionInput)="regPhone.set($any($event).target.value)" placeholder="+91 00000 00000" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Phone Number</ion-label>
+                    <ion-input type="tel" [value]="regPhone()" (ionInput)="regPhone.set($any($event).target.value)" placeholder="+91 XXXXX XXXXX" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
                   </div>
                   <div class="mb-2">
                     <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">GST Number (Optional)</ion-label>
-                    <ion-input type="text" [value]="regGST()" (ionInput)="regGST.set($any($event).target.value)" placeholder="22AAAAA0000A1Z5" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                  </div>
-                }
-
-                @if (!isVerifyingOTP()) {
-                  <div class="mb-2">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
-                    <ion-input type="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                  </div>
-                  <div class="mb-4">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Password</ion-label>
-                    <ion-input type="password" [value]="password()" (ionInput)="password.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                  </div>
-                } @else {
-                  <div class="text-center py-6 animate-in zoom-in duration-300">
-                    <div class="mb-4">
-                      <p class="text-xs text-slate-500 font-medium">Verification code sent to <br><span class="font-bold text-slate-900">{{ email() }}</span></p>
-                    </div>
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 block mb-4">Enter 6-Digit Code</ion-label>
-                    <div class="flex justify-center">
-                      <ion-input type="text" [value]="otpCode()" (ionInput)="otpCode.set($any($event).target.value)" placeholder="000000" class="bg-slate-50 rounded-2xl px-6 py-4 text-center text-4xl font-black tracking-[0.4em] border-2 border-orange-200 text-orange-600 max-w-[240px]" maxlength="6"></ion-input>
-                    </div>
-                    <div class="mt-4 flex flex-col gap-3">
-                      <button (click)="resendOTP()" [disabled]="isSendingOTP()" class="text-xs font-bold text-orange-600 hover:underline disabled:opacity-50">
-                        {{ isSendingOTP() ? 'Sending Code...' : 'Resend Code' }}
-                      </button>
-                      <button (click)="isVerifyingOTP.set(false)" class="text-xs font-bold text-slate-400 hover:text-slate-600 flex items-center justify-center">
-                        <ion-icon name="arrow-back" class="mr-1"></ion-icon> Change Email
-                      </button>
-                    </div>
+                    <ion-input type="text" [value]="regGST()" (ionInput)="regGST.set($any($event).target.value)" placeholder="GSTIN" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
                   </div>
                 }
 
                 @if (authError()) {
-                  <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100">
+                  <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
                     {{ authError() }}
                   </div>
                 }
 
-                <ion-button (click)="emailAuth()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isSendingOTP()">
-                  @if (isSendingOTP()) {
+                <ion-button (click)="isRegistering() ? register() : loginWithEmail()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isProcessing()">
+                  @if (isProcessing()) {
                     <ion-spinner name="crescent" slot="start"></ion-spinner>
-                    Sending...
+                    Processing...
                   } @else {
-                    {{ isRegistering() ? (isVerifyingOTP() ? 'Verify & Create Account' : 'Send Verification Code') : 'Login' }}
+                    {{ isRegistering() ? 'Register' : 'Login' }}
                   }
                 </ion-button>
 
@@ -173,7 +156,7 @@
                   </div>
                 </div>
 
-                <ion-button (click)="login()" expand="block" fill="outline" shape="round" color="dark" class="h-12 font-bold">
+                <ion-button (click)="loginWithGoogle()" [disabled]="isProcessing()" expand="block" fill="outline" shape="round" color="dark" class="h-12 font-bold">
                   <ion-icon slot="start" name="logo-google"></ion-icon>
                   Google
                 </ion-button>
