@@ -51,6 +51,13 @@ service cloud.firestore {
              data.configs is list && data.configs.size() <= 20;
     }
 
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['uid', 'listingId', 'rating', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.rating >= 1 && data.rating <= 5 &&
+             ( !('comment' in data) || (data.comment is string && data.comment.size() <= 2000) );
+    }
+
     // ===============================================================
     // Collection Match Blocks (Master Gate Pattern)
     // ===============================================================
@@ -61,6 +68,12 @@ service cloud.firestore {
       allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming()) && (
         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'email', 'lastLogin', 'phoneNumber', 'gstNumber', 'role', 'usageCount', 'dailyStats', 'uid'])
       );
+    }
+
+    match /feedback/{feedbackId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isSignedIn() && isValidFeedback(incoming());
+      allow update, delete: if isAdmin();
     }
 
     match /templates/{userId} {

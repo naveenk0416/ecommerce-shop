@@ -74,7 +74,6 @@
       <app-landing 
         (login)="showLanding.set(false); isRegistering.set(false)" 
         (getStarted)="showLanding.set(false); isRegistering.set(true)" 
-        (goPricing)="mainView.set('pricing'); showLanding.set(false)"
         [isLoggedIn]="!!auth.user()"
         (goDashboard)="showLanding.set(false); mainView.set('home')">
       </app-landing>
@@ -87,8 +86,6 @@
           </div>
         } @else if (mainView() === 'gst') {
           <app-gst-calculator></app-gst-calculator>
-        } @else if (mainView() === 'pricing') {
-          <app-pricing (dismiss)="mainView.set('home')"></app-pricing>
         } @else if (!auth.user()) {
             <!-- Login/Auth Section if not logged in -->
             <section class="max-w-md mx-auto py-16 px-10 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
@@ -518,22 +515,15 @@
                 }
 
                     <div class="flex gap-2 mt-6">
-                      @if (auth.isPro()) {
-                        <button (click)="saveListing()" [disabled]="isSaving()" class="btn-orange-premium flex-grow !text-xs">
-                          @if (isSaving()) {
-                            <ion-spinner name="crescent" slot="start" class="mr-2"></ion-spinner>
-                            Saving...
-                          } @else {
-                            <ion-icon name="save" class="text-lg"></ion-icon>
-                            Save Listing
-                          }
-                        </button>
-                      } @else {
-                        <div class="flex-grow bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex items-center justify-between px-4 py-2">
-                          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upgrade to Save History</span>
-                          <button (click)="mainView.set('pricing')" class="btn-orange-premium !py-2 !px-4 !text-[9px]">Upgrade</button>
-                        </div>
-                      }
+                      <button (click)="saveListing()" [disabled]="isSaving()" class="btn-orange-premium flex-grow !text-xs">
+                        @if (isSaving()) {
+                          <ion-spinner name="crescent" slot="start" class="mr-2"></ion-spinner>
+                          Saving...
+                        } @else {
+                          <ion-icon name="save" class="text-lg"></ion-icon>
+                          Save Listing
+                        }
+                      </button>
                       <button (click)="reset()" class="btn-secondary !p-0 w-12 h-12 flex items-center justify-center">
                         <ion-icon name="close" class="text-xl"></ion-icon>
                       </button>
@@ -546,8 +536,7 @@
                 [listings]="myListings()" 
                 (view)="viewListing($event)" 
                 (delete)="deleteListing($event)"
-                (addManual)="handleAddManualProduct($event)"
-                (goPricing)="mainView.set('pricing')">
+                (addManual)="handleAddManualProduct($event)">
               </app-products>
             } @else if (mainView() === 'admin') {
               <app-admin></app-admin>
@@ -671,4 +660,57 @@
       </div>
     </footer>
   </ion-content>
+  <!-- Feedback Modal -->
+  @if (showFeedbackModal()) {
+    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-500">
+        <div class="p-8 text-center">
+          <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ion-icon name="star" class="text-3xl text-orange-600"></ion-icon>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">How was the result?</h2>
+          <p class="text-slate-500 mt-2 text-sm font-medium leading-relaxed">
+            Your feedback helps our AI grow better for Bharat's merchants.
+          </p>
+
+          <!-- Star Rating -->
+          <div class="flex justify-center gap-2 my-8">
+            @for (star of ratingStars; track star) {
+              <button (click)="setRating(star)" 
+                      class="text-4xl transition-all duration-200 transform hover:scale-125 focus:outline-none"
+                      [class.text-orange-500]="currentFeedbackRating() >= star"
+                      [class.text-slate-300]="currentFeedbackRating() < star">
+                <ion-icon name="star"></ion-icon>
+              </button>
+            }
+          </div>
+
+          <div class="space-y-4">
+            <div class="text-left">
+              <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Comments (Optional)</ion-label>
+              <ion-textarea 
+                rows="3" 
+                [autoGrow]="true"
+                [value]="currentFeedbackComment()" 
+                (ionInput)="currentFeedbackComment.set($any($event).target.value)"
+                placeholder="What did you like? Anything we can improve?" 
+                class="bg-slate-50 rounded-2xl px-5 py-4 mt-2 border border-slate-100 text-sm font-medium">
+              </ion-textarea>
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button (click)="closeFeedbackModal()" class="flex-1 h-12 rounded-2xl border border-slate-100 text-slate-400 font-bold text-xs hover:bg-slate-50 uppercase tracking-widest">
+                Skip
+              </button>
+              <button (click)="submitFeedback()" 
+                      [disabled]="currentFeedbackRating() === 0"
+                      class="flex-[2] h-12 rounded-2xl bg-orange-600 text-white font-bold text-xs hover:bg-orange-700 shadow-lg shadow-orange-600/20 uppercase tracking-widest disabled:opacity-50 disabled:shadow-none">
+                Send Feedback
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 </ion-app>

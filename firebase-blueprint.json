@@ -64,6 +64,19 @@
         "expiresAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "code", "expiresAt"]
+    },
+    "feedback": {
+      "title": "User Feedback",
+      "description": "Ratings and reviews for generated listings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User ID of the reviewer" },
+        "listingId": { "type": "string", "description": "ID of the listing being rated" },
+        "rating": { "type": "number", "description": "Rating from 1-5" },
+        "comment": { "type": "string", "description": "Optional text feedback" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "listingId", "rating", "createdAt"]
     }
   },
   "firestore": {
@@ -82,6 +95,10 @@
     "/verificationCodes/{email}": {
       "schema": "verificationCodes",
       "description": "Temporary OTP codes"
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "feedback",
+      "description": "User ratings and feedback"
     }
   }
 }

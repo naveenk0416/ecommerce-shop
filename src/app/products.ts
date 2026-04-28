@@ -32,7 +32,6 @@ export class Products {
   view = output<Listing>();
   delete = output<string>();
   addManual = output<Partial<Listing>>();
-  goPricing = output<void>();
   searchQuery = signal<string>('');
 
   constructor() {
@@ -96,11 +95,16 @@ export class Products {
     this.closeAddModal();
   }
 
+  parsePrice(price: any): number {
+    if (!price) return 0;
+    if (typeof price === 'number') return price;
+    const cleaned = String(price).replace(/[^0-9.]/g, '');
+    return parseFloat(cleaned) || 0;
+  }
+
   get totalValue(): number {
     return this.listings().reduce((acc, curr) => {
-      const price = parseFloat(String(curr.priceINR || '0').replace(/[^0-9.]/g, '')) || 0;
-      const qty = curr.quantity || 1;
-      return acc + (price * qty);
+      return acc + (this.parsePrice(curr.priceINR) * (curr.quantity || 1));
     }, 0);
   }
 
