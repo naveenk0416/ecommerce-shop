@@ -70,15 +70,32 @@ export class App {
   regGST = signal('');
 
   isRegistering = signal(false);
-  isVerifyingOTP = signal(false);
-  isSendingOTP = signal(false);
-  otpCode = signal('');
+  isLinkSent = signal(false);
+  isSendingLink = signal(false);
   authError = signal<string | null>(null);
 
   constructor() {
     addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, arrowBack, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star });
     
     if (isPlatformBrowser(this.platformId)) {
+      // Handle Firebase Email Link Login
+      const url = window.location.href;
+      if (this.auth.isLoginLink(url)) {
+        let email = window.localStorage.getItem('emailForSignIn');
+        if (!email) {
+          // If the link was opened on a different device, ask for the email
+          email = window.prompt('Please provide your email for confirmation');
+        }
+        if (email) {
+          this.auth.signInWithLink(email, url).then(() => {
+            this.showLanding.set(false);
+            window.history.replaceState({}, '', window.location.pathname);
+          }).catch(err => {
+            console.error('Link sign-in error:', err);
+            this.authError.set('Failed to sign in with that link. It may have expired.');
+          });
+        }
+      }
       // Reactively fetch listings when user changes
       effect((onCleanup) => {
         const user = this.auth.user();
@@ -233,7 +250,7 @@ export class App {
     this.activeTab.set('details');
   }
 
-  async login() {
+  async loginWithGoogle() {
     this.authError.set(null);
     try {
       await this.auth.loginWithGoogle();
@@ -244,77 +261,108 @@ export class App {
     }
   }
 
-  async emailAuth() {
+  async loginWithEmail() {
     this.authError.set(null);
     if (!this.email() || !this.password()) {
       this.authError.set('Please enter both email and password.');
       return;
     }
 
-    if (this.isRegistering() && !this.isVerifyingOTP()) {
-      this.resendOTP();
-      return;
-    }
-
+    this.isProcessing.set(true);
     try {
-      if (this.isRegistering()) {
-        const isValid = await this.auth.verifyOTP(this.email(), this.otpCode());
-        if (!isValid) {
-          this.authError.set('Invalid or expired verification code.');
-          return;
-        }
-
-        await this.auth.registerWithEmail(
-          this.email(), 
-          this.password(), 
-          { 
-            displayName: this.regName(), 
-            phoneNumber: this.regPhone(), 
-            gstNumber: this.regGST() 
-          }
-        );
-        this.isVerifyingOTP.set(false);
-        this.otpCode.set('');
-        this.showLanding.set(false);
-      } else {
-        await this.auth.loginWithEmail(this.email(), this.password());
-        this.showLanding.set(false);
-      }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await this.auth.loginWithEmail(this.email(), this.password());
+      this.showLanding.set(false);
+      this.resetAuthForm();
     } catch (error: any) {
-      if (error.code === 'auth/operation-not-allowed') {
-        this.authError.set('Email login is currently disabled in Firebase. Please enable it in the console or use Google Login below.');
-      } else {
-        this.authError.set(error.message || 'Authentication failed.');
-      }
+      this.authError.set(this.getAuthErrorMessage(error.code || error.message));
+    } finally {
+      this.isProcessing.set(false);
     }
   }
 
-  async resendOTP() {
+  async register() {
     this.authError.set(null);
-    this.isSendingOTP.set(true);
+    if (!this.email() || !this.password()) {
+      this.authError.set('Please enter both email and password.');
+      return;
+    }
+
+    if (this.password().length < 6) {
+      this.authError.set('Password should be at least 6 characters.');
+      return;
+    }
+
+    this.isProcessing.set(true);
     try {
-      await this.auth.sendOTP(this.email());
-      this.isVerifyingOTP.set(true);
+      await this.auth.registerWithEmail(this.email(), this.password(), {
+        displayName: this.regName(),
+        phoneNumber: this.regPhone(),
+        gstNumber: this.regGST()
+      });
+      this.showLanding.set(false);
+      this.resetAuthForm();
+    } catch (error: any) {
+      this.authError.set(this.getAuthErrorMessage(error.code || error.message));
+    } finally {
+      this.isProcessing.set(false);
+    }
+  }
+
+  private resetAuthForm() {
+    this.email.set('');
+    this.password.set('');
+    this.regName.set('');
+    this.regPhone.set('');
+    this.regGST.set('');
+    this.isRegistering.set(false);
+  }
+
+  private getAuthErrorMessage(code: string): string {
+    switch (code) {
+      case 'auth/email-already-in-use':
+        return 'This email is already registered.';
+      case 'auth/invalid-email':
+        return 'Invalid email address.';
+      case 'auth/weak-password':
+        return 'Password is too weak.';
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        return 'Invalid email or password.';
+      default:
+        return 'Authentication failed. Please try again.';
+    }
+  }
+
+  async emailAuth() {
+    this.authError.set(null);
+    if (!this.email()) {
+      this.authError.set('Please enter your email.');
+      return;
+    }
+
+    this.isSendingLink.set(true);
+    try {
+      await this.auth.sendLoginLink(this.email());
+      this.isLinkSent.set(true);
       const toast = await this.toastController.create({
-        message: 'Verification code sent to your email!',
-        duration: 3000,
+        message: 'Login link sent to your email!',
+        duration: 5000,
         color: 'success',
         position: 'bottom'
       });
       await toast.present();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.authError.set('Failed to send OTP. ' + (message || ''));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to send login link.';
+      this.authError.set(message);
     } finally {
-      this.isSendingOTP.set(false);
+      this.isSendingLink.set(false);
     }
   }
 
   toggleRegister() {
     this.isRegistering.set(!this.isRegistering());
-    this.isVerifyingOTP.set(false);
-    this.otpCode.set('');
+    this.isLinkSent.set(false);
     this.authError.set(null);
   }
 

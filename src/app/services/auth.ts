@@ -1,15 +1,17 @@
 import { Injectable, signal, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
 import { 
   GoogleAuthProvider, 
   signInWithPopup, 
   signOut, 
   onAuthStateChanged, 
   User,
+  isSignInWithEmailLink,
+  sendSignInLinkToEmail,
+  signInWithEmailLink,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  updateProfile as firebaseUpdateProfile
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -39,7 +41,6 @@ export interface AdditionalUserData {
 })
 export class AuthService {
   private platformId = inject(PLATFORM_ID);
-  private http = inject(HttpClient);
   user = signal<User | null>(null);
   profile = signal<UserProfile | null>(null);
   isAuthReady = signal(false);
@@ -139,23 +140,31 @@ export class AuthService {
     }
   }
 
-  async registerWithEmail(email: string, pass: string, additionalData: AdditionalUserData = {}) {
+  async registerWithEmail(email: string, password: string, additionalData: AdditionalUserData = {}) {
     try {
-      const result = await createUserWithEmailAndPassword(auth, email, pass);
+      const result = await createUserWithEmailAndPassword(auth, email, password);
       if (result.user) {
+        if (additionalData.displayName) {
+          await firebaseUpdateProfile(result.user, { displayName: additionalData.displayName });
+        }
         await this.syncUserProfile(result.user, additionalData);
       }
+      return result.user;
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
     }
   }
 
-  async loginWithEmail(email: string, pass: string) {
+  async loginWithEmail(email: string, password: string) {
     try {
-      await signInWithEmailAndPassword(auth, email, pass);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      if (result.user) {
+        await this.syncUserProfile(result.user);
+      }
+      return result.user;
     } catch (error) {
-      console.error('Email login failed:', error);
+      console.error('Login failed:', error);
       throw error;
     }
   }
@@ -170,54 +179,53 @@ export class AuthService {
   }
 
   /**
-   * Generates and sends an OTP to the specified email.
-   * Stores the OTP in Firestore for verification.
+   * Sends a passwordless login link to the specified email.
    */
-  async sendOTP(email: string): Promise<string> {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+  async sendLoginLink(email: string): Promise<void> {
+    const url = new URL(window.location.href);
+    url.search = ''; // Clean up query params
+    url.hash = '';
 
-    const otpData = {
-      email,
-      code: otp,
-      expiresAt: expiresAt.toISOString()
+    const actionCodeSettings = {
+      // URL you want to redirect back to. The domain (www.example.com) for this
+      // URL must be whitelisted in the Firebase Console.
+      url: url.toString(),
+      // This must be true.
+      handleCodeInApp: true,
     };
 
     try {
-      const otpRef = doc(db, 'verificationCodes', email);
-      await setDoc(otpRef, otpData);
-      
-      // Call the server endpoint to send the actual email
-      await firstValueFrom(this.http.post('/api/send-otp', { email, otp }));
-      
-      return otp;
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      // Save the email locally so you don't have to ask the user for it again
+      // if they open the link on the same device.
+      window.localStorage.setItem('emailForSignIn', email);
     } catch (error) {
-      console.error('Failed to send OTP:', error);
+      console.error('Failed to send login link:', error);
       throw error;
     }
   }
 
   /**
-   * Verifies the OTP provided by the user.
+   * Checks if the incoming URL is a sign-in link.
    */
-  async verifyOTP(email: string, otp: string): Promise<boolean> {
+  isLoginLink(url: string): boolean {
+    return isSignInWithEmailLink(auth, url);
+  }
+
+  /**
+   * Completes the sign-in with the link.
+   */
+  async signInWithLink(email: string, url: string): Promise<User | null> {
     try {
-      const otpRef = doc(db, 'verificationCodes', email);
-      const snap = await getDoc(otpRef);
-      
-      if (!snap.exists()) return false;
-      
-      const data = snap.data();
-      if (data['code'] !== otp) return false;
-      
-      const expiresAt = new Date(data['expiresAt']);
-      if (new Date() > expiresAt) return false;
-      
-      return true;
+      const result = await signInWithEmailLink(auth, email, url);
+      window.localStorage.removeItem('emailForSignIn');
+      if (result.user) {
+        await this.syncUserProfile(result.user);
+      }
+      return result.user;
     } catch (error) {
-      console.error('OTP verification failed:', error);
-      return false;
+      console.error('Sign in with link failed:', error);
+      throw error;
     }
   }
 

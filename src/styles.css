@@ -25,6 +25,12 @@
 }
 
 @layer base {
+  button {
+    @apply border-0;
+    padding: 15px;
+    border-radius: 30px;
+  }
+
   .landing-container {
     @apply bg-slate-50 min-h-screen overflow-x-hidden pt-10 font-sans;
   }
