@@ -45,7 +45,7 @@
           @if (auth.user()) {
             <div class="flex items-center gap-3">
               @if (auth.isAdmin()) {
-                <button (click)="mainView.set('admin'); showLanding.set(false)" class="btn-icon-premium w-10 h-10">
+                <button (click)="mainView.set('admin'); showLanding.set(false)" class="btn-icon-premium w-10 h-10" aria-label="Open admin dashboard">
                   <ion-icon name="shield-checkmark"></ion-icon>
                 </button>
               }
@@ -90,7 +90,7 @@
             <!-- Login/Auth Section if not logged in -->
             <section class="max-w-md mx-auto py-16 px-10 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
               <div class="text-center mb-10 relative">
-                <button (click)="showLanding.set(true)" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600">
+                <button (click)="showLanding.set(true)" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600" aria-label="Close login modal">
                   <ion-icon name="close" class="text-2xl"></ion-icon>
                 </button>
                 <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -524,7 +524,7 @@
                           Save Listing
                         }
                       </button>
-                      <button (click)="reset()" class="btn-secondary !p-0 w-12 h-12 flex items-center justify-center">
+                      <button (click)="reset()" class="btn-secondary !p-0 w-12 h-12 flex items-center justify-center" aria-label="Reset listing edits">
                         <ion-icon name="close" class="text-xl"></ion-icon>
                       </button>
                     </div>
@@ -613,10 +613,10 @@
                                 <div class="w-8 h-8 rounded-full bg-pink-100 border-2 border-white flex items-center justify-center"><ion-icon name="heart" class="text-[10px] text-pink-600"></ion-icon></div>
                              </div>
                              <div class="flex gap-2">
-                                <button (click)="viewListing(listing)" class="btn-icon-dark w-9 h-9">
+                                <button (click)="viewListing(listing)" class="btn-icon-dark w-9 h-9" aria-label="View listing details">
                                   <ion-icon name="eye"></ion-icon>
                                 </button>
-                                <button (click)="deleteListing(listing.id)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600">
+                                <button (click)="deleteListing(listing.id)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600" aria-label="Delete listing">
                                   <ion-icon name="trash"></ion-icon>
                                 </button>
                              </div>
@@ -677,6 +677,7 @@
           <div class="flex justify-center gap-2 my-8">
             @for (star of ratingStars; track star) {
               <button (click)="setRating(star)" 
+                      [attr.aria-label]="'Rate ' + star + ' stars'"
                       class="text-4xl transition-all duration-200 transform hover:scale-125 focus:outline-none"
                       [class.text-orange-500]="currentFeedbackRating() >= star"
                       [class.text-slate-300]="currentFeedbackRating() < star">
