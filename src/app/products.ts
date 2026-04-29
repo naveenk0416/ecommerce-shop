@@ -95,7 +95,7 @@ export class Products {
     this.closeAddModal();
   }
 
-  parsePrice(price: any): number {
+  parsePrice(price: string | number | null | undefined): number {
     if (!price) return 0;
     if (typeof price === 'number') return price;
     const cleaned = String(price).replace(/[^0-9.]/g, '');
