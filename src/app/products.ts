@@ -2,16 +2,16 @@ import { Component, input, output, ChangeDetectionStrategy, signal, inject } fro
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { 
-  IonButton, IonIcon, IonModal, IonBadge, IonLabel, IonSpinner, IonRange, IonSegment, IonSegmentButton, IonInput, IonTextarea
+  IonButton, IonIcon, IonModal, IonBadge, IonLabel, IonSpinner, IonRange, IonSegment, IonSegmentButton, IonInput, IonTextarea, ToastController
 } from '@ionic/angular/standalone';
-import { Listing } from './services/listing';
+import { Listing, ListingService, Sale } from './services/listing';
 import { AuthService } from './services/auth';
 import { addIcons } from 'ionicons';
 import { 
   cube, search, filter, ellipsisVertical, 
   eye, trash, trendingUp, alertCircle, add,
   pricetag, statsChart, chevronDown, close,
-  save, list
+  save, list, cart, storefront, paperPlane, logoInstagram
 } from 'ionicons/icons';
 
 @Component({
@@ -28,6 +28,9 @@ import {
 })
 export class Products {
   public auth = inject(AuthService);
+  private listingService = inject(ListingService);
+  private toastController = inject(ToastController);
+
   listings = input<Listing[]>([]);
   view = output<Listing>();
   delete = output<string>();
@@ -38,17 +41,21 @@ export class Products {
     addIcons({ 
       cube, search, filter, ellipsisVertical, eye, trash, 
       trendingUp, alertCircle, add, pricetag, statsChart,
-      chevronDown, close, save, list
+      chevronDown, close, save, list, cart, storefront,
+      paperPlane, logoInstagram
     });
   }
 
   isAddModalOpen = signal(false);
+  isSaleModalOpen = signal(false);
+  selectedListingForSale = signal<Listing | null>(null);
+
   newProduct = signal<Partial<Listing>>({
     name: '',
     category: '',
     quantity: 1,
-    costPrice: '',
-    sellingPrice: '',
+    costPrice: 0,
+    sellingPrice: 0,
     description: '',
     priceINR: '0',
     gstRate: '12%',
@@ -56,6 +63,13 @@ export class Products {
     material: '',
     variations: [],
     platformContent: {}
+  });
+
+  saleData = signal<Omit<Sale, 'id' | 'uid' | 'date'>>({
+    listingId: '',
+    platform: 'Amazon',
+    quantity: 1,
+    salePrice: 0
   });
 
   openAddModal() {
@@ -67,13 +81,60 @@ export class Products {
     this.isAddModalOpen.set(false);
   }
 
+  openSaleModal(listing: Listing) {
+    this.selectedListingForSale.set(listing);
+    this.saleData.set({
+      listingId: listing.id!,
+      platform: 'Amazon',
+      quantity: 1,
+      salePrice: listing.sellingPrice || this.parsePrice(listing.priceINR)
+    });
+    this.isSaleModalOpen.set(true);
+  }
+
+  closeSaleModal() {
+    this.isSaleModalOpen.set(false);
+    this.selectedListingForSale.set(null);
+  }
+
+  async submitSale() {
+    const data = this.saleData();
+    const listing = this.selectedListingForSale();
+    if (!data.listingId || data.quantity <= 0 || !listing) return;
+
+    try {
+      await this.listingService.logSale(data);
+      
+      // Decrement inventory quantity
+      const currentQty = listing.quantity || 1;
+      const newQty = Math.max(0, currentQty - data.quantity);
+      await this.listingService.updateListing(data.listingId, { quantity: newQty });
+
+      const toast = await this.toastController.create({
+        message: `Sale logged! Inventory updated to ${newQty} units.`,
+        duration: 2000,
+        color: 'success'
+      });
+      await toast.present();
+      this.closeSaleModal();
+    } catch (error) {
+      console.error('Failed to log sale:', error);
+      const toast = await this.toastController.create({
+        message: 'Could not log sale. Please check your permissions and data.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
   resetNewProduct() {
     this.newProduct.set({
       name: '',
       category: '',
       quantity: 1,
-      costPrice: '',
-      sellingPrice: '',
+      costPrice: 0,
+      sellingPrice: 0,
       description: '',
       priceINR: '0',
       gstRate: '18%',
@@ -86,25 +147,39 @@ export class Products {
 
   submitManualProduct() {
     const product = this.newProduct();
-    if (!product.name || !product.sellingPrice) return;
+    const sellingPrice = Number(product.sellingPrice) || 0;
+    if (!product.name || sellingPrice <= 0) return;
     
     // Auto-fill priceINR for consistency with existing data
-    product.priceINR = `₹${product.sellingPrice}`;
+    product.priceINR = `₹${sellingPrice}`;
     
     this.addManual.emit(product);
     this.closeAddModal();
   }
 
-  parsePrice(price: any): number {
-    if (!price) return 0;
+  parsePrice(price: string | number | undefined | null): number {
+    if (price === undefined || price === null) return 0;
     if (typeof price === 'number') return price;
     const cleaned = String(price).replace(/[^0-9.]/g, '');
     return parseFloat(cleaned) || 0;
   }
 
+  getProfit(listing: Listing): number {
+    const sell = listing.sellingPrice || this.parsePrice(listing.priceINR);
+    const cost = listing.costPrice || 0;
+    if (cost === 0) return 0;
+    return (sell - cost) * (listing.quantity || 1);
+  }
+
   get totalValue(): number {
     return this.listings().reduce((acc, curr) => {
       return acc + (this.parsePrice(curr.priceINR) * (curr.quantity || 1));
+    }, 0);
+  }
+
+  get totalProfit(): number {
+    return this.listings().reduce((acc, curr) => {
+      return acc + this.getProfit(curr);
     }, 0);
   }
 

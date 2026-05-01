@@ -14,8 +14,8 @@ export interface ProductDetails {
   platformContent: Record<string, Record<string, string | string[]>>;
   category?: string;
   quantity?: number;
-  costPrice?: string;
-  sellingPrice?: string;
+  costPrice?: number;
+  sellingPrice?: number;
 }
 
 @Injectable({
