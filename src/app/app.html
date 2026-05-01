@@ -45,7 +45,7 @@
           @if (auth.user()) {
             <div class="flex items-center gap-3">
               @if (auth.isAdmin()) {
-                <button (click)="mainView.set('admin'); showLanding.set(false)" class="btn-icon-premium w-10 h-10">
+                <button (click)="mainView.set('admin'); showLanding.set(false)" class="btn-icon-premium w-10 h-10" aria-label="Admin Dashboard">
                   <ion-icon name="shield-checkmark"></ion-icon>
                 </button>
               }
@@ -613,10 +613,10 @@
                                 <div class="w-8 h-8 rounded-full bg-pink-100 border-2 border-white flex items-center justify-center"><ion-icon name="heart" class="text-[10px] text-pink-600"></ion-icon></div>
                              </div>
                              <div class="flex gap-2">
-                                <button (click)="viewListing(listing)" class="btn-icon-dark w-9 h-9">
+                                <button (click)="viewListing(listing)" class="btn-icon-dark w-9 h-9" aria-label="View listing">
                                   <ion-icon name="eye"></ion-icon>
                                 </button>
-                                <button (click)="deleteListing(listing.id)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600">
+                                <button (click)="deleteListing(listing.id)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600" aria-label="Delete listing">
                                   <ion-icon name="trash"></ion-icon>
                                 </button>
                              </div>
