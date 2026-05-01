@@ -1,0 +1,191 @@
+
+> ai-studio-angular-app@0.0.0 dev /app
+> [ ! -f src/app/env.ts ] || grep -q "''" src/app/env.ts || grep -q "MY_GEMINI_API_KEY" src/app/env.ts && [ -n "$GEMINI_API_KEY" ] && printf "export const GEMINI_API_KEY = '%s';\n" "$GEMINI_API_KEY" > src/app/env.ts; SERVER_PORT=4000 npx tsx src/server.ts & npx ng serve --host 0.0.0.0 --port 3000 --live-reload=false
+
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+Warning: This is a simple server for use in testing or debugging Angular applications
+locally. It hasn't been reviewed for security issues.
+
+Binding this server to an open connection can result in compromising your application or
+computer. Using a different host than the one passed to the "--host" flag might result in
+websocket connection issues.
+
+❯ Building...
+JIT compilation failed for injectable [class PlatformLocation]
+/app/node_modules/.pnpm/@angular+core@21.2.11_@angular+compiler@21.2.11_rxjs@7.8.2_zone.js@0.16.1/node_modules/@angular/core/fesm2022/_debug_node-chunk.mjs:143
+    throw new Error(message);
+          ^
+
+Error: The injectable 'PlatformLocation' needs to be compiled using the JIT compiler, but '@angular/compiler' is not available.
+
+The injectable is part of a library that has been partially compiled.
+However, the Angular Linker has not processed the library such that JIT compilation is used as fallback.
+
+Ideally, the library is processed using the Angular Linker to become fully AOT compiled.
+Alternatively, the JIT compiler should be loaded by bootstrapping using '@angular/platform-browser-dynamic' or '@angular/platform-server',
+or manually provide the compiler with 'import "@angular/compiler";' before bootstrapping.
+    at getCompilerFacade (/app/node_modules/.pnpm/@angular+core@21.2.11_@angular+compiler@21.2.11_rxjs@7.8.2_zone.js@0.16.1/node_modules/@angular/core/fesm2022/_debug_node-chunk.mjs:143:11)
+    at Object.ɵɵngDeclareFactory (/app/node_modules/.pnpm/@angular+core@21.2.11_@angular+compiler@21.2.11_rxjs@7.8.2_zone.js@0.16.1/node_modules/@angular/core/fesm2022/core.mjs:2622:20)
+    at Function.<static_initializer> (/app/node_modules/.pnpm/@angular+common@21.2.11_@angular+core@21.2.11_@angular+compiler@21.2.11_rxjs@7.8.2_zone.js@0.16.1__rxjs@7.8.2/node_modules/@angular/common/fesm2022/_platform_location-chunk.mjs:23:20)
+    at window (/app/node_modules/.pnpm/@angular+common@21.2.11_@angular+core@21.2.11_@angular+compiler@21.2.11_rxjs@7.8.2_zone.js@0.16.1__rxjs@7.8.2/node_modules/@angular/common/fesm2022/_platform_location-chunk.mjs:17:1)
+    at Object.<anonymous> (/app/node_modules/.pnpm/@angular+common@21.2.11_@angular+core@21.2.11_@angular+compiler@21.2.11_rxjs@7.8.2_zone.js@0.16.1__rxjs@7.8.2/node_modules/@angular/common/fesm2022/_platform_location-chunk.mjs:148:2)
+    at Module._compile (node:internal/modules/cjs/loader:1705:14)
+    at Object.transformer (/app/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+
+Node.js v22.22.1
+npm notice
+npm notice New minor version of npm available! 11.11.0 -> 11.13.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+npm notice To update run: npm install -g npm@11.13.0
+npm notice
+✔ Building...
+Browser bundles
+Initial chunk files  | Names            |  Raw size
+main.js              | main             | 411.77 kB |
+styles.css           | styles           | 162.27 kB |
+
+                     | Initial total    | 574.04 kB
+
+
+Server bundles
+Initial chunk files  | Names            |  Raw size
+main.server.mjs      | main.server      | 412.20 kB |
+server.mjs           | server           |   2.12 kB |
+chunk-54EZUNS5.mjs   | -                | 972 bytes |
+polyfills.server.mjs | polyfills.server | 268 bytes |
+
+Application bundle generation complete. [8.115 seconds] - 2026-05-01T05:44:59.187Z
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of AdminComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/admin.ts:12:18:
+[37m      12 │     CommonModule, [32mIonButton[37m, IonIcon, IonSpinner
+         ╵                   [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: Pricing is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:29:81:
+[37m      29 │ ...ng, Products, AdminComponent, GstCalculator, [32mPricing[37m, ImageEditor,
+         ╵                                                 [32m~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonCardContent is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:32:4:
+[37m      32 │     [32mIonCardContent[37m, IonLabel, IonBadge, IonSpinner,
+         ╵     [32m~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonBadge is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:32:30:
+[37m      32 │     IonCardContent, IonLabel, [32mIonBadge[37m, IonSpinner,
+         ╵                               [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegment is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:33:4:
+[37m      33 │     [32mIonSegment[37m, IonSegmentButton, IonInput, IonTextarea
+         ╵     [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegmentButton is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:33:16:
+[37m      33 │     IonSegment, [32mIonSegmentButton[37m, IonInput, IonTextarea
+         ╵                 [32m~~~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of Landing[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/landing.ts:15:4:
+[37m      15 │     [32mIonButton[37m, IonIcon
+         ╵     [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of Pricing[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/pricing.ts:12:26:
+[37m      12 │   imports: [CommonModule, [32mIonButton[37m, IonIcon, IonCard, IonCardHead...
+         ╵                           [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:4:
+[37m      24 │     [32mIonButton[37m, IonIcon, IonModal, IonBadge, IonLabel, IonSpinner, ...
+         ╵     [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonBadge is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:34:
+[37m      24 │ ...nButton, IonIcon, IonModal, [32mIonBadge[37m, IonLabel, IonSpinner, Ion...
+         ╵                                [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonLabel is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:44:
+[37m      24 │ ...onIcon, IonModal, IonBadge, [32mIonLabel[37m, IonSpinner, IonRange, Ion...
+         ╵                                [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSpinner is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:54:
+[37m      24 │ ...Modal, IonBadge, IonLabel, [32mIonSpinner[37m, IonRange, IonSegment, Io...
+         ╵                               [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonRange is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:66:
+[37m      24 │ ...adge, IonLabel, IonSpinner, [32mIonRange[37m, IonSegment, IonSegmentBut...
+         ╵                                [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegment is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:76:
+[37m      24 │ ...bel, IonSpinner, IonRange, [32mIonSegment[37m, IonSegmentButton, IonInp...
+         ╵                               [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegmentButton is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:88:
+[37m      24 │ ...ner, IonRange, IonSegment, [32mIonSegmentButton[37m, IonInput, IonTextarea
+         ╵                               [32m~~~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonInput is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:106:
+[37m      24 │ ...ner, IonRange, IonSegment, IonSegmentButton, [32mIonInput[37m, IonTextarea
+         ╵                                                 [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonTextarea is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:116:
+[37m      24 │ ...ner, IonRange, IonSegment, IonSegmentButton, IonInput, [32mIonTextarea[37m
+         ╵                                                           [32m~~~~~~~~~~~[0m
+
+
+Watch mode enabled. Watching for file changes...
+NOTE: Raw file sizes do not reflect development server per-request transformations.
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://192.168.0.2:3000/
+Firestore connectivity test yielded: Missing or insufficient permissions.

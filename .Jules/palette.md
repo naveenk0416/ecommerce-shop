@@ -1,0 +1,3 @@
+## 2024-05-19 - Missing ARIA Labels on Premium Action Buttons
+**Learning:** Found multiple instances of icon-only action buttons (`btn-icon-premium` and `btn-icon-dark`) lacking `aria-label` attributes. These are frequently used for primary user actions like opening settings, closing modals, and managing assets. This creates a significant barrier for screen reader users as they encounter unlabelled controls.
+**Action:** Always verify that buttons consisting exclusively of `<ion-icon>` elements include a descriptive `aria-label` attribute. This is particularly important for utility buttons in list items and modals.
