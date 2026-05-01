@@ -27,7 +27,7 @@
 @layer base {
   button {
     @apply border-0;
-    padding: 15px;
+    padding: 18px 32px;
     border-radius: 30px;
   }
 
@@ -218,15 +218,15 @@
   }
 
   .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-linear-to-br from-[#F97316] to-[#FB923C] text-white py-[14px] px-[32px] shadow-[0_10px_25px_rgba(249,115,22,0.4)] hover:brightness-110 hover:-translate-y-0.5 active:scale-95;
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-linear-to-br from-[#F97316] to-[#FB923C] text-white py-[18px] px-[42px] shadow-[0_10px_25px_rgba(249,115,22,0.4)] hover:brightness-110 hover:-translate-y-0.5 active:scale-95;
   }
 
   .btn-secondary {
-    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-white border border-slate-100 text-slate-950 p-[14px] hover:bg-slate-50 hover:border-slate-200 active:scale-95 shadow-sm;
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-white border border-slate-100 text-slate-950 px-[32px] py-[18px] hover:bg-slate-50 hover:border-slate-200 active:scale-95 shadow-sm;
   }
 
   .btn-ghost {
-    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none text-slate-400 p-[12px] hover:bg-slate-100 hover:text-slate-950 active:scale-95;
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none text-slate-400 py-[16px] px-[28px] hover:bg-slate-100 hover:text-slate-950 active:scale-95;
   }
 
   .btn-orange-premium {
@@ -234,7 +234,7 @@
   }
 
   .btn-icon-premium {
-    @apply flex items-center justify-center w-12 h-12 rounded-[15px] transition-all duration-300 border border-slate-100 bg-white text-slate-400 hover:text-orange-600 hover:border-orange-100 hover:bg-orange-50 active:scale-90 shadow-sm;
+    @apply flex items-center justify-center w-14 h-14 rounded-[15px] transition-all duration-300 border border-slate-100 bg-white text-slate-400 hover:text-orange-600 hover:border-orange-100 hover:bg-orange-50 active:scale-90 shadow-sm;
   }
 
   .btn-icon-dark {
