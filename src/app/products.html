@@ -119,7 +119,7 @@
                     <span class="text-xl font-bold font-display italic tracking-widest" 
                           [class.text-slate-900]="!isLowStock(listing)"
                           [class.text-red-600]="isLowStock(listing)">
-                      {{ listing.quantity || 1 }}
+                      {{ listing.quantity ?? 0 }}
                     </span>
                     @if (isLowStock(listing)) {
                       <span class="text-[7px] font-black bg-red-600 text-white px-1.5 py-0.5 rounded uppercase mt-1 animate-bounce">Low Stock</span>
