@@ -113,7 +113,7 @@ export class Products {
       await this.listingService.logSale(submissionData);
       
       // Decrement inventory quantity
-      const currentQty = Number(listing.quantity) || 1;
+      const currentQty = Number(listing.quantity ?? 0);
       const newQty = Math.max(0, currentQty - submissionData.quantity);
       await this.listingService.updateListing(data.listingId, { quantity: newQty });
 
@@ -180,12 +180,12 @@ export class Products {
     const sell = listing.sellingPrice || this.parsePrice(listing.priceINR);
     const cost = listing.costPrice || 0;
     if (cost === 0) return 0;
-    return (sell - cost) * (listing.quantity || 1);
+    return (sell - cost) * (listing.quantity ?? 0);
   }
 
   get totalValue(): number {
     return this.listings().reduce((acc, curr) => {
-      return acc + (this.parsePrice(curr.priceINR) * (curr.quantity || 1));
+      return acc + (this.parsePrice(curr.priceINR) * (curr.quantity ?? 0));
     }, 0);
   }
 
@@ -196,15 +196,15 @@ export class Products {
   }
 
   get lowStockCount(): number {
-    return this.listings().filter(l => (l.quantity || 0) < 5).length;
+    return this.listings().filter(l => (l.quantity ?? 0) < 5).length;
   }
 
   isLowStock(listing: Listing): boolean {
-    return (listing.quantity || 0) < 5;
+    return (listing.quantity ?? 0) < 5;
   }
 
   get averagePrice(): number {
-    const totalQty = this.listings().reduce((acc, curr) => acc + (curr.quantity || 1), 0);
+    const totalQty = this.listings().reduce((acc, curr) => acc + (curr.quantity ?? 0), 0);
     if (totalQty === 0) return 0;
     return this.totalValue / totalQty;
   }

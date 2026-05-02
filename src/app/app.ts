@@ -244,6 +244,9 @@ export class App {
           handler: async (data) => {
             this.isSaving.set(true);
             try {
+              const current = this.productDetails();
+              const existingId = (current as Listing)?.id;
+
               const updatedDetails: ProductDetails = {
                 ...details,
                 priceINR: String(data.price || '').startsWith('₹') ? String(data.price) : `₹${data.price}`,
@@ -252,25 +255,28 @@ export class App {
                 quantity: parseInt(data.quantity || '0', 10)
               };
 
-              const docRef = await this.listingService.saveListing(updatedDetails, original, this.processedImage());
+              if (existingId) {
+                await this.listingService.updateListing(existingId, updatedDetails);
+              } else {
+                const docRef = await this.listingService.saveListing(updatedDetails, original, this.processedImage());
+                this.pendingListingId.set(docRef.id);
+                this.showFeedbackModal.set(true);
+              }
+
               const toast = await this.toastController.create({
-                message: 'Listing saved successfully!',
+                message: existingId ? 'Listing updated successfully!' : 'Listing saved successfully!',
                 duration: 2000,
                 color: 'success',
                 position: 'bottom'
               });
               await toast.present();
 
-              // Trigger Feedback Flow
-              this.pendingListingId.set(docRef.id);
-              this.showFeedbackModal.set(true);
-
               this.mainView.set('listings');
               this.reset();
             } catch (error) {
-              console.error('Failed to save listing:', error);
+              console.error('Failed to save/update listing:', error);
               const toast = await this.toastController.create({
-                message: 'Failed to save listing. Please try again.',
+                message: 'Failed to process listing. Please try again.',
                 duration: 3000,
                 color: 'danger',
                 position: 'bottom'
@@ -289,14 +295,57 @@ export class App {
 
   async deleteListing(id: string | undefined) {
     if (!id) return;
-    await this.listingService.deleteListing(id);
+    
+    const alert = await this.alertController.create({
+      header: 'Confirm Deletion',
+      message: 'Are you sure you want to permanently remove this listing from your inventory?',
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Delete',
+          role: 'destructive',
+          handler: async () => {
+            try {
+              await this.listingService.deleteListing(id);
+              const toast = await this.toastController.create({
+                message: 'Listing removed from inventory',
+                duration: 2000,
+                color: 'success',
+                position: 'bottom'
+              });
+              await toast.present();
+            } catch (error) {
+              console.error('Delete failed:', error);
+              const toast = await this.toastController.create({
+                message: 'Failed to delete listing. Permission denied.',
+                duration: 3000,
+                color: 'danger',
+                position: 'bottom'
+              });
+              await toast.present();
+            }
+          }
+        }
+      ]
+    });
+
+    await alert.present();
   }
 
   async handleAddManualProduct(product: Partial<Listing>) {
     try {
-      await this.listingService.saveListing(product as ProductDetails, '', null);
+      if (product.id) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id, ...updates } = product;
+        await this.listingService.updateListing(product.id, updates);
+      } else {
+        await this.listingService.saveListing(product as ProductDetails, '', null);
+      }
       const toast = await this.toastController.create({
-        message: 'Product added successfully!',
+        message: product.id ? 'Product updated successfully!' : 'Product added successfully!',
         duration: 3000,
         color: 'success',
         position: 'bottom'

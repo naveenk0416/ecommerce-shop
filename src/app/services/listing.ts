@@ -127,6 +127,7 @@ export class ListingService {
       await deleteDoc(doc(db, this.listingsPath, id));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, path);
+      throw error;
     }
   }
 
@@ -137,6 +138,7 @@ export class ListingService {
       await updateDoc(doc(db, this.listingsPath, id), updates);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
+      throw error;
     }
   }
 

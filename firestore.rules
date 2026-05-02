@@ -19,8 +19,8 @@ service cloud.firestore {
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
     function isAdmin() { 
       return request.auth != null && (
-        request.auth.token.email == 'naveenkumar0416@gmail.com' ||
-        request.auth.token.email == 'naveen@gmail.com' ||
+        (request.auth.token.email == 'naveenkumar0416@gmail.com') ||
+        (request.auth.token.email == 'naveen@gmail.com') ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       ); 
     }
@@ -109,14 +109,7 @@ service cloud.firestore {
       
       allow create: if isSignedIn() && isValidListing(incoming());
       
-      allow update: if isSignedIn() && 
-                    (existing().uid == request.auth.uid || isAdmin()) && 
-                    // Verify ownership remains or update is by admin
-                    (incoming().uid == existing().uid || isAdmin()) && (
-                      // Action: Edit Content or Sync Inventory
-                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'priceINR', 'sellingPrice', 'costPrice', 'gstRate', 'hsnCode', 'material', 'variations', 'platformContent', 'processedImage', 'originalImage', 'uid', 'quantity', 'category', 'id'])
-                    );
-      
+      allow update: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
       allow delete: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
 
       // Sales Subcollection
