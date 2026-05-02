@@ -56,7 +56,7 @@ service cloud.firestore {
 
     function isValidSale(data) {
       return data.keys().hasAll(['uid', 'listingId', 'platform', 'quantity', 'salePrice', 'date']) &&
-             data.uid == request.auth.uid &&
+             (data.uid == request.auth.uid || isAdmin()) &&
              data.platform in ['Amazon', 'Flipkart', 'Meesho', 'Instagram', 'Offline', 'Other'] &&
              data.quantity is number && data.quantity > 0 &&
              data.salePrice is number && data.salePrice >= 0;
@@ -119,7 +119,7 @@ service cloud.firestore {
       match /sales/{saleId} {
         allow read: if isSignedIn() && (get(/databases/$(database)/documents/listings/$(listingId)).data.uid == request.auth.uid || isAdmin());
         allow create: if isSignedIn() && isValidSale(incoming()) && 
-                      get(/databases/$(database)/documents/listings/$(listingId)).data.uid == request.auth.uid;
+                      (get(/databases/$(database)/documents/listings/$(listingId)).data.uid == request.auth.uid || isAdmin());
         allow delete: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/listings/$(listingId)).data.uid == request.auth.uid);
       }
     }

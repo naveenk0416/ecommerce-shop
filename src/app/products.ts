@@ -35,7 +35,7 @@ export class Products {
   view = output<Listing>();
   delete = output<string>();
   addManual = output<Partial<Listing>>();
-  searchQuery = signal<string>('');
+  searchQuery = '';
 
   constructor() {
     addIcons({ 
@@ -50,7 +50,7 @@ export class Products {
   isSaleModalOpen = signal(false);
   selectedListingForSale = signal<Listing | null>(null);
 
-  newProduct = signal<Partial<Listing>>({
+  newProduct: Partial<Listing> = {
     name: '',
     category: '',
     quantity: 1,
@@ -63,14 +63,14 @@ export class Products {
     material: '',
     variations: [],
     platformContent: {}
-  });
+  };
 
-  saleData = signal<Omit<Sale, 'id' | 'uid' | 'date'>>({
+  saleData: Omit<Sale, 'id' | 'uid' | 'date'> = {
     listingId: '',
     platform: 'Amazon',
     quantity: 1,
     salePrice: 0
-  });
+  };
 
   openAddModal() {
     this.resetNewProduct();
@@ -83,12 +83,12 @@ export class Products {
 
   openSaleModal(listing: Listing) {
     this.selectedListingForSale.set(listing);
-    this.saleData.set({
+    this.saleData = {
       listingId: listing.id!,
       platform: 'Amazon',
       quantity: 1,
       salePrice: listing.sellingPrice || this.parsePrice(listing.priceINR)
-    });
+    };
     this.isSaleModalOpen.set(true);
   }
 
@@ -98,16 +98,23 @@ export class Products {
   }
 
   async submitSale() {
-    const data = this.saleData();
+    const data = this.saleData;
     const listing = this.selectedListingForSale();
-    if (!data.listingId || data.quantity <= 0 || !listing) return;
+    if (!data.listingId || Number(data.quantity) <= 0 || !listing) return;
+
+    // Ensure numeric types for Firestore rules validation
+    const submissionData = {
+      ...data,
+      quantity: Number(data.quantity),
+      salePrice: Number(data.salePrice)
+    };
 
     try {
-      await this.listingService.logSale(data);
+      await this.listingService.logSale(submissionData);
       
       // Decrement inventory quantity
-      const currentQty = listing.quantity || 1;
-      const newQty = Math.max(0, currentQty - data.quantity);
+      const currentQty = Number(listing.quantity) || 1;
+      const newQty = Math.max(0, currentQty - submissionData.quantity);
       await this.listingService.updateListing(data.listingId, { quantity: newQty });
 
       const toast = await this.toastController.create({
@@ -129,7 +136,7 @@ export class Products {
   }
 
   resetNewProduct() {
-    this.newProduct.set({
+    this.newProduct = {
       name: '',
       category: '',
       quantity: 1,
@@ -142,16 +149,21 @@ export class Products {
       material: '',
       variations: [],
       platformContent: {}
-    });
+    };
   }
 
   submitManualProduct() {
-    const product = this.newProduct();
+    const product = this.newProduct;
     const sellingPrice = Number(product.sellingPrice) || 0;
     if (!product.name || sellingPrice <= 0) return;
     
     // Auto-fill priceINR for consistency with existing data
     product.priceINR = `₹${sellingPrice}`;
+
+    // Ensure numeric types
+    product.quantity = Number(product.quantity);
+    product.costPrice = Number(product.costPrice);
+    product.sellingPrice = Number(product.sellingPrice);
     
     this.addManual.emit(product);
     this.closeAddModal();
@@ -183,6 +195,14 @@ export class Products {
     }, 0);
   }
 
+  get lowStockCount(): number {
+    return this.listings().filter(l => (l.quantity || 0) < 5).length;
+  }
+
+  isLowStock(listing: Listing): boolean {
+    return (listing.quantity || 0) < 5;
+  }
+
   get averagePrice(): number {
     const totalQty = this.listings().reduce((acc, curr) => acc + (curr.quantity || 1), 0);
     if (totalQty === 0) return 0;
@@ -190,7 +210,7 @@ export class Products {
   }
 
   get filteredListings(): Listing[] {
-    const query = this.searchQuery().toLowerCase();
+    const query = this.searchQuery.toLowerCase();
     if (!query) return this.listings();
     return this.listings().filter(l => 
       l.name.toLowerCase().includes(query) || 
