@@ -20,6 +20,7 @@ service cloud.firestore {
     function isAdmin() { 
       return request.auth != null && (
         request.auth.token.email == 'naveenkumar0416@gmail.com' ||
+        request.auth.token.email == 'naveen@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       ); 
     }
@@ -50,6 +51,8 @@ service cloud.firestore {
              ( !('gstRate' in data) || data.gstRate is string ) &&
              ( !('hsnCode' in data) || data.hsnCode is string ) &&
              ( !('material' in data) || data.material is string ) &&
+             ( !('originalImage' in data) || data.originalImage is string ) &&
+             ( !('processedImage' in data) || (data.processedImage is string || data.processedImage == null) ) &&
              ( !('variations' in data) || data.variations is list ) &&
              ( !('platformContent' in data) || data.platformContent is map );
     }
@@ -108,9 +111,10 @@ service cloud.firestore {
       
       allow update: if isSignedIn() && 
                     (existing().uid == request.auth.uid || isAdmin()) && 
-                    isValidListing(incoming()) && (
+                    // Verify ownership remains or update is by admin
+                    (incoming().uid == existing().uid || isAdmin()) && (
                       // Action: Edit Content or Sync Inventory
-                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'priceINR', 'sellingPrice', 'costPrice', 'gstRate', 'hsnCode', 'material', 'variations', 'platformContent', 'processedImage', 'uid', 'quantity', 'category'])
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'priceINR', 'sellingPrice', 'costPrice', 'gstRate', 'hsnCode', 'material', 'variations', 'platformContent', 'processedImage', 'originalImage', 'uid', 'quantity', 'category', 'id'])
                     );
       
       allow delete: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());

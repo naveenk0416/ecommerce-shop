@@ -246,9 +246,9 @@ export class App {
             try {
               const updatedDetails: ProductDetails = {
                 ...details,
-                priceINR: data.price.startsWith('₹') ? data.price : `₹${data.price}`,
-                sellingPrice: data.price,
-                costPrice: data.cost,
+                priceINR: String(data.price || '').startsWith('₹') ? String(data.price) : `₹${data.price}`,
+                sellingPrice: Number(data.price) || 0,
+                costPrice: Number(data.cost) || 0,
                 quantity: parseInt(data.quantity || '0', 10)
               };
 
