@@ -211,8 +211,13 @@ export class Products {
 
   get filteredListings(): Listing[] {
     const query = this.searchQuery.toLowerCase();
-    if (!query) return this.listings();
-    return this.listings().filter(l => 
+    const all = this.listings();
+    
+    // Deduplicate listings by ID to prevent NG0955
+    const unique = Array.from(new Map(all.map(item => [item.id, item])).values());
+    
+    if (!query) return unique;
+    return unique.filter(l => 
       l.name.toLowerCase().includes(query) || 
       (l.category || '').toLowerCase().includes(query) ||
       (l.hsnCode || '').toLowerCase().includes(query)
