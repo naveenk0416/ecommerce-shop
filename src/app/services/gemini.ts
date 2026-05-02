@@ -61,7 +61,7 @@ export class GeminiService {
       prompt += `- ${p.label}: ${p.customPrompt || 'Generate relevant content'} based on these fields: ${p.fields.filter(f => f.enabled).map(f => f.label).join(', ')}. ${p.fields.filter(f => f.customPrompt).map(f => `${f.label}: ${f.customPrompt}`).join('. ')}\n`;
     });
 
-    prompt += `\nReturn the data in the specified JSON format.`;
+    prompt += `\nReturn the data in the specified JSON format. Ensure HSN code is consistently chosen based on the most accurate Indian GST classification for this specific product category.`;
 
     // Build Dynamic Schema
     const properties: Record<string, unknown> = {};
@@ -128,7 +128,8 @@ export class GeminiService {
       ],
       config: {
         responseMimeType: "application/json",
-        responseSchema: responseSchema
+        responseSchema: responseSchema,
+        temperature: 0
       }
     });
 

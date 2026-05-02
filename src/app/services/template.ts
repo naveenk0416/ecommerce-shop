@@ -38,7 +38,7 @@ const DEFAULT_TEMPLATES: PlatformTemplate[] = [
       { id: 'sellingPrice', label: 'Selling Price (Raw Number)', enabled: true, order: 3, type: 'string' },
       { id: 'costPrice', label: 'Cost Price (Raw Number)', enabled: false, order: 4, type: 'string' },
       { id: 'gstRate', label: 'GST Rate', enabled: true, order: 5, type: 'string' },
-      { id: 'hsnCode', label: 'HSN Code', enabled: true, order: 6, type: 'string' },
+      { id: 'hsnCode', label: 'HSN Code', enabled: true, order: 6, type: 'string', customPrompt: 'Accurate 6 or 8 digit Indian HSN code based on product category' },
       { id: 'material', label: 'Material', enabled: true, order: 7, type: 'string' },
       { id: 'variations', label: 'Variations', enabled: true, order: 8, type: 'array' },
     ]
