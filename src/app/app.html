@@ -45,7 +45,7 @@
           @if (auth.user()) {
             <div class="flex items-center gap-3">
               @if (auth.isAdmin()) {
-                <button (click)="mainView.set('admin'); showLanding.set(false)" class="btn-icon-premium w-10 h-10">
+                <button (click)="mainView.set('admin'); showLanding.set(false)" class="btn-icon-premium w-10 h-10" aria-label="Admin settings">
                   <ion-icon name="shield-checkmark"></ion-icon>
                 </button>
               }
@@ -356,7 +356,7 @@
                                 <h3 class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">Master Record</h3>
                              </div>
                              <div class="flex gap-2">
-                                <button (click)="toggleEdit('master')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
+                                <button (click)="toggleEdit('master')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors" aria-label="Edit master details">
                                    <ion-icon name="pencil" class="text-xs"></ion-icon>
                                 </button>
                              </div>
@@ -524,7 +524,7 @@
                           Save Listing
                         }
                       </button>
-                      <button (click)="reset()" class="btn-secondary !p-0 w-12 h-12 flex items-center justify-center">
+                      <button (click)="reset()" class="btn-secondary !p-0 w-12 h-12 flex items-center justify-center" aria-label="Reset forms">
                         <ion-icon name="close" class="text-xl"></ion-icon>
                       </button>
                     </div>
@@ -613,10 +613,10 @@
                                 <div class="w-8 h-8 rounded-full bg-pink-100 border-2 border-white flex items-center justify-center"><ion-icon name="heart" class="text-[10px] text-pink-600"></ion-icon></div>
                              </div>
                              <div class="flex gap-2">
-                                <button (click)="viewListing(listing)" class="btn-icon-dark w-9 h-9">
+                                <button (click)="viewListing(listing)" class="btn-icon-dark w-9 h-9" aria-label="View listing details">
                                   <ion-icon name="eye"></ion-icon>
                                 </button>
-                                <button (click)="deleteListing(listing.id)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600">
+                                <button (click)="deleteListing(listing.id)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600" aria-label="Delete listing">
                                   <ion-icon name="trash"></ion-icon>
                                 </button>
                              </div>

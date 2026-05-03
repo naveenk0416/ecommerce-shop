@@ -1,0 +1,1 @@
+## 2026-05-03 - Accessible Icon-Only Buttons\n**Learning:** Icon-only buttons lacking ARIA labels cause significant accessibility issues in this app.\n**Action:** Ensure all icon-only buttons include descriptive `aria-label` attributes to support screen readers.
