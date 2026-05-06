@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Title, Meta } from '@angular/platform-browser';
+import { Router, RouterLink, RouterOutlet, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { IonApp, IonHeader, IonToolbar, IonContent, 
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
   IonCardContent, IonLabel, IonBadge, IonSpinner,
@@ -27,6 +30,7 @@ import { resizeImage } from './utils/image';
   standalone: true,
   imports: [
     CommonModule, FormsModule, Landing, Products, AdminComponent, GstCalculator, Pricing, ImageEditor,
+    RouterLink, RouterOutlet,
     IonApp, IonHeader, IonToolbar, IonContent, 
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, 
     IonCardContent, IonLabel, IonBadge, IonSpinner,
@@ -43,6 +47,9 @@ export class App {
   private platformId = inject(PLATFORM_ID);
   private toastController = inject(ToastController);
   private alertController = inject(AlertController);
+  private titleService = inject(Title);
+  private metaService = inject(Meta);
+  private router = inject(Router);
 
   showLanding = signal(true);
   selectedImage = signal<string | null>(null);
@@ -82,10 +89,85 @@ export class App {
   isSendingLink = signal(false);
   authError = signal<string | null>(null);
 
+  private syncViewWithUrl(path: string) {
+    if (path === '/' || path === '/home') {
+      this.showLanding.set(true);
+    } else {
+      this.showLanding.set(false);
+      if (path === '/listings') this.mainView.set('listings');
+      else if (path === '/inventory') this.mainView.set('products');
+      else if (path === '/gst-calculator') this.mainView.set('gst');
+      else if (path === '/admin') this.mainView.set('admin');
+      else if (path === '/optimize') this.mainView.set('home');
+    }
+  }
+
+  navigateTo(view: 'home' | 'listings' | 'products' | 'gst' | 'admin' | 'landing') {
+    if (view === 'landing') {
+      this.showLanding.set(true);
+      this.router.navigate(['/home']);
+    } else {
+      this.showLanding.set(false);
+      this.mainView.set(view);
+      const path = view === 'products' ? 'inventory' : (view === 'gst' ? 'gst-calculator' : (view === 'home' ? 'optimize' : view));
+      this.router.navigate(['/' + path]);
+    }
+  }
+
   constructor() {
     addIcons({ camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, logoGoogle, arrowForward, arrowBack, flash, rocket, shieldCheckmark, shieldCheckmarkOutline, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, trendingUp });
     
+    // Subscribe to route changes
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: NavigationEnd) => {
+      this.syncViewWithUrl(event.urlAfterRedirects);
+    });
+
     if (isPlatformBrowser(this.platformId)) {
+      // URL Sync Logic
+      const url = window.location.href;
+      this.syncViewWithUrl(window.location.pathname);
+
+      // SEO Effect
+      effect(() => {
+        const view = this.mainView();
+        const landing = this.showLanding();
+        let title = 'SellAssist - AI-Powered Selling Partner';
+        let description = 'Empowering Indian sellers with AI-driven product optimization and inventory management.';
+
+        if (landing) {
+          title = 'SellAssist - Bharat\'s AI Growth Partner';
+        } else {
+          switch (view) {
+            case 'home':
+              title = 'Optimize Product Listings - SellAssist';
+              description = 'Use AI to generate professional titles, descriptions, and tags for your marketplace listings.';
+              break;
+            case 'listings':
+              title = 'My Asset History - SellAssist';
+              description = 'View and manage your previously optimized marketplace listings.';
+              break;
+            case 'products':
+              title = 'Inventory Management - SellAssist';
+              description = 'Keep track of your products, stock levels, and valuations in one place.';
+              break;
+            case 'gst':
+              title = 'GST Calculator - SellAssist';
+              description = 'Quickly calculate GST and profit margins for your products.';
+              break;
+            case 'admin':
+              title = 'Admin Panel - SellAssist';
+              break;
+          }
+        }
+
+        this.titleService.setTitle(title);
+        this.metaService.updateTag({ name: 'description', content: description });
+        this.metaService.updateTag({ property: 'og:title', content: title });
+        this.metaService.updateTag({ property: 'og:description', content: description });
+      });
+
       // Handle Firebase Email Link Login
       const url = window.location.href;
       if (this.auth.isLoginLink(url)) {
@@ -96,7 +178,7 @@ export class App {
         }
         if (email) {
           this.auth.signInWithLink(email, url).then(() => {
-            this.showLanding.set(false);
+            this.navigateTo('home');
             window.history.replaceState({}, '', window.location.pathname);
           }).catch(err => {
             console.error('Link sign-in error:', err);
@@ -110,7 +192,7 @@ export class App {
         const isAdmin = this.auth.isAdmin();
         
         if (user) {
-          this.mainView.set('home');
+          this.navigateTo('home');
           const fetchMethod = isAdmin ? 
             this.listingService.getAllListings.bind(this.listingService) : 
             this.listingService.getListings.bind(this.listingService, user.uid);
@@ -122,7 +204,7 @@ export class App {
         } else {
           this.myListings.set([]);
           if (this.mainView() === 'products' || this.mainView() === 'listings') {
-            this.mainView.set('home');
+            this.navigateTo('home');
           }
         }
       });
@@ -207,7 +289,7 @@ export class App {
          position: 'bottom'
        });
        await toast.present();
-       this.showLanding.set(false); // Open auth modal
+       this.navigateTo('home'); // This will show login if not authenticated
        return;
     }
 
@@ -271,7 +353,7 @@ export class App {
               });
               await toast.present();
 
-              this.mainView.set('listings');
+              this.navigateTo('listings');
               this.reset();
             } catch (error) {
               console.error('Failed to save/update listing:', error);
@@ -367,7 +449,7 @@ export class App {
     this.productDetails.set(listing);
     this.selectedImage.set(listing.originalImage);
     this.processedImage.set(listing.processedImage);
-    this.mainView.set('home');
+    this.navigateTo('home');
   }
 
   reset() {
@@ -381,7 +463,7 @@ export class App {
     this.authError.set(null);
     try {
       await this.auth.loginWithGoogle();
-      this.showLanding.set(false);
+      this.navigateTo('home');
     } catch (error) {
       console.error('Login failed:', error);
       this.authError.set('Google login failed. Please try again.');
@@ -398,7 +480,7 @@ export class App {
     this.isProcessing.set(true);
     try {
       await this.auth.loginWithEmail(this.email(), this.password());
-      this.showLanding.set(false);
+      this.navigateTo('home');
       this.resetAuthForm();
     } catch (error: unknown) {
       const code = (error as { code?: string }).code || (error as Error).message;
@@ -427,7 +509,7 @@ export class App {
         phoneNumber: this.regPhone(),
         gstNumber: this.regGST()
       });
-      this.showLanding.set(false);
+      this.navigateTo('home');
       this.resetAuthForm();
     } catch (error: unknown) {
       const code = (error as { code?: string }).code || (error as Error).message;
@@ -498,8 +580,7 @@ export class App {
   async logout() {
     try {
       await this.auth.logout();
-      this.showLanding.set(true);
-      this.mainView.set('home');
+      this.navigateTo('landing');
     } catch (error) {
       console.error('Logout failed:', error);
     }
