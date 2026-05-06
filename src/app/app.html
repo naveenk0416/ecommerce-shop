@@ -9,7 +9,7 @@
         
         <div class="flex items-center gap-1 md:gap-6">
           <nav class="hidden md:flex items-center gap-1 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100/50 backdrop-blur-sm">
-            <button (click)="mainView.set('gst'); showLanding.set(false)" 
+            <button (click)="navigateTo('gst')" 
                     [class]="mainView() === 'gst' ? 'bg-white text-slate-950 shadow-premium' : 'text-slate-400 hover:text-slate-600'"
                     class="relative inline-flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300">
               <ion-icon name="calculator" class="text-xs"></ion-icon>
@@ -17,18 +17,18 @@
             </button>
 
             @if (auth.user()) {
-              <button (click)="mainView.set('home'); showLanding.set(false)" 
+              <button (click)="navigateTo('home')" 
                       [class]="(mainView() === 'home' && !showLanding()) ? 'bg-white text-slate-950 shadow-premium' : 'text-slate-400 hover:text-slate-600'"
                       class="relative inline-flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300">
                 Optimize
               </button>
               @if (auth.isPro()) {
-                <button (click)="mainView.set('listings'); showLanding.set(false)" 
+                <button (click)="navigateTo('listings')" 
                         [class]="(mainView() === 'listings' && !showLanding()) ? 'bg-white text-slate-950 shadow-premium' : 'text-slate-400 hover:text-slate-600'"
                         class="relative inline-flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300">
                   History
                 </button>
-                <button (click)="mainView.set('products'); showLanding.set(false)" 
+                <button (click)="navigateTo('products')" 
                         [class]="(mainView() === 'products' && !showLanding()) ? 'bg-white text-slate-950 shadow-premium' : 'text-slate-400 hover:text-slate-600'"
                         class="relative inline-flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300">
                   Inventory
@@ -40,7 +40,7 @@
           @if (auth.user()) {
             <div class="flex items-center gap-3">
               @if (auth.isAdmin()) {
-                <button (click)="mainView.set('admin'); showLanding.set(false)" class="btn-icon-premium w-10 h-10">
+                <button (click)="navigateTo('admin')" class="btn-icon-premium w-10 h-10">
                   <ion-icon name="shield-checkmark"></ion-icon>
                 </button>
               }
@@ -85,7 +85,7 @@
             <!-- Login/Auth Section if not logged in -->
             <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
               <div class="text-center mb-10 relative">
-                <button (click)="showLanding.set(true)" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600">
+                <button (click)="navigateTo('landing')" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600">
                   <ion-icon name="close" class="text-2xl"></ion-icon>
                 </button>
                 <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -201,8 +201,8 @@
                   </div>
 
                   <div class="bento-card bg-slate-950 border-none group cursor-pointer p-6 shadow-xl shadow-slate-950/20" 
-                       (click)="mainView.set('listings')"
-                       (keydown.enter)="mainView.set('listings')"
+                       (click)="navigateTo('listings')"
+                       (keydown.enter)="navigateTo('listings')"
                        tabindex="0"
                        role="button">
                     <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 block mb-2">Asset Vault</span>
@@ -562,10 +562,10 @@
                       <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-3 bg-slate-100/50 w-fit px-3 py-1 rounded-lg border border-slate-100">Archived Optimizations</p>
                     </div>
                   </div>
-                  <button (click)="mainView.set('home'); showLanding.set(false)" class="btn-orange-premium px-10 group">
-                    <ion-icon name="add" class="text-xl group-hover:rotate-90 transition-transform"></ion-icon>
-                    New Optimization
-                  </button>
+                      <button (click)="navigateTo('home')" class="btn-orange-premium px-10 group">
+                        <ion-icon name="add" class="text-xl group-hover:rotate-90 transition-transform"></ion-icon>
+                        New Optimization
+                      </button>
                 </div>
 
                 @if (myListings().length === 0) {
@@ -580,7 +580,7 @@
                     </div>
                     <h3 class="text-3xl font-extrabold text-slate-950 tracking-tighter font-display italic uppercase">Vault is Empty</h3>
                     <p class="text-slate-400 mt-4 text-sm font-medium max-w-sm leading-relaxed">Your optimized assets will appear here once you initiate your first catalog optimization.</p>
-                    <button (click)="mainView.set('home')" class="mt-10 btn-secondary px-8">
+                    <button (click)="navigateTo('home')" class="mt-10 btn-secondary px-8">
                        Trigger First Sync
                     </button>
                   </div>
@@ -635,9 +635,9 @@
           </div>
           
           <div class="flex gap-4">
-             <a class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Privacy</a>
-             <a class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Terms</a>
-             <a class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Support</a>
+             <a href="/" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Privacy</a>
+             <a href="/" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Terms</a>
+             <a href="/" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Support</a>
           </div>
         </div>
 
