@@ -126,7 +126,7 @@ export class App {
 
     if (isPlatformBrowser(this.platformId)) {
       // URL Sync Logic
-      const url = window.location.href;
+      const currentUrl = window.location.href;
       this.syncViewWithUrl(window.location.pathname);
 
       // SEO Effect
@@ -169,15 +169,14 @@ export class App {
       });
 
       // Handle Firebase Email Link Login
-      const url = window.location.href;
-      if (this.auth.isLoginLink(url)) {
+      if (this.auth.isLoginLink(currentUrl)) {
         let email = window.localStorage.getItem('emailForSignIn');
         if (!email) {
           // If the link was opened on a different device, ask for the email
           email = window.prompt('Please provide your email for confirmation');
         }
         if (email) {
-          this.auth.signInWithLink(email, url).then(() => {
+          this.auth.signInWithLink(email, currentUrl).then(() => {
             this.navigateTo('home');
             window.history.replaceState({}, '', window.location.pathname);
           }).catch(err => {
