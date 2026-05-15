@@ -1,0 +1,3 @@
+## 2024-05-15 - Accessible Icon-Only Buttons
+**Learning:** In this project, icon-only buttons are commonly created using classes like `btn-icon-premium` or `btn-icon-dark` with an inner `<ion-icon>`. To make them accessible, it is essential to add `aria-label` and `title` attributes to the `<button>` element and mark the inner `<ion-icon>` with `aria-hidden="true"`.
+**Action:** When adding or updating icon-only buttons, always ensure they include descriptive `aria-label` and `title` attributes, and apply `aria-hidden="true"` to the inner icon element to prevent screen readers from parsing it natively.
