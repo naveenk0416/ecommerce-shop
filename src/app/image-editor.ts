@@ -90,7 +90,9 @@ import { Canvas, FabricImage } from 'fabric';
                            [style.backgroundColor]="color"
                            [class.border-white]="bgColor() === color"
                            [class.border-transparent]="bgColor() !== color"
-                           [class.shadow-[0_0_15px_rgba(255,255,255,0.2)]]="bgColor() === color">
+                           [class.shadow-[0_0_15px_rgba(255,255,255,0.2)]]="bgColor() === color"
+                           [attr.aria-label]="'Set background color to ' + color"
+                           [title]="'Set background color to ' + color">
                    </button>
                  }
                  <label class="w-10 h-10 rounded-xl bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center cursor-pointer hover:bg-slate-700 transition-colors">
@@ -101,10 +103,10 @@ import { Canvas, FabricImage } from 'fabric';
                
                <div class="flex items-center gap-4 mt-2">
                  <button (click)="resetImage()" class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-300 transition-colors">
-                   <ion-icon name="trash"></ion-icon> Reset Layout
+                   <ion-icon name="trash" aria-hidden="true"></ion-icon> Reset Layout
                  </button>
                  <button (click)="centerImage()" class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-orange-400 hover:text-orange-300 transition-colors">
-                   <ion-icon name="scan-outline"></ion-icon> Center Object
+                   <ion-icon name="scan-outline" aria-hidden="true"></ion-icon> Center Object
                  </button>
                </div>
             </div>

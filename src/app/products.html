@@ -151,14 +151,14 @@
                 </td>
                 <td class="py-12 px-12 text-right">
                   <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0 transition-transform">
-                    <button (click)="openSaleModal(listing)" class="btn-icon-premium text-emerald-600 hover:text-white hover:bg-emerald-600 hover:border-emerald-600" title="Log a Sale">
-                      <ion-icon name="cart"></ion-icon>
+                    <button (click)="openSaleModal(listing)" class="btn-icon-premium text-emerald-600 hover:text-white hover:bg-emerald-600 hover:border-emerald-600" aria-label="Log a Sale" title="Log a Sale">
+                      <ion-icon name="cart" aria-hidden="true"></ion-icon>
                     </button>
-                    <button (click)="view.emit(listing)" class="btn-icon-premium" aria-label="View listing details">
-                      <ion-icon name="eye"></ion-icon>
+                    <button (click)="view.emit(listing)" class="btn-icon-premium" aria-label="View listing details" title="View listing details">
+                      <ion-icon name="eye" aria-hidden="true"></ion-icon>
                     </button>
-                    <button (click)="delete.emit(listing.id!)" class="btn-icon-premium text-red-500 hover:text-red-600 hover:border-red-100 hover:bg-red-50" aria-label="Delete listing">
-                      <ion-icon name="trash"></ion-icon>
+                    <button (click)="delete.emit(listing.id!)" class="btn-icon-premium text-red-500 hover:text-red-600 hover:border-red-100 hover:bg-red-50" aria-label="Delete listing" title="Delete listing">
+                      <ion-icon name="trash" aria-hidden="true"></ion-icon>
                     </button>
                   </div>
                 </td>
@@ -220,8 +220,8 @@
               <p class="text-[9px] text-emerald-600 font-bold uppercase tracking-widest">Execute Transaction Record</p>
             </div>
           </div>
-          <button (click)="closeSaleModal()" class="btn-icon-premium w-12 h-12">
-            <ion-icon name="close" class="text-2xl"></ion-icon>
+          <button (click)="closeSaleModal()" class="btn-icon-premium w-12 h-12" aria-label="Close modal" title="Close modal">
+            <ion-icon name="close" class="text-2xl" aria-hidden="true"></ion-icon>
           </button>
         </div>
 
@@ -296,8 +296,8 @@
               <p class="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Awaiting Manual Data Commit</p>
             </div>
           </div>
-          <button (click)="closeAddModal()" class="btn-icon-premium w-12 h-12">
-            <ion-icon name="close" class="text-2xl"></ion-icon>
+          <button (click)="closeAddModal()" class="btn-icon-premium w-12 h-12" aria-label="Close modal" title="Close modal">
+            <ion-icon name="close" class="text-2xl" aria-hidden="true"></ion-icon>
           </button>
         </div>
 
