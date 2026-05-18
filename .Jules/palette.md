@@ -1,0 +1,3 @@
+## 2024-05-19 - Accessible Icon-Only Buttons
+**Learning:** Icon-only buttons using `<ion-icon>` within `.btn-icon-*` classes were missing context for screen readers and tooltips for visual users. Setting aria-labels directly on the button is required, but it's equally important to set `aria-hidden="true"` on the inner `<ion-icon>` so screen readers do not attempt to natively parse the icon element, reducing redundancy and confusion.
+**Action:** Always add `aria-label` and `title` to the parent `<button>` and add `aria-hidden="true"` to the inner `<ion-icon>` in all future icon-only components.
