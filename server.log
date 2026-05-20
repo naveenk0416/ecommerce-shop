@@ -1,0 +1,344 @@
+
+> ai-studio-angular-app@0.0.0 start /app
+> ng serve
+
+❯ Building...
+✔ Building...
+Application bundle generation failed. [7.311 seconds] - 2026-05-20T05:44:51.638Z
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of AdminComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/admin.ts:12:18:
+[37m      12 │     CommonModule, [32mIonButton[37m, IonIcon, IonSpinner
+         ╵                   [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: Pricing is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:32:81:
+[37m      32 │ ...ng, Products, AdminComponent, GstCalculator, [32mPricing[37m, ImageEditor,
+         ╵                                                 [32m~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: RouterLink is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:33:4:
+[37m      33 │     [32mRouterLink[37m, RouterOutlet,
+         ╵     [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: RouterOutlet is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:33:16:
+[37m      33 │     RouterLink, [32mRouterOutlet[37m,
+         ╵                 [32m~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonCardContent is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:36:4:
+[37m      36 │     [32mIonCardContent[37m, IonLabel, IonBadge, IonSpinner,
+         ╵     [32m~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonBadge is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:36:30:
+[37m      36 │     IonCardContent, IonLabel, [32mIonBadge[37m, IonSpinner,
+         ╵                               [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegment is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:37:4:
+[37m      37 │     [32mIonSegment[37m, IonSegmentButton, IonInput, IonTextarea
+         ╵     [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegmentButton is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:37:16:
+[37m      37 │     IonSegment, [32mIonSegmentButton[37m, IonInput, IonTextarea
+         ╵                 [32m~~~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of Landing[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/landing.ts:15:4:
+[37m      15 │     [32mIonButton[37m, IonIcon
+         ╵     [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of Pricing[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/pricing.ts:12:26:
+[37m      12 │   imports: [CommonModule, [32mIonButton[37m, IonIcon, IonCard, IonCardHead...
+         ╵                           [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:4:
+[37m      24 │     [32mIonButton[37m, IonIcon, IonModal, IonBadge, IonLabel, IonSpinner, ...
+         ╵     [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonBadge is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:34:
+[37m      24 │ ...nButton, IonIcon, IonModal, [32mIonBadge[37m, IonLabel, IonSpinner, Ion...
+         ╵                                [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonLabel is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:44:
+[37m      24 │ ...onIcon, IonModal, IonBadge, [32mIonLabel[37m, IonSpinner, IonRange, Ion...
+         ╵                                [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSpinner is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:54:
+[37m      24 │ ...Modal, IonBadge, IonLabel, [32mIonSpinner[37m, IonRange, IonSegment, Io...
+         ╵                               [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonRange is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:66:
+[37m      24 │ ...adge, IonLabel, IonSpinner, [32mIonRange[37m, IonSegment, IonSegmentBut...
+         ╵                                [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegment is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:76:
+[37m      24 │ ...bel, IonSpinner, IonRange, [32mIonSegment[37m, IonSegmentButton, IonInp...
+         ╵                               [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegmentButton is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:88:
+[37m      24 │ ...ner, IonRange, IonSegment, [32mIonSegmentButton[37m, IonInput, IonTextarea
+         ╵                               [32m~~~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonInput is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:106:
+[37m      24 │ ...ner, IonRange, IonSegment, IonSegmentButton, [32mIonInput[37m, IonTextarea
+         ╵                                                 [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonTextarea is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:116:
+[37m      24 │ ...ner, IonRange, IonSegment, IonSegmentButton, IonInput, [32mIonTextarea[37m
+         ╵                                                           [32m~~~~~~~~~~~[0m
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mTS2451: Cannot redeclare block-scoped variable 'url'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:129:12:
+[37m      129 │       const [32murl[37m = window.location.href;
+          ╵             [32m~~~[0m
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mTS2451: Cannot redeclare block-scoped variable 'url'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:172:12:
+[37m      172 │       const [32murl[37m = window.location.href;
+          ╵             [32m~~~[0m
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mThe symbol "url" has already been declared[0m
+
+    src/app/app.ts:1075:18:
+[37m      1075 │             const [32murl[37m = window.location.href;
+           ╵                   [32m~~~[0m
+
+  The symbol "url" was originally declared here:
+
+    src/app/app.ts:1035:18:
+[37m      1035 │             const [32murl[37m = window.location.href;
+           ╵                   [32m~~~[0m
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mThe symbol "url" has already been declared[0m
+
+    src/app/app.ts:1075:18:
+[37m      1075 │             const [32murl[37m = window.location.href;
+           ╵                   [32m~~~[0m
+
+  The symbol "url" was originally declared here:
+
+    src/app/app.ts:1035:18:
+[37m      1035 │             const [32murl[37m = window.location.href;
+           ╵                   [32m~~~[0m
+
+
+Watch mode enabled. Watching for file changes...
+❯ Changes detected. Rebuilding...
+✔ Changes detected. Rebuilding...
+Browser bundles
+Initial chunk files  | Names            |  Raw size
+chunk-SXVLJVV3.js    | -                | 453.08 kB |
+styles.css           | styles           | 165.78 kB |
+main.js              | main             |   2.33 kB |
+
+                     | Initial total    | 621.20 kB
+
+Lazy chunk files     | Names            |  Raw size
+chunk-BEC33YLG.js    | app              | 106 bytes |
+
+
+Server bundles
+Initial chunk files  | Names            |  Raw size
+chunk-EQLD2754.mjs   | -                | 451.92 kB |
+main.server.mjs      | main.server      |   3.58 kB |
+server.mjs           | server           |   2.12 kB |
+chunk-VYNEO3Q5.mjs   | -                |   1.41 kB |
+polyfills.server.mjs | polyfills.server | 268 bytes |
+
+Lazy chunk files     | Names            |  Raw size
+chunk-2NOSUEUS.mjs   | app              | 172 bytes |
+
+Application bundle generation complete. [2.451 seconds] - 2026-05-20T05:45:46.072Z
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of AdminComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/admin.ts:12:18:
+[37m      12 │     CommonModule, [32mIonButton[37m, IonIcon, IonSpinner
+         ╵                   [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: Pricing is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:32:81:
+[37m      32 │ ...ng, Products, AdminComponent, GstCalculator, [32mPricing[37m, ImageEditor,
+         ╵                                                 [32m~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: RouterLink is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:33:4:
+[37m      33 │     [32mRouterLink[37m, RouterOutlet,
+         ╵     [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: RouterOutlet is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:33:16:
+[37m      33 │     RouterLink, [32mRouterOutlet[37m,
+         ╵                 [32m~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonCardContent is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:36:4:
+[37m      36 │     [32mIonCardContent[37m, IonLabel, IonBadge, IonSpinner,
+         ╵     [32m~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonBadge is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:36:30:
+[37m      36 │     IonCardContent, IonLabel, [32mIonBadge[37m, IonSpinner,
+         ╵                               [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegment is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:37:4:
+[37m      37 │     [32mIonSegment[37m, IonSegmentButton, IonInput, IonTextarea
+         ╵     [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegmentButton is not used within the template of App[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/app.ts:37:16:
+[37m      37 │     IonSegment, [32mIonSegmentButton[37m, IonInput, IonTextarea
+         ╵                 [32m~~~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of Landing[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/landing.ts:15:4:
+[37m      15 │     [32mIonButton[37m, IonIcon
+         ╵     [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of Pricing[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/pricing.ts:12:26:
+[37m      12 │   imports: [CommonModule, [32mIonButton[37m, IonIcon, IonCard, IonCardHead...
+         ╵                           [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonButton is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:4:
+[37m      24 │     [32mIonButton[37m, IonIcon, IonModal, IonBadge, IonLabel, IonSpinner, ...
+         ╵     [32m~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonBadge is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:34:
+[37m      24 │ ...nButton, IonIcon, IonModal, [32mIonBadge[37m, IonLabel, IonSpinner, Ion...
+         ╵                                [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonLabel is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:44:
+[37m      24 │ ...onIcon, IonModal, IonBadge, [32mIonLabel[37m, IonSpinner, IonRange, Ion...
+         ╵                                [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSpinner is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:54:
+[37m      24 │ ...Modal, IonBadge, IonLabel, [32mIonSpinner[37m, IonRange, IonSegment, Io...
+         ╵                               [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonRange is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:66:
+[37m      24 │ ...adge, IonLabel, IonSpinner, [32mIonRange[37m, IonSegment, IonSegmentBut...
+         ╵                                [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegment is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:76:
+[37m      24 │ ...bel, IonSpinner, IonRange, [32mIonSegment[37m, IonSegmentButton, IonInp...
+         ╵                               [32m~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonSegmentButton is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:88:
+[37m      24 │ ...ner, IonRange, IonSegment, [32mIonSegmentButton[37m, IonInput, IonTextarea
+         ╵                               [32m~~~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonInput is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:106:
+[37m      24 │ ...ner, IonRange, IonSegment, IonSegmentButton, [32mIonInput[37m, IonTextarea
+         ╵                                                 [32m~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8113: IonTextarea is not used within the template of Products[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/products.ts:24:116:
+[37m      24 │ ...ner, IonRange, IonSegment, IonSegmentButton, IonInput, [32mIonTextarea[37m
+         ╵                                                           [32m~~~~~~~~~~~[0m
+
+
+NOTE: Raw file sizes do not reflect development server per-request transformations.
+  ➜  Local:   http://localhost:4200/

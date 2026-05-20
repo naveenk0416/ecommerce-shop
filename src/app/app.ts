@@ -169,8 +169,8 @@ export class App {
       });
 
       // Handle Firebase Email Link Login
-      const url = window.location.href;
-      if (this.auth.isLoginLink(url)) {
+      const linkUrl = window.location.href;
+      if (this.auth.isLoginLink(linkUrl)) {
         let email = window.localStorage.getItem('emailForSignIn');
         if (!email) {
           // If the link was opened on a different device, ask for the email
