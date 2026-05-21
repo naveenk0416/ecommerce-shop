@@ -45,8 +45,8 @@
           @if (auth.user()) {
             <div class="flex items-center gap-3">
               @if (auth.isAdmin()) {
-                <button (click)="navigateTo('admin')" class="btn-icon-premium w-10 h-10">
-                  <ion-icon name="shield-checkmark"></ion-icon>
+                <button (click)="navigateTo('admin')" class="btn-icon-premium w-10 h-10" aria-label="Admin panel" title="Admin panel">
+                  <ion-icon name="shield-checkmark" aria-hidden="true"></ion-icon>
                 </button>
               }
               <button (click)="logout()" class="btn-primary px-4 text-[9px] gap-2">
@@ -213,8 +213,8 @@
                     <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 block mb-2">Asset Vault</span>
                     <div class="flex items-center justify-between py-2">
                       <h4 class="text-4xl font-extrabold text-white font-display tracking-tighter">{{ myListings().length }}</h4>
-                      <div class="btn-icon-dark group-hover:bg-orange-500 group-hover:rotate-45">
-                        <ion-icon name="arrow-forward" class="text-white"></ion-icon>
+                      <div class="btn-icon-dark group-hover:bg-orange-500 group-hover:rotate-45" role="button" tabindex="0" aria-label="View asset vault" title="View asset vault">
+                        <ion-icon name="arrow-forward" class="text-white" aria-hidden="true"></ion-icon>
                       </div>
                     </div>
                     <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-6 flex items-center gap-2">
@@ -613,11 +613,11 @@
                                 <div class="w-8 h-8 rounded-full bg-pink-100 border-2 border-white flex items-center justify-center"><ion-icon name="heart" class="text-[10px] text-pink-600"></ion-icon></div>
                              </div>
                              <div class="flex gap-2">
-                                <button (click)="viewListing(listing)" class="btn-icon-dark w-9 h-9">
-                                  <ion-icon name="eye"></ion-icon>
+                                <button (click)="viewListing(listing)" class="btn-icon-dark w-9 h-9" aria-label="View listing" title="View listing">
+                                  <ion-icon name="eye" aria-hidden="true"></ion-icon>
                                 </button>
-                                <button (click)="deleteListing(listing.id)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600">
-                                  <ion-icon name="trash"></ion-icon>
+                                <button (click)="deleteListing(listing.id)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600" aria-label="Delete listing" title="Delete listing">
+                                  <ion-icon name="trash" aria-hidden="true"></ion-icon>
                                 </button>
                              </div>
                           </div>

@@ -1,0 +1,3 @@
+## 2024-05-21 - Icon-only Button Accessibility
+**Learning:** Icon-only buttons using `btn-icon-premium` and `btn-icon-dark` with nested `<ion-icon>` tags are frequently missing ARIA labels and screen reader optimizations across multiple components (Admin, Products, App). Sometimes these classes are applied to `div` elements instead of actual `button` elements, breaking semantic keyboard navigation.
+**Action:** When adding or auditing icon-only interactive elements using these classes, verify they use the `<button>` element. If they must be a `div`, add `role="button"` and `tabindex="0"`. Always add `aria-label` and `title` to the wrapper, and mark the inner `<ion-icon>` with `aria-hidden="true"` to prevent double-reading by screen readers.
