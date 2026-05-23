@@ -169,7 +169,6 @@ export class App {
       });
 
       // Handle Firebase Email Link Login
-      const url = window.location.href;
       if (this.auth.isLoginLink(url)) {
         let email = window.localStorage.getItem('emailForSignIn');
         if (!email) {
