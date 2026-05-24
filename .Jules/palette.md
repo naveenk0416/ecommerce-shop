@@ -1,0 +1,3 @@
+## 2025-05-24 - Missing Focus States on Hover-Revealed Elements
+**Learning:** Using `opacity-0` combined with `group-hover:opacity-100` to hide action buttons until a user hovers over their container creates a significant accessibility issue: the buttons remain invisible when a user navigates to them using keyboard `Tab`.
+**Action:** When using hover-revealed patterns for interactive elements, always pair `group-hover` visibility classes with focus-aware classes like `group-focus-within:opacity-100` (on containers) or `focus-visible:opacity-100 focus-within:opacity-100` (on the elements themselves) to ensure they become visible when receiving keyboard focus.
