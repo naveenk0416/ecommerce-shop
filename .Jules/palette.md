@@ -1,0 +1,3 @@
+## 2024-05-27 - Added Focus Support to Hover-Revealed Elements
+**Learning:** Tailwind's `opacity-0 group-hover:opacity-100` pattern hides interactive elements (like edit/copy/delete actions) from keyboard users because they rely solely on mouse hover states. This is a common accessibility issue for power users and those relying on keyboard navigation.
+**Action:** Always pair `opacity-0 group-hover:opacity-100` with `group-focus-within:opacity-100 focus-within:opacity-100 focus-visible:opacity-100` to ensure hover-revealed elements become visible when tabbing into their container or focusing directly on the element itself.
