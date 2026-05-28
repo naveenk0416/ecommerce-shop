@@ -1,0 +1,3 @@
+## 2024-03-21 - Accessible Hover Patterns
+**Learning:** When using Tailwind hover-revealed patterns like `opacity-0 group-hover:opacity-100`, the interactive elements (buttons) become invisible to keyboard navigators when they tab to them because they aren't technically being hovered.
+**Action:** Always pair `group-hover:opacity-100` with focus-aware utility classes like `focus-visible:opacity-100` on the button itself, or `focus-within:opacity-100` on the parent `.group` container, to ensure these controls reveal themselves during keyboard navigation.
