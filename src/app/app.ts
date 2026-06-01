@@ -126,7 +126,7 @@ export class App {
 
     if (isPlatformBrowser(this.platformId)) {
       // URL Sync Logic
-      const url = window.location.href;
+      const currentUrl = window.location.href;
       this.syncViewWithUrl(window.location.pathname);
 
       // SEO Effect
@@ -169,7 +169,7 @@ export class App {
       });
 
       // Handle Firebase Email Link Login
-      const url = window.location.href;
+      const locUrl = window.location.href;
       if (this.auth.isLoginLink(url)) {
         let email = window.localStorage.getItem('emailForSignIn');
         if (!email) {
