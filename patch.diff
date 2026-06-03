@@ -1,0 +1,23 @@
+--- src/app/app.html
++++ src/app/app.html
+@@ -674,15 +674,18 @@
+           </p>
+
+           <!-- Star Rating -->
+-          <div class="flex justify-center gap-2 my-8">
++          <div class="flex justify-center gap-2 my-8" role="radiogroup" aria-label="Feedback Rating">
+             @for (star of ratingStars; track star) {
+               <button (click)="setRating(star)"
+-                      class="text-4xl transition-all duration-200 transform hover:scale-125 focus:outline-none"
++                      class="text-4xl transition-all duration-200 transform hover:scale-125 focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-500/30 rounded-full"
+                       [class.text-orange-500]="currentFeedbackRating() >= star"
+-                      [class.text-slate-300]="currentFeedbackRating() < star">
+-                <ion-icon name="star"></ion-icon>
++                      [class.text-slate-300]="currentFeedbackRating() < star"
++                      role="radio"
++                      [attr.aria-checked]="currentFeedbackRating() === star"
++                      [attr.aria-label]="star + ' stars'">
++                <ion-icon name="star" aria-hidden="true"></ion-icon>
+               </button>
+             }
+           </div>

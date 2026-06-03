@@ -1,0 +1,13 @@
+--- src/app/app.html
++++ src/app/app.html
+@@ -689,10 +689,11 @@
+
+           <div class="space-y-4">
+             <div class="text-left">
+-              <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Comments (Optional)</ion-label>
++              <label for="feedback-comment" class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1 block mb-2">Comments (Optional)</label>
+               <ion-textarea
++                id="feedback-comment"
+                 rows="3"
+                 [autoGrow]="true"
+                 [value]="currentFeedbackComment()"

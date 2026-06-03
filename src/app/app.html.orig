@@ -11,10 +11,10 @@
             <span class="text-[8px] font-bold uppercase tracking-[0.3em] text-slate-400">Bharat's AI Growth Partner</span>
           </div>
         </div>
-        
+
         <div class="flex items-center gap-1 md:gap-6">
           <nav class="hidden md:flex items-center gap-1 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100/50 backdrop-blur-sm">
-            <button (click)="navigateTo('gst')" 
+            <button (click)="navigateTo('gst')"
                     [class]="mainView() === 'gst' ? 'bg-white text-slate-950 shadow-premium' : 'text-slate-400 hover:text-slate-600'"
                     class="relative inline-flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300">
               <ion-icon name="calculator" class="text-xs"></ion-icon>
@@ -22,18 +22,18 @@
             </button>
 
             @if (auth.user()) {
-              <button (click)="navigateTo('home')" 
+              <button (click)="navigateTo('home')"
                       [class]="(mainView() === 'home' && !showLanding()) ? 'bg-white text-slate-950 shadow-premium' : 'text-slate-400 hover:text-slate-600'"
                       class="relative inline-flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300">
                 Optimize
               </button>
               @if (auth.isPro()) {
-                <button (click)="navigateTo('listings')" 
+                <button (click)="navigateTo('listings')"
                         [class]="(mainView() === 'listings' && !showLanding()) ? 'bg-white text-slate-950 shadow-premium' : 'text-slate-400 hover:text-slate-600'"
                         class="relative inline-flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300">
                   History
                 </button>
-                <button (click)="navigateTo('products')" 
+                <button (click)="navigateTo('products')"
                         [class]="(mainView() === 'products' && !showLanding()) ? 'bg-white text-slate-950 shadow-premium' : 'text-slate-400 hover:text-slate-600'"
                         class="relative inline-flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300">
                   Inventory
@@ -71,9 +71,9 @@
 
   <ion-content [fullscreen]="true">
     @if (showLanding()) {
-      <app-landing 
-        (login)="showLanding.set(false); isRegistering.set(false)" 
-        (getStarted)="showLanding.set(false); isRegistering.set(true)" 
+      <app-landing
+        (login)="showLanding.set(false); isRegistering.set(false)"
+        (getStarted)="showLanding.set(false); isRegistering.set(true)"
         [isLoggedIn]="!!auth.user()"
         (goDashboard)="showLanding.set(false); mainView.set('home')">
       </app-landing>
@@ -197,7 +197,7 @@
                     </div>
                     <div class="space-y-2 mt-6">
                       <div class="w-full h-1.5 bg-slate-200/50 rounded-full overflow-hidden shadow-inner">
-                        <div class="h-full bg-orange-500 transition-all duration-1000 shadow-[0_0_8px_rgba(249,115,22,0.4)]" 
+                        <div class="h-full bg-orange-500 transition-all duration-1000 shadow-[0_0_8px_rgba(249,115,22,0.4)]"
                           [style.width.%]="auth.profile()?.role === 'FREE' ? (auth.profile()?.usageCount || 0) / 5 * 100 : (auth.profile()?.dailyStats?.count || 0) / 50 * 100">
                         </div>
                       </div>
@@ -205,7 +205,7 @@
                     </div>
                   </div>
 
-                  <div class="bento-card bg-slate-950 border-none group cursor-pointer p-6 shadow-xl shadow-slate-950/20" 
+                  <div class="bento-card bg-slate-950 border-none group cursor-pointer p-6 shadow-xl shadow-slate-950/20"
                        (click)="navigateTo('listings')"
                        (keydown.enter)="navigateTo('listings')"
                        tabindex="0"
@@ -243,7 +243,7 @@
                        (dragover)="onDragOver($event)"
                        (dragenter)="onDragOver($event)"
                        (dragleave)="onDragLeave($event)">
-                    
+
                     <div class="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-slate-50/30"></div>
 
                     @if (isProcessing() || isGeneratingImage() || processingStage() !== 'idle') {
@@ -255,7 +255,7 @@
                             <ion-icon name="sparkles" class="text-4xl text-orange-500 animate-pulse"></ion-icon>
                           </div>
                         </div>
-                        
+
                         <h2 class="text-2xl font-extrabold text-slate-900 tracking-tighter font-display uppercase italic">
                            AI Sync in Progress
                         </h2>
@@ -273,7 +273,7 @@
                         <p class="text-slate-400 mt-3 text-sm font-medium max-w-xs mx-auto leading-relaxed">
                           Drop your product capture here to trigger Canva-integrated optimization.
                         </p>
-                        
+
                         <div class="mt-10 flex items-center gap-4">
                            <div class="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl border border-slate-200">
                               <ion-icon name="color-palette" class="text-orange-500 text-xs"></ion-icon>
@@ -288,7 +288,7 @@
                     }
                   </div>
                   <input type="file" #fileInputDashboard (change)="onFileSelected($event)" accept="image/*" class="hidden">
-                  
+
                   @if (selectedImage() && !isEditingImage()) {
                     <!-- Image preview and details after upload -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -303,7 +303,7 @@
                           <img [src]="selectedImage()" alt="Original product image" class="w-full h-full object-cover" referrerpolicy="no-referrer">
                         </div>
                       </ion-card>
-  
+
                       <!-- Processed Image -->
                       <ion-card class="m-0 rounded-2xl overflow-hidden shadow-md border-2 border-orange-100">
                         <ion-card-header class="bg-orange-50/50 py-3">
@@ -332,13 +332,13 @@
                     <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-premium p-1.5 flex flex-wrap gap-1 my-10 overflow-hidden">
                       @for (platform of templateService.templates(); track platform.id) {
                         @if (platform.enabled) {
-                          <button (click)="activeTab.set(platform.id)" 
+                          <button (click)="activeTab.set(platform.id)"
                                   class="flex-1 min-w-[100px] h-12 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 group"
                                   [ngClass]="{
                                     'bg-slate-900 text-white shadow-lg shadow-slate-900/10': activeTab() === platform.id,
                                     'text-slate-400 hover:bg-slate-50 hover:text-slate-600': activeTab() !== platform.id
                                   }">
-                            <ion-icon [name]="platform.id === 'details' ? 'cube' : (platform.id === 'amazon' ? 'logo-amazon' : (platform.id === 'instagram' ? 'logo-instagram' : 'list'))" 
+                            <ion-icon [name]="platform.id === 'details' ? 'cube' : (platform.id === 'amazon' ? 'logo-amazon' : (platform.id === 'instagram' ? 'logo-instagram' : 'list'))"
                                       [class.text-orange-400]="activeTab() === platform.id"></ion-icon>
                             {{ platform.label }}
                           </button>
@@ -371,7 +371,7 @@
                                     <ion-icon name="save"></ion-icon>
                                   </button>
                                 } @else {
-                                  <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight group-hover:text-orange-600 transition-colors cursor-pointer" 
+                                  <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight group-hover:text-orange-600 transition-colors cursor-pointer"
                                       (click)="toggleEdit('name')"
                                       (keydown.enter)="toggleEdit('name')"
                                       tabindex="0">
@@ -395,7 +395,7 @@
                                   <ion-icon name="pencil" class="text-xs"></ion-icon>
                                 </button>
                               </div>
-                              
+
                               <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 relative group">
                                 <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-3">Tax Index & Code</span>
                                 <div class="flex items-center gap-2">
@@ -436,7 +436,7 @@
                       @if (platform.id !== 'details' && activeTab() === platform.id && platform.enabled) {
                         <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                           <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-premium overflow-hidden">
-                            <div class="px-8 py-6 border-b border-slate-50 flex items-center justify-between" 
+                            <div class="px-8 py-6 border-b border-slate-50 flex items-center justify-between"
                                  [ngClass]="{
                                    'bg-orange-50/30': platform.id === 'amazon',
                                    'bg-blue-50/30': platform.id === 'flipkart',
@@ -459,7 +459,7 @@
                                   </div>
                                </div>
                             </div>
-                            
+
                             <div class="p-8 space-y-10">
                               @for (field of platform.fields; track field.id) {
                                 @if (field.enabled) {
@@ -477,12 +477,12 @@
                                         }
                                       </div>
                                     </div>
- 
+
                                     @if (editingField() === (platform.id + '.' + field.id)) {
-                                       <textarea [id]="'field-' + platform.id + '-' + field.id" 
-                                         [value]="details.platformContent[platform.id]?.[field.id]" 
-                                         (input)="updateField('platformContent.' + platform.id + '.' + field.id, $any($event.target).value)" 
-                                         rows="4" 
+                                       <textarea [id]="'field-' + platform.id + '-' + field.id"
+                                         [value]="details.platformContent[platform.id]?.[field.id]"
+                                         (input)="updateField('platformContent.' + platform.id + '.' + field.id, $any($event.target).value)"
+                                         rows="4"
                                          class="w-full bg-slate-50 border border-slate-100 rounded-3xl p-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all resize-none"></textarea>
                                     } @else {
                                       <div class="bg-slate-50 rounded-3xl p-6 border border-slate-50 group relative">
@@ -532,9 +532,9 @@
                 }
               </div>
             } @else if (mainView() === 'products') {
-              <app-products 
-                [listings]="myListings()" 
-                (view)="viewListing($event)" 
+              <app-products
+                [listings]="myListings()"
+                (view)="viewListing($event)"
                 (delete)="deleteListing($event)"
                 (addManual)="handleAddManualProduct($event)">
               </app-products>
@@ -605,7 +605,7 @@
                         <div class="p-6">
                           <h4 class="text-lg font-extrabold text-slate-900 tracking-tight line-clamp-1 group-hover:text-orange-600 transition-colors">{{ listing.name }}</h4>
                           <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Marketplace Ready Asset</p>
-                          
+
                           <div class="flex items-center justify-between mt-6 pt-6 border-t border-slate-50">
                              <div class="flex -space-x-2">
                                 <div class="w-8 h-8 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center"><ion-icon name="logo-amazon" class="text-[10px] text-orange-600"></ion-icon></div>
@@ -631,7 +631,7 @@
         }
       </div>
     }
-    
+
     <footer class="mt-20 py-12 px-6 border-t border-slate-100 bg-white w-full">
       <div class="max-w-7xl mx-auto flex flex-col md:gap-12">
         <div class="flex flex-col md:flex-row items-center justify-between gap-8">
@@ -641,7 +641,7 @@
             </div>
             <span class="text-xl font-extrabold tracking-tighter text-slate-900 uppercase font-display italic">SellAssist</span>
           </div>
-          
+
           <div class="flex gap-4">
              <a href="/" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Privacy</a>
              <a href="/" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Terms</a>
@@ -676,7 +676,7 @@
           <!-- Star Rating -->
           <div class="flex justify-center gap-2 my-8" role="radiogroup" aria-label="Feedback Rating">
             @for (star of ratingStars; track star) {
-              <button (click)="setRating(star)" 
+              <button (click)="setRating(star)"
                       class="text-4xl transition-all duration-200 transform hover:scale-125 focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-500/30 rounded-full"
                       [class.text-orange-500]="currentFeedbackRating() >= star"
                       [class.text-slate-300]="currentFeedbackRating() < star"
@@ -690,14 +690,13 @@
 
           <div class="space-y-4">
             <div class="text-left">
-              <label for="feedback-comment" class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1 block mb-2">Comments (Optional)</label>
-              <ion-textarea 
-                id="feedback-comment"
-                rows="3" 
+              <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Comments (Optional)</ion-label>
+              <ion-textarea
+                rows="3"
                 [autoGrow]="true"
-                [value]="currentFeedbackComment()" 
+                [value]="currentFeedbackComment()"
                 (ionInput)="currentFeedbackComment.set($any($event).target.value)"
-                placeholder="What did you like? Anything we can improve?" 
+                placeholder="What did you like? Anything we can improve?"
                 class="bg-slate-50 rounded-2xl px-5 py-4 mt-2 border border-slate-100 text-sm font-medium">
               </ion-textarea>
             </div>
@@ -706,7 +705,7 @@
               <button (click)="closeFeedbackModal()" class="flex-1 h-12 rounded-2xl border border-slate-100 text-slate-400 font-bold text-xs hover:bg-slate-50 uppercase tracking-widest">
                 Skip
               </button>
-              <button (click)="submitFeedback()" 
+              <button (click)="submitFeedback()"
                       [disabled]="currentFeedbackRating() === 0"
                       class="flex-[2] h-12 rounded-2xl bg-orange-600 text-white font-bold text-xs hover:bg-orange-700 shadow-lg shadow-orange-600/20 uppercase tracking-widest disabled:opacity-50 disabled:shadow-none">
                 Send Feedback
