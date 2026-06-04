@@ -1,0 +1,4 @@
+## 2024-05-18 - Keyboard Accessibility for Hover-Revealed Actions
+**Learning:** In table rows or list items where action buttons (like edit, delete, copy) are revealed only on `group-hover:opacity-100`, they become completely inaccessible to keyboard-only users who navigate via Tab. Without focus-within or focus-visible state, the buttons are invisible until they actually receive focus (if focus-visible is used on the button) or the entire group receives focus.
+
+**Action:** Always pair `opacity-0 group-hover:opacity-100` on containers or elements with `focus-within:opacity-100` (on the container) or `focus-visible:opacity-100` (on the individual focusable element). This ensures that as a user tabs through the interface, the hidden controls are revealed gracefully and the user is aware of where their focus is and what actions are available.
