@@ -312,7 +312,7 @@
                               <ion-icon name="color-palette" class="mr-2"></ion-icon> Optimized Design
                             </div>
                             <ion-button (click)="isEditingImage.set(true)" size="small" fill="clear" color="orange" class="ion-no-margin">
-                              <ion-icon name="pencil" slot="start"></ion-icon> Re-edit
+                              <ion-icon aria-hidden="true" name="pencil" slot="start"></ion-icon> Re-edit
                             </ion-button>
                           </ion-card-title>
                         </ion-card-header>
@@ -356,8 +356,8 @@
                                 <h3 class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">Master Record</h3>
                              </div>
                              <div class="flex gap-2">
-                                <button (click)="toggleEdit('master')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
-                                   <ion-icon name="pencil" class="text-xs"></ion-icon>
+                                <button aria-label="Edit Master Details" title="Edit Master Details" (click)="toggleEdit('master')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
+                                   <ion-icon aria-hidden="true" name="pencil" class="text-xs"></ion-icon>
                                 </button>
                              </div>
                           </div>
@@ -367,8 +367,8 @@
                               <div class="flex items-start justify-between gap-4">
                                 @if (editingField() === 'name') {
                                   <input id="merchant-name" [value]="details.name" (input)="updateField('name', $any($event.target).value)" class="flex-grow bg-slate-50 rounded-2xl px-6 py-4 text-xl font-bold border border-slate-100 focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
-                                  <button (click)="toggleEdit('name')" class="h-14 w-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center flex-shrink-0">
-                                    <ion-icon name="save"></ion-icon>
+                                  <button aria-label="Save Name" title="Save Name" (click)="toggleEdit('name')" class="h-14 w-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center flex-shrink-0">
+                                    <ion-icon aria-hidden="true" name="save"></ion-icon>
                                   </button>
                                 } @else {
                                   <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight group-hover:text-orange-600 transition-colors cursor-pointer" 
@@ -377,8 +377,8 @@
                                       tabindex="0">
                                     {{details.name}}
                                   </h3>
-                                  <button (click)="copyToClipboard(details.name, 'name')" class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all flex-shrink-0">
-                                    <ion-icon [name]="copiedField() === 'name' ? 'checkmark' : 'copy'"></ion-icon>
+                                  <button aria-label="Copy Name" title="Copy Name" (click)="copyToClipboard(details.name, 'name')" class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all flex-shrink-0">
+                                    <ion-icon aria-hidden="true" [name]="copiedField() === 'name' ? 'checkmark' : 'copy'"></ion-icon>
                                   </button>
                                 }
                               </div>
@@ -391,8 +391,8 @@
                                   <span class="text-xl font-bold text-slate-400">₹</span>
                                   <h4 class="text-3xl font-extrabold text-slate-900 font-display tracking-tighter">{{details.priceINR}}</h4>
                                 </div>
-                                <button (click)="toggleEdit('price')" class="absolute top-4 right-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <ion-icon name="pencil" class="text-xs"></ion-icon>
+                                <button aria-label="Edit Price" title="Edit Price" (click)="toggleEdit('price')" class="absolute top-4 right-4 text-slate-300 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity">
+                                  <ion-icon aria-hidden="true" name="pencil" class="text-xs"></ion-icon>
                                 </button>
                               </div>
                               
@@ -402,8 +402,8 @@
                                   <span class="text-sm font-extrabold text-slate-700 bg-white px-3 py-1 rounded-lg shadow-sm border border-slate-100">{{details.gstRate}} GST</span>
                                   <span class="text-[11px] font-mono font-bold text-white bg-slate-950 px-3 py-1 rounded-lg">{{details.hsnCode}}</span>
                                 </div>
-                                <button (click)="toggleEdit('gstHsn')" class="absolute top-4 right-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <ion-icon name="pencil" class="text-xs"></ion-icon>
+                                <button aria-label="Edit GST HSN" title="Edit GST HSN" (click)="toggleEdit('gstHsn')" class="absolute top-4 right-4 text-slate-300 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity">
+                                  <ion-icon aria-hidden="true" name="pencil" class="text-xs"></ion-icon>
                                 </button>
                               </div>
                             </div>
@@ -421,8 +421,8 @@
                                    </div>
                                  } @else {
                                    <p class="text-slate-600 leading-relaxed text-sm font-medium">{{details.description}}</p>
-                                   <button (click)="copyToClipboard(details.description, 'desc')" class="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 transition-all shadow-sm">
-                                      <ion-icon [name]="copiedField() === 'desc' ? 'checkmark' : 'copy'"></ion-icon>
+                                   <button aria-label="Copy Description" title="Copy Description" (click)="copyToClipboard(details.description, 'desc')" class="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all shadow-sm">
+                                      <ion-icon aria-hidden="true" [name]="copiedField() === 'desc' ? 'checkmark' : 'copy'"></ion-icon>
                                    </button>
                                  }
                                </div>
@@ -467,12 +467,12 @@
                                     <div class="flex justify-between items-center px-1">
                                       <label [for]="'field-' + platform.id + '-' + field.id" class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{{ field.label }}</label>
                                       <div class="flex gap-2">
-                                        <button (click)="toggleEdit(platform.id + '.' + field.id)" class="text-slate-300 hover:text-slate-600">
-                                          <ion-icon [name]="editingField() === (platform.id + '.' + field.id) ? 'save' : 'pencil'" class="text-xs"></ion-icon>
+                                        <button aria-label="Toggle Edit Platform Field" title="Toggle Edit Platform Field" (click)="toggleEdit(platform.id + '.' + field.id)" class="text-slate-300 hover:text-slate-600">
+                                          <ion-icon aria-hidden="true" [name]="editingField() === (platform.id + '.' + field.id) ? 'save' : 'pencil'" class="text-xs"></ion-icon>
                                         </button>
                                         @if (field.type === 'string') {
-                                          <button (click)="copyToClipboard($any(details.platformContent[platform.id]?.[field.id]) || '', platform.id + '.' + field.id)" class="text-slate-300 hover:text-slate-600">
-                                            <ion-icon [name]="copiedField() === (platform.id + '.' + field.id) ? 'checkmark' : 'copy'" class="text-xs"></ion-icon>
+                                          <button aria-label="Copy Platform Field" title="Copy Platform Field" (click)="copyToClipboard($any(details.platformContent[platform.id]?.[field.id]) || '', platform.id + '.' + field.id)" class="text-slate-300 hover:text-slate-600">
+                                            <ion-icon aria-hidden="true" [name]="copiedField() === (platform.id + '.' + field.id) ? 'checkmark' : 'copy'" class="text-xs"></ion-icon>
                                           </button>
                                         }
                                       </div>
@@ -499,8 +499,8 @@
                                              }
                                            </div>
                                         }
-                                        <button (click)="copyToClipboard($any(details.platformContent[platform.id]?.[field.id]) || '', platform.id + '.' + field.id)" class="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 transition-all shadow-sm">
-                                           <ion-icon [name]="copiedField() === (platform.id + '.' + field.id) ? 'checkmark' : 'copy'"></ion-icon>
+                                        <button aria-label="Copy Platform Field Value" title="Copy Platform Field Value" (click)="copyToClipboard($any(details.platformContent[platform.id]?.[field.id]) || '', platform.id + '.' + field.id)" class="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all shadow-sm">
+                                           <ion-icon aria-hidden="true" [name]="copiedField() === (platform.id + '.' + field.id) ? 'checkmark' : 'copy'"></ion-icon>
                                         </button>
                                       </div>
                                     }
@@ -520,7 +520,7 @@
                           <ion-spinner name="crescent" slot="start" class="mr-2"></ion-spinner>
                           Saving...
                         } @else {
-                          <ion-icon name="save" class="text-lg"></ion-icon>
+                          <ion-icon aria-hidden="true" name="save" class="text-lg"></ion-icon>
                           Save Listing
                         }
                       </button>
