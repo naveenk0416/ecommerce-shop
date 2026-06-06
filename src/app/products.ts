@@ -48,6 +48,7 @@ export class Products {
 
   isAddModalOpen = signal(false);
   isSaleModalOpen = signal(false);
+  isSubmittingSale = signal(false);
   selectedListingForSale = signal<Listing | null>(null);
 
   newProduct: Partial<Listing> = {
@@ -109,6 +110,8 @@ export class Products {
       salePrice: Number(data.salePrice)
     };
 
+    this.isSubmittingSale.set(true);
+
     try {
       await this.listingService.logSale(submissionData);
       
@@ -132,6 +135,8 @@ export class Products {
         color: 'danger'
       });
       await toast.present();
+    } finally {
+      this.isSubmittingSale.set(false);
     }
   }
 
