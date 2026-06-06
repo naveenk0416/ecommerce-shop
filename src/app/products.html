@@ -274,10 +274,15 @@
 
         <div class="p-10 border-t border-slate-50 bg-slate-50/30">
           <button (click)="submitSale()" 
-                  [disabled]="!saleData.quantity || saleData.quantity <= 0" 
-                  class="btn-primary w-full tracking-[0.3em] gap-4 !bg-emerald-600 hover:!bg-emerald-700 !shadow-emerald-600/20">
-            <ion-icon name="paper-plane" class="text-xl rotate-12"></ion-icon>
-            Finalize Transaction Record
+                  [disabled]="!saleData.quantity || saleData.quantity <= 0 || isSubmittingSale()"
+                  class="btn-primary w-full tracking-[0.3em] gap-4 !bg-emerald-600 hover:!bg-emerald-700 !shadow-emerald-600/20 disabled:opacity-70 disabled:cursor-not-allowed">
+            @if (isSubmittingSale()) {
+              <ion-spinner name="crescent" class="w-5 h-5"></ion-spinner>
+              Processing...
+            } @else {
+              <ion-icon name="paper-plane" class="text-xl rotate-12" aria-hidden="true"></ion-icon>
+              Finalize Transaction Record
+            }
           </button>
         </div>
       </div>

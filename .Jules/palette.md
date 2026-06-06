@@ -1,0 +1,3 @@
+## 2024-05-18 - Async Modal Submissions Lack Feedback
+**Learning:** We discovered that async submission buttons inside modals (like the Sale submission) lack loading state feedback, which can lead to user confusion and potentially multiple unintentional submissions, especially on slow network connections.
+**Action:** Always add an `isSubmitting` signal to manage loading states for critical async actions. Use this signal to both disable the button and show an inline `<ion-spinner>` to give users clear feedback that their request is being processed. Ensure decorative `<ion-icon>` elements within these buttons are marked `aria-hidden="true"`.
