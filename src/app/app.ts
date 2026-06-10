@@ -126,7 +126,7 @@ export class App {
 
     if (isPlatformBrowser(this.platformId)) {
       // URL Sync Logic
-      const url = window.location.href;
+      // const _url = window.location.href;
       this.syncViewWithUrl(window.location.pathname);
 
       // SEO Effect

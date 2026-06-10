@@ -1,0 +1,3 @@
+## 2025-06-10 - Focus Outline Issue with Group Hover Patterns
+**Learning:** The application uses Tailwind 'group-hover' utilities for revealing hidden interactive elements (like icon buttons inside rows or cards) such as `opacity-0 group-hover:opacity-100`. This pattern initially causes accessibility issues because keyboard navigation users (using Tab) cannot see the elements when they receive focus.
+**Action:** When adding or discovering 'group-hover' revealed elements, always pair them with focus-aware classes. For example, `opacity-0 group-hover:opacity-100 group-focus-within:opacity-100` (or `focus-within:opacity-100`). This ensures that as a user tabs through hidden elements within the group, the entire group reveals its contents to support keyboard navigation.
