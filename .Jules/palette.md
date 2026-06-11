@@ -1,0 +1,3 @@
+## 2025-06-11 - Hover-Revealed Patterns and Keyboard Accessibility
+**Learning:** Found multiple instances where interactive UI elements (like edit buttons, action menus) were hidden using Tailwind's `opacity-0 group-hover:opacity-100` pattern. While visually clean for mouse users, this completely breaks the experience for keyboard users navigating via Tab, as the focused elements remain invisible.
+**Action:** When using hover-revealed patterns in Tailwind (e.g., `opacity-0 group-hover:opacity-100` or `group-hover:translate-x-0`), always pair them with focus-aware classes like `group-focus-within:opacity-100`, `focus-within:opacity-100`, or `focus-visible:opacity-100` (along with translating classes if animated) to ensure they are accessible via keyboard navigation.
