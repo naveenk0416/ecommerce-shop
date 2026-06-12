@@ -1,0 +1,3 @@
+## 2024-06-12 - Making hover-revealed UI elements keyboard accessible
+**Learning:** Tailwind hover-revealed patterns like `opacity-0 group-hover:opacity-100` hide interactive elements from sighted keyboard users because standard focusing doesn't trigger the hover state, leading to invisible focus traps.
+**Action:** Always pair `group-hover:opacity-100` with focus-aware classes. Use `focus-visible:opacity-100` directly on focusable elements (like buttons) to make them appear when tabbed to, or use `focus-within:opacity-100` / `group-focus-within:opacity-100` on the container to reveal all child actions when any of them receive focus.
