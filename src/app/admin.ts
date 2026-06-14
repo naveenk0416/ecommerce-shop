@@ -93,8 +93,8 @@ import { Listing } from './services/listing';
                     </p>
                   </div>
 
-                  <div class="opacity-0 group-hover:opacity-100 transition-opacity pl-2">
-                    <button aria-label="View user details" title="View user details" class="btn-icon-premium w-10 h-10">
+                  <div class="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pl-2">
+                    <button aria-label="View user details" title="View user details" class="btn-icon-premium w-10 h-10 focus-visible:opacity-100">
                       <ion-icon aria-hidden="true" name="chevron-forward-outline"></ion-icon>
                     </button>
                   </div>
@@ -157,7 +157,7 @@ import { Listing } from './services/listing';
                    <div class="bg-slate-950 px-4 py-2 rounded-2xl shadow-xl shadow-slate-950/10">
                      <p class="text-lg font-black text-white tabular-nums">₹{{ listing.priceINR }}</p>
                    </div>
-                   <button aria-label="More options" title="More options" class="btn-icon-premium w-10 h-10 opacity-0 group-hover:opacity-100 transition-all">
+                   <button aria-label="More options" title="More options" class="btn-icon-premium w-10 h-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all">
                      <ion-icon aria-hidden="true" name="ellipsis-horizontal"></ion-icon>
                    </button>
                 </div>

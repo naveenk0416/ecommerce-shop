@@ -1,0 +1,3 @@
+## 2024-06-14 - Keyboard Accessibility for Hover-Revealed UI Elements
+**Learning:** When using Tailwind CSS patterns like `opacity-0 group-hover:opacity-100` to reveal interactive elements (like edit or copy buttons) on hover, these elements become inaccessible to keyboard-only users who navigate via the Tab key, because hover states are not triggered by keyboard focus.
+**Action:** Always pair `group-hover` utility classes with focus-aware classes. Use `group-focus-within:opacity-100` on containers to reveal child elements when any child receives focus, and `focus-visible:opacity-100` directly on interactive elements so they reveal themselves when focused.
