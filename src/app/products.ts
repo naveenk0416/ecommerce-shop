@@ -49,6 +49,7 @@ export class Products {
   isAddModalOpen = signal(false);
   isSaleModalOpen = signal(false);
   selectedListingForSale = signal<Listing | null>(null);
+  isSubmittingSale = signal(false);
 
   newProduct: Partial<Listing> = {
     name: '',
@@ -102,6 +103,7 @@ export class Products {
     const listing = this.selectedListingForSale();
     if (!data.listingId || Number(data.quantity) <= 0 || !listing) return;
 
+    this.isSubmittingSale.set(true);
     // Ensure numeric types for Firestore rules validation
     const submissionData = {
       ...data,
@@ -132,6 +134,8 @@ export class Products {
         color: 'danger'
       });
       await toast.present();
+    } finally {
+      this.isSubmittingSale.set(false);
     }
   }
 
