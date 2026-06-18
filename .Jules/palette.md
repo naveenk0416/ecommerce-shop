@@ -1,0 +1,4 @@
+
+## 2026-06-18 - Keyboard Inaccessible Hover Interactions
+**Learning:** Actions hidden behind Tailwind's `group-hover:opacity-100` are completely inaccessible to keyboard users because they cannot hover over the group container. Since these actions represent critical functionality (e.g., editing price/code, copying content, logging sales, viewing/deleting listings), their invisibility to keyboard navigation breaks accessibility compliance and creates friction.
+**Action:** Always pair `opacity-0 group-hover:opacity-100` (and related transform utilities like `group-hover:translate-x-0`) with focus-aware states. Use `focus-within:opacity-100 focus-within:translate-x-0` on the container, or `focus:opacity-100` directly on the button. Ensure these rules are followed for any new hover-revealed components.
