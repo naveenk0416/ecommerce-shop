@@ -12,8 +12,8 @@ import { checkmarkCircle, sparkles, rocket, flash, star, close } from 'ionicons/
   imports: [CommonModule, IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonBadge],
   template: `
     <div class="pricing-container p-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-      <button (click)="dismiss.emit()" class="absolute top-6 right-6 w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-slate-100 text-slate-400 hover:text-slate-900 transition-colors z-20">
-        <ion-icon name="close" class="text-xl"></ion-icon>
+      <button aria-label="Close pricing modal" title="Close pricing modal" (click)="dismiss.emit()" class="absolute top-6 right-6 w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-slate-100 text-slate-400 hover:text-slate-900 transition-colors z-20">
+        <ion-icon aria-hidden="true" name="close" class="text-xl"></ion-icon>
       </button>
 
       <div class="text-center mb-12 mt-8">
