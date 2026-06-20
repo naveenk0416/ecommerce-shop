@@ -703,9 +703,13 @@
                 Skip
               </button>
               <button (click)="submitFeedback()" 
-                      [disabled]="currentFeedbackRating() === 0"
-                      class="flex-[2] h-12 rounded-2xl bg-orange-600 text-white font-bold text-xs hover:bg-orange-700 shadow-lg shadow-orange-600/20 uppercase tracking-widest disabled:opacity-50 disabled:shadow-none">
-                Send Feedback
+                      [disabled]="currentFeedbackRating() === 0 || isSubmittingFeedback()"
+                      class="flex-[2] h-12 rounded-2xl bg-orange-600 text-white font-bold text-xs hover:bg-orange-700 shadow-lg shadow-orange-600/20 uppercase tracking-widest disabled:opacity-50 disabled:shadow-none flex items-center justify-center">
+                @if (isSubmittingFeedback()) {
+                  <ion-spinner name="crescent" class="text-white w-5 h-5"></ion-spinner>
+                } @else {
+                  Send Feedback
+                }
               </button>
             </div>
           </div>
