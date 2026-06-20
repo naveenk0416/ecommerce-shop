@@ -88,6 +88,7 @@ export class App {
   isLinkSent = signal(false);
   isSendingLink = signal(false);
   authError = signal<string | null>(null);
+  isSubmittingFeedback = signal(false);
 
   private syncViewWithUrl(path: string) {
     if (path === '/' || path === '/home') {
@@ -226,6 +227,7 @@ export class App {
       return;
     }
 
+    this.isSubmittingFeedback.set(true);
     try {
       await this.listingService.submitFeedback({
         listingId: this.pendingListingId() || 'manual',
@@ -242,6 +244,8 @@ export class App {
       this.closeFeedbackModal();
     } catch (error) {
       console.error('Feedback submission failed:', error);
+    } finally {
+      this.isSubmittingFeedback.set(false);
     }
   }
 
