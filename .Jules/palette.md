@@ -1,0 +1,3 @@
+## 2024-05-24 - Interactive Element Visibility & ARIA Attributes
+**Learning:** Found a recurring pattern where inline edit/save/copy buttons within the `src/app/app.html` dashboard view are only revealed on mouse hover via `opacity-0 group-hover:opacity-100`. Additionally, they lacked `aria-label` attributes and the inner `<ion-icon>` elements lacked `aria-hidden="true"`, causing screen readers to misinterpret them.
+**Action:** When adding hover-revealed patterns, always pair them with focus-aware classes like `focus-visible:opacity-100` to support keyboard-only navigation. Always add descriptive `aria-label` and `title` attributes to icon-only interactive elements, and add `aria-hidden="true"` to nested `<ion-icon>` elements.
