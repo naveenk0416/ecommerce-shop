@@ -1,0 +1,3 @@
+## 2024-06-30 - Keyboard Accessibility for Hover-Revealed UI Elements
+**Learning:** Tailwind CSS patterns that rely purely on `group-hover` (e.g. `opacity-0 group-hover:opacity-100`) often cause interactive elements (like buttons) to become invisible but focusable targets during keyboard navigation, which disrupts accessibility.
+**Action:** Always complement `group-hover:opacity-100` with `group-focus-within:opacity-100`, `focus:opacity-100`, or `focus-within:opacity-100` (and their respective translation counterparts like `group-focus-within:translate-x-0`) to ensure they become visible when a user tabs into them.
