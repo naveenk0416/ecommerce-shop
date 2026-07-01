@@ -1,0 +1,3 @@
+## 2024-07-01 - Hover-revealed elements keyboard accessibility
+**Learning:** The app frequently uses Tailwind classes like `opacity-0 group-hover:opacity-100` and `translate-x-2 group-hover:translate-x-0` on interactive elements (like edit buttons in lists or cards) which makes them inaccessible to keyboard users navigating via Tab.
+**Action:** Always pair `group-hover` visibility classes with their focus equivalents. Use `focus-visible:opacity-100` for individual focusable elements or `focus-within:opacity-100` and `focus-within:translate-x-0` on container wrappers so buttons become visible and usable during keyboard navigation.
