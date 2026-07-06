@@ -1,0 +1,3 @@
+## 2024-05-18 - Hover-Revealed Patterns Require Focus Awareness
+**Learning:** In this application, interactive elements like copy and edit buttons are frequently hidden behind `opacity-0 group-hover:opacity-100` utility classes to minimize visual clutter. This renders them invisible and potentially inaccessible to users relying solely on keyboard navigation (tabbing).
+**Action:** When using hover-revealed patterns on interactive elements, always pair them with focus-aware classes like `focus-visible:opacity-100` or `focus-within:opacity-100` (and `group-focus-within:translate-x-0` if translating).
