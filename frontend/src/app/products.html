@@ -1,0 +1,422 @@
+<div class="products-dashboard animate-in fade-in max-w-7xl mx-auto px-6 py-10">
+  <!-- Modern Stats Bento -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+    <div class="bento-card bg-slate-950 border-none relative overflow-hidden group shadow-2xl">
+      <div class="relative z-10 p-2">
+        <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 block mb-2">Total Products</span>
+        <p class="text-[9px] text-slate-600 mb-3">Products you have added</p>
+        <div class="flex items-baseline gap-3">
+          <h2 class="text-4xl font-extrabold text-white tracking-tighter font-display italic">{{ listings().length }}</h2>
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Items</span>
+        </div>
+        <div class="flex items-center gap-2 mt-6 px-3 py-1 bg-white/5 w-fit rounded-full border border-white/10">
+          <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></div>
+          <span class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Live Sync</span>
+        </div>
+        
+        @if (lowStockCount > 0) {
+          <div class="mt-4 flex items-center gap-2 px-3 py-1 bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 w-fit animate-pulse">
+            <ion-icon name="alert-circle" class="text-xs"></ion-icon>
+            <span class="text-[8px] font-black uppercase tracking-widest">{{ lowStockCount }} Low Stock Alerts</span>
+          </div>
+        }
+      </div>
+      <ion-icon name="cube" class="absolute -right-8 -bottom-8 text-9xl text-white/5 rotate-12 transition-transform duration-1000 group-hover:scale-110 group-hover:rotate-0"></ion-icon>
+    </div>
+
+    <div class="bento-card border-slate-200 bg-white shadow-sm">
+      <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 block mb-1">Total Stock Value</span>
+      <p class="text-[9px] text-slate-400 mb-3">Combined value of all your products</p>
+      <div class="flex items-baseline gap-1">
+        <span class="text-xl font-medium text-slate-400 font-display">₹</span>
+        <h2 class="text-3xl font-extrabold text-slate-900 tracking-tighter font-display">{{ totalValue | number:'1.0-0' }}</h2>
+      </div>
+      <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+        <div class="flex flex-col">
+          <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total Profit</span>
+          <span class="text-xs font-bold text-emerald-600 mt-0.5">₹{{ totalProfit | number:'1.0-0' }}</span>
+        </div>
+        <div class="flex flex-col items-end">
+          <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Avg Price / Item</span>
+          <span class="text-xs font-bold text-slate-700 mt-0.5">₹{{ averagePrice | number:'1.0-0' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bento-card bg-orange-600 border-none shadow-xl shadow-orange-600/20 hover:bg-orange-700 transition-all cursor-pointer group"
+         (click)="openAddModal()"
+         (keydown.enter)="openAddModal()"
+         tabindex="0"
+         role="button">
+      <div class="flex flex-col h-full justify-between">
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-orange-200 block mb-3">Add Product</span>
+          <h3 class="text-2xl font-bold text-white tracking-tight font-display">+ Add New Product</h3>
+          <p class="text-sm text-orange-100/70 mt-2">Enter details manually</p>
+        </div>
+        <div class="flex items-center justify-between mt-4">
+          <p class="text-[9px] font-bold text-orange-100/60 uppercase tracking-widest leading-tight">Tap to<br>add product</p>
+          <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm text-white flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-inner border border-white/30">
+            <ion-icon name="add" class="text-3xl"></ion-icon>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Management Center -->
+  <div class="space-y-6">
+    <div class="flex flex-col sm:flex-row items-center gap-4">
+      <div class="flex-grow relative w-full group">
+        <ion-icon name="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors"></ion-icon>
+        <input type="text" [(ngModel)]="searchQuery" 
+          placeholder="Search by product name or category..."
+          class="w-full h-14 pl-12 pr-4 bg-white border border-slate-200 rounded-2xl text-sm font-medium placeholder:text-slate-300 focus:outline-none transition-all focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 shadow-sm">
+      </div>
+      <button (click)="refresh.emit()" class="btn-primary flex-shrink-0 gap-2">
+        <ion-icon name="refresh" class="text-sm"></ion-icon>
+        Refresh
+      </button>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="bg-white border border-slate-200 rounded-3xl shadow-lg shadow-slate-200/60 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[760px]">
+          <thead>
+            <tr class="bg-slate-950">
+              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Product Name</th>
+              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Product Code</th>
+              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-center">Stock Qty</th>
+              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Price & Profit</th>
+              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (listing of filteredListings; track listing.id) {
+              <tr class="group even:bg-slate-50/50 hover:bg-orange-50/60 transition-colors duration-200">
+                <td class="py-3 px-3">
+                  <div class="flex items-center gap-5">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shadow-sm flex-shrink-0">
+                      <img [src]="listing.processedImage || listing.originalImage || 'assets/logo_icon.png'" [alt]="listing.name" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+                    </div>
+                    <div class="max-w-[280px]">
+                      <h4 class="text-sm font-bold text-slate-900 group-hover:text-orange-600 transition-colors tracking-tight leading-tight line-clamp-2 uppercase">{{ listing.name }}</h4>
+                      <div class="flex items-center gap-3 mt-2.5">
+                         <span class="text-[8px] font-black text-white bg-slate-950 px-2 py-0.5 rounded-md uppercase tracking-widest">{{ listing.category || 'GEN' }}</span>
+                         <span class="text-[8px] font-bold text-slate-300 uppercase tracking-[0.15em]">{{ listing.createdAt | date:'MMM d, y' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-3 px-3">
+                  <div class="flex flex-col gap-2">
+                    <span class="text-[10px] font-mono text-slate-500 font-bold px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 w-fit tracking-tighter">
+                      #{{ (listing.id || 'TEMP').substring(0,8).toUpperCase() }}
+                    </span>
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">{{ listing.hsnCode || 'No HSN' }}</span>
+                  </div>
+                </td>
+                <td class="py-3 px-3 text-center">
+                  <div class="flex flex-col items-center">
+                    <span class="text-xl font-bold font-display italic tracking-widest" 
+                          [class.text-slate-900]="!isLowStock(listing)"
+                          [class.text-red-600]="isLowStock(listing)">
+                      {{ listing.quantity ?? 0 }}
+                    </span>
+                    @if (isLowStock(listing)) {
+                      <span class="text-[7px] font-black bg-red-600 text-white px-1.5 py-0.5 rounded uppercase mt-1 animate-bounce">Low Stock</span>
+                    } @else {
+                      <span class="text-[8px] font-black text-slate-400 mt-2 uppercase tracking-[0.2em]">Available</span>
+                    }
+                  </div>
+                </td>
+                <td class="py-3 px-3">
+                  <div class="flex flex-col gap-1">
+                    <div class="flex items-baseline gap-1.5">
+                      <span class="text-[10px] text-slate-400 font-bold">Price:</span>
+                      <span class="text-sm font-black text-slate-900 font-display">₹{{ parsePrice(listing.priceINR) | number }}</span>
+                    </div>
+                    @if (getProfit(listing) > 0) {
+                      <div class="flex items-baseline gap-1.5">
+                        <span class="text-[10px] text-emerald-400 font-bold">Profit:</span>
+                        <span class="text-[11px] font-bold text-emerald-600">₹{{ getProfit(listing) | number }}</span>
+                      </div>
+                    } @else if (listing.costPrice && getProfit(listing) < 0) {
+                      <div class="flex items-baseline gap-1.5">
+                        <span class="text-[10px] text-red-400 font-bold">Loss:</span>
+                        <span class="text-[11px] font-bold text-red-600">₹{{ -getProfit(listing) | number }}</span>
+                      </div>
+                    } @else {
+                      <span class="text-[9px] font-bold text-slate-300 uppercase tracking-[0.1em] mt-1">{{ listing.costPrice ? 'Break-even' : 'No cost set' }}</span>
+                    }
+                  </div>
+                </td>
+                <td class="py-3 px-3 text-right">
+                  <div class="flex justify-end gap-2">
+                    <button (click)="openSaleModal(listing)" class="btn-icon-premium text-emerald-600 hover:text-white hover:bg-emerald-600 hover:border-emerald-600" title="Log a Sale" aria-label="Log a sale">
+                      <ion-icon name="cart"></ion-icon>
+                    </button>
+                    <button (click)="view.emit(listing)" class="btn-icon-premium" aria-label="View listing details">
+                      <ion-icon name="eye"></ion-icon>
+                    </button>
+                    <button (click)="delete.emit(listing.id!)" class="btn-icon-premium text-red-500 hover:text-red-600 hover:border-red-100 hover:bg-red-50" aria-label="Delete listing">
+                      <ion-icon name="trash"></ion-icon>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="py-40 text-center">
+                  <div class="flex flex-col items-center max-w-sm mx-auto animate-stage-in">
+                    <div class="relative mb-10">
+                       <div class="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center animate-pulse">
+                          <ion-icon name="cube-outline" class="text-5xl text-slate-200"></ion-icon>
+                       </div>
+                       <div class="absolute -right-2 -bottom-2 w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                          <ion-icon name="add" class="text-white text-xl"></ion-icon>
+                       </div>
+                    </div>
+                    <h3 class="text-3xl font-extrabold text-slate-950 tracking-tighter font-display italic uppercase">No Products Yet</h3>
+                    <p class="text-sm text-slate-400 mt-4 font-medium leading-relaxed max-w-[280px]">You haven't added any products yet. Tap the button below to add your first product and start tracking your stock!</p>
+                    <button (click)="openAddModal()"
+                            class="btn-secondary mt-10 px-10">
+                      <ion-icon name="add" class="text-xl"></ion-icon>
+                      Add First Product
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar Footer -->
+  <div class="mt-12 flex flex-col sm:flex-row items-center justify-between px-8 py-5 bg-slate-50 rounded-2xl border border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-[0.25em]">
+    <div class="flex items-center gap-3">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
+      <p>© 2026 SELLASSIST — YOUR SMART SELLING PARTNER</p>
+    </div>
+    <div class="flex items-center gap-6 mt-4 sm:mt-0">
+      <span class="flex items-center gap-2 transition-colors hover:text-slate-600 cursor-default">
+        <ion-icon name="shield-checkmark" class="text-emerald-500 text-sm"></ion-icon> Secure & Private
+      </span>
+      <span class="flex items-center gap-2 transition-colors hover:text-slate-600 cursor-default">
+        <ion-icon name="rocket" class="text-orange-500 text-sm"></ion-icon> Version 2.1
+      </span>
+    </div>
+  </div>
+
+  <!-- Log Sale Modal -->
+  <ion-modal [isOpen]="isSaleModalOpen()" (didDismiss)="closeSaleModal()" class="product-modal-refined">
+    <ng-template>
+      <div class="flex flex-col h-full bg-white font-sans">
+        <div class="p-10 pb-6 flex items-center justify-between border-b border-slate-50">
+          <div>
+            <h2 class="text-xl font-black text-slate-900 tracking-tight uppercase">Record a Sale</h2>
+            <div class="flex items-center gap-2 mt-1.5 px-3 py-1 bg-emerald-50 w-fit rounded-full border border-emerald-100">
+              <div class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+              <p class="text-[9px] text-emerald-600 font-bold uppercase tracking-widest">Enter the sale details below</p>
+            </div>
+          </div>
+          <button (click)="closeSaleModal()" class="btn-icon-premium w-12 h-12">
+            <ion-icon name="close" class="text-2xl"></ion-icon>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-10 space-y-12">
+          <div class="space-y-8">
+            <div class="flex items-center gap-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+              <div class="w-16 h-16 rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm flex-shrink-0">
+                <img [src]="selectedListingForSale()?.processedImage || selectedListingForSale()?.originalImage || 'assets/logo_icon.png'" alt="Product" class="w-full h-full object-cover">
+              </div>
+              <div>
+                 <h4 class="text-sm font-bold text-slate-900 uppercase tracking-tight">{{ selectedListingForSale()?.name }}</h4>
+                 <p class="text-[10px] text-slate-400 font-medium uppercase mt-1">Ref ID: {{ selectedListingForSale()?.id?.substring(0,8) }}</p>
+                 <p class="text-[10px] font-bold uppercase tracking-widest mt-1"
+                    [class.text-emerald-600]="availableStock() > 0"
+                    [class.text-red-500]="availableStock() === 0">
+                   {{ availableStock() }} in stock
+                 </p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div class="space-y-6">
+                <div class="space-y-2">
+                  <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1 block">Where did you sell?</span>
+                  <div class="grid grid-cols-3 gap-3">
+                    @for (p of ['Amazon', 'Flipkart', 'Meesho', 'Instagram', 'Offline', 'Other']; track p) {
+                      <button (click)="saleData.platform = $any(p)" 
+                              [class.bg-slate-900]="saleData.platform === p"
+                              [class.text-white]="saleData.platform === p"
+                              class="h-14 rounded-2xl border border-slate-200 text-[10px] font-bold uppercase tracking-tight transition-all hover:bg-slate-50">
+                        {{ p }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-6">
+                <div class="grid grid-cols-2 gap-6">
+                  <div class="space-y-2">
+                    <label for="sale-qty" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">How Many Sold?</label>
+                    <input type="number" id="sale-qty" [(ngModel)]="saleData.quantity" min="1" [max]="availableStock()"
+                           class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-center focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all">
+                  </div>
+                  <div class="space-y-2">
+                    <label for="sale-price" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Sale Price (₹)</label>
+                    <input type="number" id="sale-price" [(ngModel)]="saleData.salePrice" 
+                           class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-center focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-10 border-t border-slate-50 bg-slate-50/30">
+          <button (click)="submitSale()"
+                  [disabled]="!saleData.quantity || saleData.quantity <= 0 || saleData.quantity > availableStock()"
+                  class="btn-primary w-full tracking-[0.3em] gap-4 !bg-emerald-600 hover:!bg-emerald-700 !shadow-emerald-600/20 disabled:opacity-50">
+            <ion-icon name="paper-plane" class="text-xl rotate-12"></ion-icon>
+            Save Sale Record
+          </button>
+        </div>
+      </div>
+    </ng-template>
+  </ion-modal>
+
+  <!-- Add Product Modal -->
+  <ion-modal [isOpen]="isAddModalOpen()" (didDismiss)="closeAddModal()" class="product-modal-refined">
+    <ng-template>
+      <div class="flex flex-col h-full bg-white font-sans">
+        <div class="p-10 pb-6 flex items-center justify-between border-b border-slate-50">
+          <div>
+            <h2 class="text-xl font-black text-slate-900 tracking-tight uppercase">Add New Product</h2>
+            <div class="flex items-center gap-2 mt-1.5 px-3 py-1 bg-slate-100 w-fit rounded-full border border-slate-200">
+              <div class="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
+              <p class="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Fill in the details below</p>
+            </div>
+          </div>
+          <button (click)="closeAddModal()" class="btn-icon-premium w-12 h-12">
+            <ion-icon name="close" class="text-2xl"></ion-icon>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-10 space-y-12">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <!-- Identity Segment -->
+            <div class="space-y-8">
+              <div class="flex items-center gap-3 border-l-4 border-slate-900 pl-4 py-1">
+                <h3 class="text-xs font-bold uppercase tracking-[0.25em] text-slate-900">Step 1 — Product Details</h3>
+              </div>
+              
+              <div class="space-y-6">
+                <div class="space-y-2">
+                  <label for="asset-name" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Product Name *</label>
+                  <div class="relative group">
+                    <ion-icon name="pricetag" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-orange-500 transition-colors"></ion-icon>
+                    <input type="text" id="asset-name" [(ngModel)]="newProduct.name" placeholder="E.g. Blue Cotton T-Shirt..."
+                           class="w-full h-14 pl-12 pr-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <label for="market-class" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Category</label>
+                  <div class="relative group">
+                    <ion-icon name="list" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-orange-500 transition-colors"></ion-icon>
+                    <input type="text" id="market-class" [(ngModel)]="newProduct.category" placeholder="E.g. Clothing, Electronics, Food..."
+                           class="w-full h-14 pl-12 pr-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <label for="critical-brief" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Description (Optional)</label>
+                  <div class="relative group">
+                    <textarea id="critical-brief" [(ngModel)]="newProduct.description" placeholder="Describe your product — features, colour, size, material..."
+                               rows="5" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all resize-none"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Commercial Segment -->
+            <div class="space-y-8">
+              <div class="flex items-center gap-3 border-l-4 border-orange-500 pl-4 py-1">
+                <h3 class="text-xs font-bold uppercase tracking-[0.25em] text-slate-900">Step 2 — Pricing & Stock</h3>
+              </div>
+
+              <div class="space-y-6">
+                <div class="grid grid-cols-2 gap-6">
+                  <div class="space-y-2">
+                    <label for="cost-price" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Cost Price (₹)</label>
+                    <div class="relative group">
+                      <input type="number" id="cost-price" [(ngModel)]="newProduct.costPrice" placeholder="0.00" 
+                             class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-center focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <label for="selling-price" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Selling Price (₹) *</label>
+                    <div class="relative group">
+                      <input type="number" id="selling-price" [(ngModel)]="newProduct.sellingPrice" placeholder="0.00" 
+                             class="w-full h-14 px-4 bg-orange-50 border border-orange-100 rounded-2xl text-sm font-extrabold text-center text-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:bg-white transition-all">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                  <div class="space-y-2">
+                    <label for="quant-units" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Quantity in Stock</label>
+                    <div class="relative group">
+                      <input type="number" id="quant-units" [(ngModel)]="newProduct.quantity" placeholder="Units" 
+                             class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-center focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
+                    </div>
+                  </div>
+                  <div class="space-y-2">
+                    <label for="tax-index" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">GST Rate</label>
+                    <div class="relative group" [class.opacity-50]="!auth.isPro()">
+                      <select id="tax-index" [(ngModel)]="newProduct.gstRate" [disabled]="!auth.isPro()" 
+                              class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold appearance-none focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
+                        <option value="5%">5% GST</option>
+                        <option value="12%">12% GST</option>
+                        <option value="18%">18% GST</option>
+                        <option value="28%">28% GST</option>
+                      </select>
+                      <ion-icon name="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></ion-icon>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-2" [class.hidden]="!auth.isPro()">
+                  <label for="hsn-index" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">HSN Code (Optional)</label>
+                  <div class="relative group">
+                    <ion-icon name="barcode-outline" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></ion-icon>
+                    <input type="text" id="hsn-index" [(ngModel)]="newProduct.hsnCode" placeholder="Enter HSN code for tax purposes..."
+                           class="w-full h-14 pl-12 pr-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono font-bold uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-10 border-t border-slate-50 bg-slate-50/30">
+          <button (click)="submitManualProduct()" 
+                  [disabled]="!newProduct.name || !newProduct.sellingPrice" 
+                  class="btn-primary w-full tracking-[0.3em] gap-4">
+            <ion-icon name="save" class="text-xl"></ion-icon>
+            Save Product
+          </button>
+        </div>
+      </div>
+    </ng-template>
+  </ion-modal>
+</div>
+

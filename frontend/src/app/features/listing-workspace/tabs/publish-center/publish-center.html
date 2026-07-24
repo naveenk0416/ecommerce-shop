@@ -1,0 +1,35 @@
+<div class="space-y-8 animate-in fade-in">
+  <div>
+    <h2 class="text-2xl font-black text-slate-950 dark:text-white tracking-tight font-display">Publish Center</h2>
+    <p class="text-sm text-slate-400 mt-1">Publish, export, or copy your listing to every marketplace from one place.</p>
+  </div>
+
+  <div>
+    <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Live Marketplaces</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      @for (marketplace of allMarketplaces; track marketplace.id) {
+        @if (marketplace.status === 'live') {
+          <app-publish-card
+            [marketplace]="marketplace"
+            [status]="readinessFor().get(marketplace.id)?.status ?? 'partial'"
+            [missingCount]="readinessFor().get(marketplace.id)?.mandatoryMissing?.length ?? 0"
+            [publishEnabled]="publishEnabled()"
+            (downloadExcel)="downloadExcel(marketplace.id)"
+            (copyListing)="copyListing(marketplace.id)"
+            (publish)="publish(marketplace.id)" />
+        }
+      }
+    </div>
+  </div>
+
+  <div>
+    <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Future Marketplaces — Feature Flagged</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      @for (marketplace of allMarketplaces; track marketplace.id) {
+        @if (marketplace.status === 'comingSoon') {
+          <app-publish-card [marketplace]="marketplace" />
+        }
+      }
+    </div>
+  </div>
+</div>

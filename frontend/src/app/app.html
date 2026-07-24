@@ -1,0 +1,860 @@
+<ion-app>
+  <ion-header class="ion-no-border">
+    <ion-toolbar class="bg-white px-6 py-4 border-b border-slate-100">
+      <div class="flex items-center justify-between w-full">
+        <div class="flex items-center gap-3 cursor-pointer group" (click)="showLanding.set(true)" tabindex="0" (keydown.enter)="showLanding.set(true)">
+          <img src="assets/logo.png" alt="SellAssist logo" class="h-14 w-auto object-contain"/>
+        </div>
+        
+        <div class="flex items-center gap-1 md:gap-6">
+          <nav class="hidden md:flex items-center gap-1 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100/50 backdrop-blur-sm">
+            <button (click)="navigateTo('gst')"
+                    class="nav-tab"
+                    [class.nav-tab-active]="mainView() === 'gst'">
+              <ion-icon name="calculator" class="text-xs"></ion-icon>
+              GST Calc
+            </button>
+
+            @if (auth.user()) {
+              <button (click)="navigateTo('home')"
+                      class="nav-tab"
+                      [class.nav-tab-active]="mainView() === 'home' && !showLanding()">
+                Optimize
+              </button>
+              @if (auth.isPro()) {
+                <button (click)="navigateTo('listings')"
+                        class="nav-tab"
+                        [class.nav-tab-active]="mainView() === 'listings' && !showLanding()">
+                  History
+                </button>
+                <button (click)="navigateTo('products')"
+                        class="nav-tab"
+                        [class.nav-tab-active]="mainView() === 'products' && !showLanding()">
+                  Inventory
+                </button>
+              }
+            }
+          </nav>
+
+          @if (auth.user()) {
+            <div class="flex items-center gap-3">
+              @if (auth.isAdmin()) {
+                <button (click)="navigateTo('admin')" class="btn-icon-premium w-10 h-10">
+                  <ion-icon name="shield-checkmark"></ion-icon>
+                </button>
+              }
+              <button (click)="logout()" class="btn-primary px-4 text-[9px] gap-2">
+                <ion-icon name="log-out" class="text-xs"></ion-icon>
+                Logout
+              </button>
+            </div>
+          } @else {
+            <div class="flex items-center gap-3">
+              <button (click)="showLanding.set(false); isRegistering.set(false)" class="btn-ghost px-6">
+                Sign In
+              </button>
+              <button (click)="showLanding.set(false); isRegistering.set(true)" class="btn-orange-premium">
+                Get Started
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content [fullscreen]="true">
+    @if (showLanding()) {
+      <app-landing 
+        (login)="showLanding.set(false); isRegistering.set(false)" 
+        (getStarted)="showLanding.set(false); isRegistering.set(true)" 
+        [isLoggedIn]="!!auth.user()"
+        (goDashboard)="showLanding.set(false); mainView.set('home')">
+      </app-landing>
+    } @else {
+      <div class="max-w-7xl mx-auto space-y-8 pb-20 pt-12 px-6">
+        @if (auth.isAuthReady()) {
+          <section class="mb-8 rounded-[2rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-amber-50 p-6 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.35em] text-orange-600">Razorpay Standard Checkout</p>
+                <h3 class="mt-2 text-xl font-black text-slate-900">Try the secure payment flow</h3>
+                <p class="mt-2 max-w-2xl text-sm text-slate-600">Create an order on the backend, open the Razorpay modal, and verify the signature before marking the payment as successful.</p>
+              </div>
+              <div class="flex flex-col items-start gap-3">
+                <ion-button (click)="startRazorpayCheckout()" shape="round" color="primary" [disabled]="isProcessingCheckout()">
+                  @if (isProcessingCheckout()) {
+                    <ion-spinner name="crescent" slot="start"></ion-spinner>
+                    Processing...
+                  } @else {
+                    Pay ₹499
+                  }
+                </ion-button>
+                @if (checkoutMessage()) {
+                  <p class="text-sm font-medium text-slate-700">{{ checkoutMessage() }}</p>
+                }
+              </div>
+            </div>
+          </section>
+        }
+        @if (!auth.isAuthReady()) {
+          <div class="flex flex-col items-center justify-center py-20">
+            <ion-spinner name="crescent" color="primary"></ion-spinner>
+            <p class="text-slate-500 mt-4">Initializing...</p>
+          </div>
+        } @else if (passwordResetMode() === 'forgot') {
+          <!-- Forgot Password Section -->
+          <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
+            <div class="text-center mb-10 relative">
+              <button (click)="backToLogin()" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600">
+                <ion-icon name="close" class="text-2xl"></ion-icon>
+              </button>
+              <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ion-icon name="lock-closed" class="text-4xl text-orange-500"></ion-icon>
+              </div>
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight">Reset Password</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium">
+                Enter your account email and we'll send you a link to reset your password.
+              </p>
+            </div>
+
+            @if (forgotEmailSent()) {
+              <div class="bg-emerald-50 text-emerald-700 p-5 rounded-2xl text-sm font-medium border border-emerald-100 text-center space-y-3">
+                <ion-icon name="checkmark" class="text-3xl"></ion-icon>
+                <p>If an account exists for <strong>{{ email() }}</strong>, a reset link has been sent. Check your inbox.</p>
+              </div>
+              <button (click)="backToLogin()" class="text-sm text-orange-600 font-bold hover:underline mt-6 block mx-auto">
+                Back to Login
+              </button>
+            } @else {
+              <div class="space-y-4">
+                <div class="mb-2">
+                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
+                  <ion-input type="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                </div>
+
+                @if (authError()) {
+                  <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
+                    {{ authError() }}
+                  </div>
+                }
+
+                <ion-button (click)="sendPasswordResetEmail()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isProcessing()">
+                  @if (isProcessing()) {
+                    <ion-spinner name="crescent" slot="start"></ion-spinner>
+                    Sending...
+                  } @else {
+                    Send Reset Link
+                  }
+                </ion-button>
+
+                <div class="text-center py-2">
+                  <button (click)="backToLogin()" class="text-sm text-orange-600 font-bold hover:underline">
+                    Back to Login
+                  </button>
+                </div>
+              </div>
+            }
+          </section>
+        } @else if (passwordResetMode() === 'reset') {
+          <!-- Set New Password Section -->
+          <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
+            <div class="text-center mb-10">
+              <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ion-icon name="lock-closed" class="text-4xl text-orange-500"></ion-icon>
+              </div>
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ resetPasswordSuccess() ? 'Password Updated' : 'Set New Password' }}</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium">
+                {{ resetPasswordSuccess() ? 'Your password has been changed successfully.' : 'Choose a new password for your account.' }}
+              </p>
+            </div>
+
+            @if (resetPasswordSuccess()) {
+              <ion-button (click)="backToLogin()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm">
+                Go to Login
+              </ion-button>
+            } @else {
+              <div class="space-y-4">
+                <div class="mb-2">
+                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">New Password</ion-label>
+                  <ion-input type="password" [value]="newPassword()" (ionInput)="newPassword.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                </div>
+                <div class="mb-2">
+                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Confirm Password</ion-label>
+                  <ion-input type="password" [value]="confirmNewPassword()" (ionInput)="confirmNewPassword.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                </div>
+
+                @if (authError()) {
+                  <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
+                    {{ authError() }}
+                  </div>
+                }
+
+                <ion-button (click)="submitPasswordReset()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isProcessing()">
+                  @if (isProcessing()) {
+                    <ion-spinner name="crescent" slot="start"></ion-spinner>
+                    Updating...
+                  } @else {
+                    Update Password
+                  }
+                </ion-button>
+              </div>
+            }
+          </section>
+        } @else if (mainView() === 'gst') {
+          <app-gst-calculator></app-gst-calculator>
+        } @else if (mainView() === 'workspace') {
+          <router-outlet></router-outlet>
+        } @else if (!auth.user()) {
+            <!-- Login/Auth Section if not logged in -->
+            <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
+              <div class="text-center mb-10 relative">
+                <button (click)="navigateTo('landing')" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600">
+                  <ion-icon name="close" class="text-2xl"></ion-icon>
+                </button>
+                <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <ion-icon name="person-circle" class="text-4xl text-orange-500"></ion-icon>
+                </div>
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ isRegistering() ? 'Create Account' : 'Welcome Back' }}</h2>
+                <p class="text-slate-500 mt-2 text-sm font-medium">
+                  {{ isRegistering() ? 'Join Bharat\'s AI Growth Partner today.' : 'Sign in to start optimizing your listings.' }}
+                </p>
+              </div>
+
+              <div class="space-y-4">
+                <div class="mb-2">
+                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
+                  <ion-input type="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                </div>
+
+                <div class="mb-2">
+                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Password</ion-label>
+                  <ion-input type="password" [value]="password()" (ionInput)="password.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                </div>
+
+                @if (!isRegistering()) {
+                  <div class="text-right -mt-2">
+                    <button (click)="passwordResetMode.set('forgot'); authError.set(null)" class="text-xs text-slate-400 hover:text-orange-600 font-bold transition-colors">
+                      Forgot password?
+                    </button>
+                  </div>
+                }
+
+                @if (isRegistering()) {
+                  <div class="mb-2">
+                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Business Name</ion-label>
+                    <ion-input type="text" [value]="regName()" (ionInput)="regName.set($any($event).target.value)" placeholder="Your Store Name" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                  </div>
+                  <div class="mb-2">
+                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Phone Number</ion-label>
+                    <ion-input type="tel" [value]="regPhone()" (ionInput)="regPhone.set($any($event).target.value)" placeholder="+91 XXXXX XXXXX" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                  </div>
+                  <div class="mb-2">
+                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">GST Number (Optional)</ion-label>
+                    <ion-input type="text" [value]="regGST()" (ionInput)="regGST.set($any($event).target.value)" placeholder="GSTIN" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                  </div>
+                }
+
+                @if (authError()) {
+                  <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
+                    {{ authError() }}
+                  </div>
+                }
+
+                <ion-button (click)="isRegistering() ? register() : loginWithEmail()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isProcessing()">
+                  @if (isProcessing()) {
+                    <ion-spinner name="crescent" slot="start"></ion-spinner>
+                    Processing...
+                  } @else {
+                    {{ isRegistering() ? 'Register' : 'Login' }}
+                  }
+                </ion-button>
+
+                <div class="text-center py-2">
+                  <button (click)="toggleRegister()" class="text-sm text-orange-600 font-bold hover:underline">
+                    {{ isRegistering() ? 'Already have an account? Login' : 'Need an account? Sign Up' }}
+                  </button>
+                </div>
+              </div>
+            </section>
+        } @else if (auth.user()) {
+            @if (mainView() === 'home') {
+              <!-- Modern Dashboard View -->
+              <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <!-- Header Stats Bento -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div class="md:col-span-2 bento-card bg-white border border-slate-100 flex items-center justify-between group overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
+                    <div class="relative z-10 p-10">
+                      <h2 class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 mb-1">Welcome back</h2>
+                      <h3 class="text-3xl font-extrabold text-slate-900 tracking-tighter font-display italic">
+                        {{ auth.profile()?.displayName || 'Seller' }}
+                      </h3>
+                      <p class="text-sm text-slate-400 mt-1 font-medium">Your selling dashboard is ready</p>
+                      <div class="flex items-center gap-2 mt-4 bg-slate-900 text-white px-4 py-1.5 rounded-full w-fit shadow-lg shadow-slate-900/10">
+                        <ion-icon [name]="auth.isPro() ? 'sparkles' : 'person'" class="text-xs text-orange-400"></ion-icon>
+                        <span class="text-[9px] font-bold uppercase tracking-[0.2em]">{{ auth.isPro() ? 'Pro' : 'Free' }} Plan</span>
+                      </div>
+                    </div>
+                    <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-slate-50/50 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-1000">
+                      <ion-icon [name]="auth.isPro() ? 'sparkles' : 'person'" class="text-6xl text-slate-100"></ion-icon>
+                    </div>
+                  </div>
+
+                  <div class="bento-card border-orange-100 bg-orange-50/10 p-6 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-orange-600 block mb-1">Today's Usage</span>
+                      <p class="text-xs text-slate-400 mb-3">How many AI listings you've generated today</p>
+                      <div class="flex items-baseline gap-1">
+                        <h4 class="text-4xl font-extrabold text-slate-900 font-display tracking-tighter">{{ dailyUsage() }}</h4>
+                        <span class="text-lg text-slate-300 ml-1">/ {{ dailyLimit() }} uses</span>
+                      </div>
+                    </div>
+                    <div class="space-y-2 mt-6">
+                      <div class="w-full h-2 bg-slate-200/50 rounded-full overflow-hidden shadow-inner">
+                        <div class="h-full bg-orange-500 transition-all duration-1000 shadow-[0_0_8px_rgba(249,115,22,0.4)]"
+                          [style.width.%]="usagePercent()">
+                        </div>
+                      </div>
+                      <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-right">Resets every day at midnight</p>
+                    </div>
+                  </div>
+
+                  <div class="bento-card bg-slate-950 border-none group cursor-pointer p-6 shadow-xl shadow-slate-950/20"
+                       (click)="navigateTo('listings')"
+                       (keydown.enter)="navigateTo('listings')"
+                       tabindex="0"
+                       role="button">
+                    <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 block mb-1">My Saved Products</span>
+                    <p class="text-[9px] text-slate-600 mb-2">Tap to view all</p>
+                    <div class="flex items-center justify-between py-2">
+                      <div>
+                        <h4 class="text-4xl font-extrabold text-white font-display tracking-tighter">{{ myListings().length }}</h4>
+                        <p class="text-xs text-slate-500 mt-1">{{ myListings().length === 1 ? 'listing saved' : 'listings saved' }}</p>
+                      </div>
+                      <div class="btn-icon-dark group-hover:bg-orange-500 group-hover:rotate-45">
+                        <ion-icon name="arrow-forward" class="text-white"></ion-icon>
+                      </div>
+                    </div>
+                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-4 flex items-center gap-2">
+                       <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                       Saved to Cloud
+                    </p>
+                  </div>
+                </div>
+
+                @if (isEditingImage() && selectedImage(); as img) {
+                  <app-image-editor [imageSrc]="img" (done)="onEditorComplete($event)" (closeEditor)="onEditorCancel()"></app-image-editor>
+                } @else {
+                  <!-- Main Action: Upload -->
+                  <div class="bento-card border-2 border-dashed transition-all cursor-pointer group py-20 text-center relative overflow-hidden"
+                       [ngClass]="{
+                         'border-orange-500 bg-orange-50/50 scale-[0.99]': isDragging(),
+                         'border-slate-200 bg-white hover:border-orange-500 hover:shadow-2xl hover:shadow-orange-500/5': !isDragging() && !isProcessing() && !isGeneratingImage(),
+                         'border-orange-200 bg-white cursor-default': isProcessing() || isGeneratingImage()
+                       }"
+                       (click)="!isProcessing() && !isGeneratingImage() && fileInputDashboard.click()"
+                       (keydown.enter)="!isProcessing() && !isGeneratingImage() && fileInputDashboard.click()"
+                       tabindex="0"
+                       role="button"
+                       aria-label="Upload stock image"
+                       (drop)="onDrop($event)"
+                       (dragover)="onDragOver($event)"
+                       (dragenter)="onDragOver($event)"
+                       (dragleave)="onDragLeave($event)">
+                    
+                    <div class="absolute inset-0 bg-linear-to-b from-transparent via-transparent to-slate-50/30"></div>
+
+                    @if (isProcessing() || isGeneratingImage() || processingStage() !== 'idle') {
+                      <div class="flex flex-col items-center animate-stage-in relative z-10">
+                        <div class="relative w-28 h-28 mb-8">
+                          <div class="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+                          <div class="absolute inset-0 border-4 border-orange-500 rounded-full border-t-transparent animate-spin shadow-[0_0_15px_rgba(249,115,22,0.2)]"></div>
+                          <div class="absolute inset-0 flex items-center justify-center">
+                            <ion-icon name="sparkles" class="text-4xl text-orange-500 animate-pulse"></ion-icon>
+                          </div>
+                        </div>
+                        
+                        <h2 class="text-2xl font-extrabold text-slate-900 tracking-tighter font-display uppercase italic">
+                           AI is Creating Your Listing...
+                        </h2>
+                        <p class="text-slate-400 mt-3 text-sm font-medium tracking-tight">Please wait — our AI is building your product listing automatically!</p>
+                      </div>
+                    } @else {
+                      <div class="flex flex-col items-center relative z-10">
+                        <div class="w-24 h-24 bg-slate-950 rounded-[2.5rem] shadow-2xl shadow-slate-950/20 flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-700"
+                             [class.scale-110]="isDragging()">
+                          <ion-icon name="cloud-upload" aria-label="Upload Icon" class="text-5xl text-orange-500"></ion-icon>
+                        </div>
+                        <h2 class="text-3xl font-extrabold text-slate-900 tracking-tighter font-display uppercase italic">
+                          {{ isDragging() ? 'Drop Your Photo Here!' : 'Upload Product Photo' }}
+                        </h2>
+                        <p class="text-slate-400 mt-3 text-sm font-medium max-w-xs mx-auto leading-relaxed">
+                          Click here or drag and drop your product photo. Our AI will instantly create a professional listing for Amazon, Flipkart & more!
+                        </p>
+
+                        <div class="mt-10 flex items-center gap-4">
+                           <div class="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl border border-slate-200">
+                              <ion-icon name="color-palette" class="text-orange-500 text-xs"></ion-icon>
+                              <span class="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">AI Auto-Design</span>
+                           </div>
+                           <div class="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+                              <ion-icon name="shield-checkmark" class="text-emerald-500 text-xs"></ion-icon>
+                              <span class="text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-600">Safe & Secure</span>
+                           </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                  <input type="file" #fileInputDashboard (change)="onFileSelected($event)" accept="image/*" class="hidden">
+                  
+                  @if (selectedImage() && !isEditingImage()) {
+                    <!-- Image preview and details after upload -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <!-- Original Image -->
+                      <ion-card class="m-0 rounded-2xl overflow-hidden shadow-md">
+                        <ion-card-header class="bg-slate-50 py-3">
+                          <ion-card-title class="text-sm font-semibold uppercase tracking-wider text-slate-500 flex items-center">
+                            <ion-icon name="image" class="mr-2"></ion-icon> Original
+                          </ion-card-title>
+                        </ion-card-header>
+                        <div class="aspect-square bg-slate-200 flex items-center justify-center overflow-hidden">
+                          <img [src]="selectedImage()" alt="Original product image" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+                        </div>
+                      </ion-card>
+  
+                      <!-- Processed Image -->
+                      <ion-card class="m-0 rounded-2xl overflow-hidden shadow-md border-2 border-orange-100">
+                        <ion-card-header class="bg-orange-50/50 py-3">
+                          <ion-card-title class="text-sm font-black uppercase tracking-wider text-orange-600 flex items-center justify-between">
+                            <div class="flex items-center">
+                              <ion-icon name="color-palette" class="mr-2"></ion-icon> Optimized Design
+                            </div>
+                            <ion-button (click)="isEditingImage.set(true)" size="small" fill="clear" color="orange" class="ion-no-margin">
+                              <ion-icon name="pencil" slot="start"></ion-icon> Re-edit
+                            </ion-button>
+                          </ion-card-title>
+                        </ion-card-header>
+                        <div class="aspect-square bg-white flex items-center justify-center overflow-hidden relative">
+                          @if (processedImage(); as proc) {
+                            <img [src]="proc" alt="Optimized product image" class="w-full h-full object-contain p-4" referrerpolicy="no-referrer">
+                          } @else {
+                             <div class="flex flex-col items-center justify-center text-slate-300 p-8 text-center">
+                               <ion-icon name="image" class="text-5xl mb-2 opacity-10"></ion-icon>
+                               <span class="text-[10px] font-black uppercase tracking-widest">Optimized version will appear here</span>
+                             </div>
+                          }
+                        </div>
+                      </ion-card>
+                    </div>
+                  }
+
+                  @if (!isEditingImage() && productDetails(); as details) {
+                    <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-premium p-1.5 flex flex-wrap gap-1 my-10 overflow-hidden">
+                      @for (platform of templateService.templates(); track platform.id) {
+                        @if (platform.enabled) {
+                          <button (click)="activeTab.set(platform.id)"
+                                  class="flex-1 min-w-[100px] h-12 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 group"
+                                  [ngClass]="{
+                                    'bg-linear-to-br from-[#F97316] to-[#FB923C] text-white shadow-[0_10px_20px_rgba(249,115,22,0.35)]': activeTab() === platform.id,
+                                    'text-slate-400 hover:bg-slate-50 hover:text-slate-600': activeTab() !== platform.id
+                                  }">
+                            <ion-icon [name]="platform.id === 'details' ? 'cube' : (platform.id === 'amazon' ? 'logo-amazon' : (platform.id === 'instagram' ? 'logo-instagram' : 'list'))"
+                                      [class.text-white]="activeTab() === platform.id"></ion-icon>
+                            {{ platform.label }}
+                          </button>
+                        }
+                      }
+                    </div>
+
+                    @if (activeTab() === 'details') {
+                      <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <!-- Basic Info Card -->
+                        <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                          <div class="bg-slate-50/50 px-8 py-5 border-b border-slate-100 flex items-center justify-between">
+                             <div class="flex items-center gap-3">
+                                <div class="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+                                <h3 class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">Product Details</h3>
+                             </div>
+                             <div class="flex gap-2">
+                                <button (click)="toggleEdit('master')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
+                                   <ion-icon name="pencil" class="text-xs"></ion-icon>
+                                </button>
+                             </div>
+                          </div>
+                          <div class="p-8 space-y-8">
+                            <div class="space-y-3">
+                              <label for="merchant-name" class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Product Name</label>
+                              <div class="flex items-start justify-between gap-4">
+                                @if (editingField() === 'name') {
+                                  <input id="merchant-name" [value]="details.name" (input)="updateField('name', $any($event.target).value)" class="flex-grow bg-slate-50 rounded-2xl px-6 py-4 text-xl font-bold border border-slate-100 focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
+                                  <button (click)="toggleEdit('name')" class="h-14 w-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center flex-shrink-0">
+                                    <ion-icon name="save"></ion-icon>
+                                  </button>
+                                } @else {
+                                  <h3 class="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight group-hover:text-orange-600 transition-colors cursor-pointer" 
+                                      (click)="toggleEdit('name')"
+                                      (keydown.enter)="toggleEdit('name')"
+                                      tabindex="0">
+                                    {{details.name}}
+                                  </h3>
+                                  <button (click)="copyToClipboard(details.name, 'name')" class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all flex-shrink-0">
+                                    <ion-icon [name]="copiedField() === 'name' ? 'checkmark' : 'copy'"></ion-icon>
+                                  </button>
+                                }
+                              </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                              <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 relative group">
+                                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-3">Selling Price</span>
+                                <div class="flex items-baseline gap-2">
+                                  <span class="text-xl font-bold text-slate-400">₹</span>
+                                  <h4 class="text-3xl font-extrabold text-slate-900 font-display tracking-tighter">{{ price(details.priceINR) | number }}</h4>
+                                </div>
+                                <button (click)="toggleEdit('price')" class="absolute top-4 right-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <ion-icon name="pencil" class="text-xs"></ion-icon>
+                                </button>
+                              </div>
+                              
+                              <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 relative group">
+                                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-3">GST Rate & HSN Code</span>
+                                <div class="flex items-center gap-2">
+                                  <span class="text-sm font-extrabold text-slate-700 bg-white px-3 py-1 rounded-lg shadow-sm border border-slate-100">{{details.gstRate}} GST</span>
+                                  <span class="text-[11px] font-mono font-bold text-white bg-slate-950 px-3 py-1 rounded-lg">{{details.hsnCode}}</span>
+                                </div>
+                                <button (click)="toggleEdit('gstHsn')" class="absolute top-4 right-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <ion-icon name="pencil" class="text-xs"></ion-icon>
+                                </button>
+                              </div>
+                            </div>
+
+                            <div class="space-y-4">
+                               <div class="flex items-center justify-between">
+                                 <label for="technical-context" class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Product Description</label>
+                                 <button (click)="toggleEdit('desc')" class="text-[10px] font-bold uppercase tracking-widest text-orange-600">Edit Description</button>
+                               </div>
+                               <div class="bg-slate-50 rounded-3xl p-8 border border-slate-100 relative group">
+                                 @if (editingField() === 'desc') {
+                                   <textarea id="technical-context" [value]="details.description" (input)="updateField('description', $any($event.target).value)" rows="6" class="w-full bg-white rounded-2xl p-6 text-sm font-medium border-none focus:ring-0 resize-none"></textarea>
+                                   <div class="flex justify-end mt-4">
+                                      <button (click)="toggleEdit('desc')" class="px-6 h-10 bg-slate-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest">Update Manual</button>
+                                   </div>
+                                 } @else {
+                                   <p class="text-slate-600 leading-relaxed text-sm font-medium">{{details.description}}</p>
+                                   <button (click)="copyToClipboard(details.description, 'desc')" class="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 transition-all shadow-sm">
+                                      <ion-icon [name]="copiedField() === 'desc' ? 'checkmark' : 'copy'"></ion-icon>
+                                   </button>
+                                 }
+                               </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    }
+
+                    @for (platform of templateService.templates(); track platform.id) {
+                      @if (platform.id !== 'details' && activeTab() === platform.id && platform.enabled) {
+                        <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                          <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-premium overflow-hidden">
+                            <div class="px-8 py-6 border-b border-slate-50 flex items-center justify-between" 
+                                 [ngClass]="{
+                                   'bg-orange-50/30': platform.id === 'amazon',
+                                   'bg-blue-50/30': platform.id === 'flipkart',
+                                   'bg-pink-50/30': platform.id === 'meesho',
+                                   'bg-purple-50/30': platform.id === 'instagram'
+                                 }">
+                               <div class="flex items-center gap-4">
+                                  <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg"
+                                       [ngClass]="{
+                                         'bg-orange-500 shadow-orange-500/20': platform.id === 'amazon',
+                                         'bg-blue-600 shadow-blue-600/20': platform.id === 'flipkart',
+                                         'bg-pink-500 shadow-pink-500/20': platform.id === 'meesho',
+                                         'bg-purple-600 shadow-purple-600/20': platform.id === 'instagram'
+                                       }">
+                                     <ion-icon [name]="platform.id === 'amazon' ? 'logo-amazon' : (platform.id === 'instagram' ? 'logo-instagram' : 'list')" class="text-2xl"></ion-icon>
+                                  </div>
+                                  <div>
+                                     <h3 class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-900">{{ platform.label }} Listing</h3>
+                                     <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ready to copy & paste</p>
+                                  </div>
+                               </div>
+                            </div>
+                            
+                            <div class="p-8 space-y-10">
+                              @for (field of platform.fields; track field.id) {
+                                @if (field.enabled) {
+                                  <div class="space-y-4">
+                                    <div class="flex justify-between items-center px-1">
+                                      <label [for]="'field-' + platform.id + '-' + field.id" class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{{ field.label }}</label>
+                                      <div class="flex gap-2">
+                                        <button (click)="toggleEdit(platform.id + '.' + field.id)" class="text-slate-300 hover:text-slate-600">
+                                          <ion-icon [name]="editingField() === (platform.id + '.' + field.id) ? 'save' : 'pencil'" class="text-xs"></ion-icon>
+                                        </button>
+                                        @if (field.type === 'string') {
+                                          <button (click)="copyToClipboard($any(details.platformContent[platform.id]?.[field.id]) || '', platform.id + '.' + field.id)" class="text-slate-300 hover:text-slate-600">
+                                            <ion-icon [name]="copiedField() === (platform.id + '.' + field.id) ? 'checkmark' : 'copy'" class="text-xs"></ion-icon>
+                                          </button>
+                                        }
+                                      </div>
+                                    </div>
+ 
+                                    @if (editingField() === (platform.id + '.' + field.id)) {
+                                       <textarea [id]="'field-' + platform.id + '-' + field.id" 
+                                         [value]="details.platformContent[platform.id]?.[field.id]" 
+                                         (input)="updateField('platformContent.' + platform.id + '.' + field.id, $any($event.target).value)" 
+                                         rows="4" 
+                                         class="w-full bg-slate-50 border border-slate-100 rounded-3xl p-6 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all resize-none"></textarea>
+                                    } @else {
+                                      <div class="bg-slate-50 rounded-3xl p-6 border border-slate-50 group relative">
+                                        @if (field.type === 'string') {
+                                           <p class="text-slate-700 text-sm font-medium leading-relaxed whitespace-pre-wrap">
+                                              {{ details.platformContent[platform.id]?.[field.id] }}
+                                           </p>
+                                        } @else {
+                                           <div class="flex flex-wrap gap-2">
+                                             @for (item of (details.platformContent[platform.id]?.[field.id] || []); track item) {
+                                               <span class="px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 lowercase tracking-tight">
+                                                 {{ platform.id === 'instagram' ? '#' + item : item }}
+                                               </span>
+                                             }
+                                           </div>
+                                        }
+                                        <button (click)="copyToClipboard($any(details.platformContent[platform.id]?.[field.id]) || '', platform.id + '.' + field.id)" class="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 transition-all shadow-sm">
+                                           <ion-icon [name]="copiedField() === (platform.id + '.' + field.id) ? 'checkmark' : 'copy'"></ion-icon>
+                                        </button>
+                                      </div>
+                                    }
+                                  </div>
+                                }
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    }
+
+                    <div class="flex gap-2 mt-6">
+                      <button (click)="saveListing()" [disabled]="isSaving()" class="btn-orange-premium flex-grow !text-xs">
+                        @if (isSaving()) {
+                          <ion-spinner name="crescent" slot="start" class="mr-2"></ion-spinner>
+                          Saving...
+                        } @else {
+                          <ion-icon name="save" class="text-lg"></ion-icon>
+                          Save Listing
+                        }
+                      </button>
+                      <button (click)="reset()" class="btn-secondary !p-0 w-12 h-12 flex items-center justify-center">
+                        <ion-icon name="close" class="text-xl"></ion-icon>
+                      </button>
+                    </div>
+                  }
+                }
+              </div>
+            } @else if (mainView() === 'products') {
+              <app-products
+                [listings]="myListings()"
+                (view)="viewListing($event)"
+                (delete)="deleteListing($event)"
+                (addManual)="handleAddManualProduct($event)"
+                (refresh)="refreshListings()">
+              </app-products>
+            } @else if (mainView() === 'admin') {
+              <app-admin (view)="viewListing($event)"></app-admin>
+            } @else if (mainView() === 'settings') {
+              <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-2xl font-bold text-slate-800">Custom Templates</h2>
+                  <ion-button (click)="templateService.resetToDefault()" fill="clear" color="danger" size="small">Reset All</ion-button>
+                </div>
+                @for (platform of templateService.templates(); track platform.id) {
+                  <section class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-orange-50 space-y-4">
+                    <!-- Template settings form... -->
+                    @if (platform.enabled) {
+                      <!-- details... -->
+                    }
+                  </section>
+                }
+              </div>
+            } @else if (mainView() === 'listings') {
+              <div class="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div class="flex items-center gap-5">
+                    <div class="w-16 h-16 bg-slate-950 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-slate-950/20 rotate-3 transition-transform duration-500 hover:rotate-0">
+                      <ion-icon name="time" class="text-orange-500 text-3xl"></ion-icon>
+                    </div>
+                    <div>
+                      <h2 class="text-4xl font-extrabold text-slate-950 tracking-tighter font-display uppercase italic leading-none">My Saved Listings</h2>
+                      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-3 bg-slate-100/50 w-fit px-3 py-1 rounded-lg border border-slate-100">All Your Products</p>
+                    </div>
+                  </div>
+                      <button (click)="navigateTo('home')" class="btn-orange-premium px-10 group">
+                        <ion-icon name="add" class="text-xl group-hover:rotate-90 transition-transform"></ion-icon>
+                        New Optimization
+                      </button>
+                </div>
+
+                @if (myListings().length === 0) {
+                  <div class="bg-white rounded-[4rem] border-2 border-dashed border-slate-100 py-32 flex flex-col items-center justify-center text-center px-10">
+                    <div class="relative mb-10">
+                       <div class="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center animate-pulse">
+                          <ion-icon name="albums-outline" class="text-5xl text-slate-200"></ion-icon>
+                       </div>
+                       <div class="absolute -right-2 -bottom-2 w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                          <ion-icon name="search" class="text-white text-xl"></ion-icon>
+                       </div>
+                    </div>
+                    <h3 class="text-3xl font-extrabold text-slate-950 tracking-tighter font-display italic uppercase">No Listings Yet</h3>
+                    <p class="text-slate-400 mt-4 text-sm font-medium max-w-sm leading-relaxed">You haven't saved any listings yet. Upload a product photo on the home screen to get started!</p>
+                    <button (click)="navigateTo('home')" class="mt-10 btn-secondary px-8">
+                       Upload Your First Product
+                    </button>
+                  </div>
+                } @else {
+                  <div class="bg-white border border-slate-200 rounded-3xl shadow-lg shadow-slate-200/60 overflow-hidden">
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-left border-collapse min-w-[640px]">
+                        <thead>
+                          <tr class="bg-slate-950">
+                            <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Product</th>
+                            <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Date Saved</th>
+                            <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Price</th>
+                            <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-center">Stock</th>
+                            <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Listed On</th>
+                            <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                          @for (listing of myListings(); track listing.id) {
+                            <tr class="group even:bg-slate-50/50 hover:bg-orange-50/60 transition-colors duration-200">
+                              <td class="py-3 px-3">
+                                <div class="flex items-center gap-4">
+                                  <div class="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden flex-shrink-0">
+                                    <img [src]="listing.processedImage || listing.originalImage || 'assets/logo_icon.png'" alt="Listing thumbnail" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+                                  </div>
+                                  <div class="max-w-[260px]">
+                                    <h4 class="text-sm font-bold text-slate-900 group-hover:text-orange-600 transition-colors tracking-tight leading-tight line-clamp-2">{{ listing.name }}</h4>
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">{{ listing.originalImage ? 'AI Optimised' : 'Added Manually' }}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td class="py-3 px-3">
+                                <span class="text-xs font-bold text-slate-500">{{ listing.createdAt | date:'MMM d, y' }}</span>
+                              </td>
+                              <td class="py-3 px-3 text-right">
+                                <span class="text-sm font-black text-slate-900 font-display tabular-nums">₹{{ price(listing.priceINR) | number }}</span>
+                              </td>
+                              <td class="py-3 px-3 text-center">
+                                @if ((listing.quantity ?? 0) === 0) {
+                                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 border border-red-100 text-red-600 text-[9px] font-black uppercase tracking-widest">Out of stock</span>
+                                } @else if ((listing.quantity ?? 0) < 5) {
+                                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-100 text-amber-600 text-[9px] font-black uppercase tracking-widest">Low · {{ listing.quantity }}</span>
+                                } @else {
+                                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 text-[9px] font-black uppercase tracking-widest">{{ listing.quantity }} in stock</span>
+                                }
+                              </td>
+                              <td class="py-3 px-3">
+                                <div class="flex -space-x-2">
+                                  <div class="w-8 h-8 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center"><ion-icon name="logo-amazon" class="text-[10px] text-orange-600"></ion-icon></div>
+                                  <div class="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center"><ion-icon name="flash" class="text-[10px] text-blue-600"></ion-icon></div>
+                                  <div class="w-8 h-8 rounded-full bg-pink-100 border-2 border-white flex items-center justify-center"><ion-icon name="heart" class="text-[10px] text-pink-600"></ion-icon></div>
+                                </div>
+                              </td>
+                              <td class="py-3 px-3 text-right">
+                                <div class="flex justify-end gap-2">
+                                  <button (click)="viewListing(listing)" class="btn-icon-dark w-9 h-9" aria-label="View listing">
+                                    <ion-icon name="eye"></ion-icon>
+                                  </button>
+                                  <button (click)="deleteListing(listing.id)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600" aria-label="Delete listing">
+                                    <ion-icon name="trash"></ion-icon>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+        }
+      </div>
+    }
+    
+    <footer class="mt-12 py-8 px-6 border-t border-slate-100 bg-white w-full">
+      <div class="max-w-7xl mx-auto space-y-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+          <img src="assets/logo_bg.png" alt="SellAssist logo" class="h-12 w-auto object-contain"/>
+          <div class="flex gap-4">
+             <a href="/" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Privacy</a>
+             <a href="/" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Terms</a>
+             <a href="/" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors px-3 py-2 cursor-pointer">Support</a>
+          </div>
+        </div>
+
+        <div class="pt-6 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+           <p class="text-[10px] font-bold text-slate-300 uppercase tracking-widest">© 2026 SellAssist AI. Built for Bharat's dynamic market.</p>
+           <div class="flex gap-4">
+              <ion-icon name="logo-facebook" class="text-slate-200 hover:text-orange-500 transition-colors cursor-pointer"></ion-icon>
+              <ion-icon name="logo-instagram" class="text-slate-200 hover:text-orange-500 transition-colors cursor-pointer"></ion-icon>
+              <ion-icon name="logo-twitter" class="text-slate-200 hover:text-orange-500 transition-colors cursor-pointer"></ion-icon>
+           </div>
+        </div>
+      </div>
+    </footer>
+  </ion-content>
+  <!-- Feedback Modal -->
+  @if (showFeedbackModal()) {
+    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-500">
+        <div class="p-8 text-center">
+          <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ion-icon name="star" class="text-3xl text-orange-600"></ion-icon>
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">How was the result?</h2>
+          <p class="text-slate-500 mt-2 text-sm font-medium leading-relaxed">
+            Your feedback helps our AI grow better for Bharat's merchants.
+          </p>
+
+          <!-- Star Rating -->
+          <div class="flex justify-center gap-2 my-8">
+            @for (star of ratingStars; track star) {
+              <button (click)="setRating(star)" 
+                      class="text-4xl transition-all duration-200 transform hover:scale-125 focus:outline-none"
+                      [class.text-orange-500]="currentFeedbackRating() >= star"
+                      [class.text-slate-300]="currentFeedbackRating() < star">
+                <ion-icon name="star"></ion-icon>
+              </button>
+            }
+          </div>
+
+          <div class="space-y-4">
+            <div class="text-left">
+              <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Comments (Optional)</ion-label>
+              <ion-textarea 
+                rows="3" 
+                [autoGrow]="true"
+                [value]="currentFeedbackComment()" 
+                (ionInput)="currentFeedbackComment.set($any($event).target.value)"
+                placeholder="What did you like? Anything we can improve?" 
+                class="bg-slate-50 rounded-2xl px-5 py-4 mt-2 border border-slate-100 text-sm font-medium">
+              </ion-textarea>
+            </div>
+
+            <div class="flex gap-3 pt-4">
+              <button (click)="closeFeedbackModal()" class="flex-1 h-12 rounded-2xl border border-slate-100 text-slate-400 font-bold text-xs hover:bg-slate-50 uppercase tracking-widest">
+                Skip
+              </button>
+              <button (click)="submitFeedback()" 
+                      [disabled]="currentFeedbackRating() === 0"
+                      class="flex-[2] h-12 rounded-2xl bg-orange-600 text-white font-bold text-xs hover:bg-orange-700 shadow-lg shadow-orange-600/20 uppercase tracking-widest disabled:opacity-50 disabled:shadow-none">
+                Send Feedback
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</ion-app>

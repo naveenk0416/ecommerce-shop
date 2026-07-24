@@ -1,0 +1,49 @@
+<div class="space-y-8 animate-in fade-in">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-black text-slate-950 dark:text-white tracking-tight font-display">General Details</h2>
+      <p class="text-sm text-slate-400 mt-1">Core product information used across every marketplace listing.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="button" (click)="workspaceState.undo()" [disabled]="!workspaceState.canUndo()" class="btn-icon-premium disabled:opacity-30" aria-label="Undo">
+        <ion-icon name="arrow-undo"></ion-icon>
+      </button>
+      <button type="button" (click)="workspaceState.redo()" [disabled]="!workspaceState.canRedo()" class="btn-icon-premium disabled:opacity-30" aria-label="Redo">
+        <ion-icon name="arrow-redo"></ion-icon>
+      </button>
+      <span class="flex items-center gap-2 px-4 h-14 rounded-[15px] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-400">
+        <ion-icon [name]="workspaceState.saving() ? 'cloud-upload' : 'cloud-done'" [class.animate-pulse]="workspaceState.saving()"></ion-icon>
+        {{ workspaceState.saving() ? 'Saving...' : 'Saved' }}
+      </span>
+    </div>
+  </div>
+
+  @for (section of sections; track section.title) {
+    <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-8 shadow-sm">
+      <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white border-l-4 border-orange-500 pl-4 mb-6">{{ section.title }}</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @for (field of section.fields; track field.path) {
+          <div [class.lg:col-span-3]="field.kind === 'longtext' || field.kind === 'array'">
+            @if (field.kind === 'longtext') {
+              <app-editable-textarea
+                [label]="field.label"
+                [value]="getText(field)"
+                [regenerating]="regeneratingPath() === field.path"
+                (valueChange)="setValue(field, $event)"
+                (regenerate)="regenerate(field)" />
+            } @else if (field.kind === 'array') {
+              <app-keyword-chips [label]="field.label" [values]="getArray(field)" (valuesChange)="setValue(field, $event)" />
+            } @else {
+              <app-attribute-card
+                [attribute]="asAttribute(field)"
+                [value]="getText(field)"
+                [regenerating]="regeneratingPath() === field.path"
+                (valueChange)="setValue(field, $event)"
+                (regenerate)="regenerate(field)" />
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

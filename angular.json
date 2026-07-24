@@ -13,7 +13,7 @@
       "projectType": "application",
       "schematics": {},
       "root": "",
-      "sourceRoot": "src",
+      "sourceRoot": "frontend/src",
       "prefix": "app",
       "architect": {
         "build": {
@@ -22,20 +22,20 @@
             "define": {
               "RAZORPAY_KEY_ID": "process.env.RAZORPAY_KEY_ID"
             },
-            "browser": "src/main.ts",
-            "server": "src/main.server.ts",
+            "browser": "frontend/src/main.ts",
+            "server": "frontend/src/main.server.ts",
             "ssr": {
-              "entry": "src/server.ts"
+              "entry": "backend/src/server.ts"
             },
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
+                "input": "frontend/public"
               }
             ],
             "styles": [
-              "src/styles.css"
+              "frontend/src/styles.css"
             ]
           },
           "configurations": {
@@ -65,7 +65,7 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "frontend/proxy.conf.json"
           },
           "configurations": {
             "production": {
@@ -84,8 +84,8 @@
           "builder": "@angular-eslint/builder:lint",
           "options": {
             "lintFilePatterns": [
-              "src/**/*.ts",
-              "src/**/*.html"
+              "frontend/src/**/*.ts",
+              "frontend/src/**/*.html"
             ]
           }
         }

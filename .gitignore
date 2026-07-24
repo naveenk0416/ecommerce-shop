@@ -1,7 +1,8 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # Env variables
-.env*
+.env
+.env.*
 !.env.example
 
 # Compiled output
@@ -9,6 +10,8 @@
 /tmp
 /out-tsc
 /bazel-out
+backend/browser/
+backend/server/
 
 # Node
 node_modules/
@@ -45,3 +48,6 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Generated client env (holds the Gemini API key; recreated by frontend dev script)
+frontend/src/app/env.ts

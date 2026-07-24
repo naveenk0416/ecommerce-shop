@@ -1,0 +1,19 @@
+<div class="space-y-8 animate-in fade-in">
+  <div>
+    <h2 class="text-2xl font-black text-slate-950 dark:text-white tracking-tight font-display">Export Center</h2>
+    <p class="text-sm text-slate-400 mt-1">Download, copy, print, or share your listing in any format.</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <app-export-card title="Amazon Excel" subtitle="XLSX" icon="logo-amazon" actionIcon="download" (action)="downloadExcel('amazon')" />
+    <app-export-card title="Flipkart Excel" subtitle="XLSX" icon="bag-handle" actionIcon="download" (action)="downloadExcel('flipkart')" />
+    <app-export-card title="Meesho Excel" subtitle="XLSX" icon="storefront" actionIcon="download" (action)="downloadExcel('meesho')" />
+    <app-export-card title="CSV" subtitle="Amazon field set" icon="grid-outline" actionIcon="download" (action)="downloadCSV()" />
+    <app-export-card title="JSON" subtitle="Full listing object" icon="code-slash-outline" actionIcon="download" (action)="downloadJSON()" />
+    <app-export-card title="PDF" subtitle="Print-ready" icon="document-outline" actionIcon="print" (action)="downloadPDF()" />
+    <app-export-card title="Copy JSON" subtitle="Clipboard" icon="code-slash-outline" actionIcon="copy-outline" (action)="copyJSON()" />
+    <app-export-card title="Copy Listing" subtitle="Clipboard" icon="document-outline" actionIcon="copy-outline" (action)="copyListing()" />
+    <app-export-card title="Print" subtitle="Print dialog" icon="document-outline" actionIcon="print" (action)="print()" />
+    <app-export-card title="Share" subtitle="Native share sheet" icon="document-outline" actionIcon="share-social" (action)="share()" />
+  </div>
+</div>

@@ -1,0 +1,331 @@
+<main class="landing-container">
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div class="hero-content animate-in fade-in slide-in-from-bottom-4">
+
+        <div class="badge">
+          <ion-icon name="school" class="mr-1"></ion-icon>
+          Made for Indian Sellers »
+        </div>
+
+        <h1 class="hero-title">
+          Snap a photo.<br>
+          <span class="text-orange">Sell smarter</span><br>
+          in seconds.
+        </h1>
+
+        <p class="hero-description">
+          The AI toolkit built for Indian sellers. Upload a product photo and get marketplace-ready listings for
+          <strong class="text-slate-900">Amazon, Meesho &amp; Flipkart</strong> — with HSN codes, GST rates, and social captions included.
+        </p>
+
+        <div class="hero-actions">
+          @if (isLoggedIn()) {
+            <button (click)="goDashboard.emit()" class="btn-orange-premium">
+              Go to Dashboard
+              <ion-icon name="rocket" class="ml-2"></ion-icon>
+            </button>
+          } @else {
+            <button (click)="getStarted.emit()" class="btn-orange-premium">
+              Start Free — No Card Needed
+              <ion-icon name="arrow-forward" class="ml-2"></ion-icon>
+            </button>
+          }
+          <button class="btn-secondary">
+            See how it works
+          </button>
+        </div>
+
+        <div class="hero-checklist">
+          <div class="check-item">
+            <ion-icon name="checkmark-circle"></ion-icon>
+            No credit card
+          </div>
+          <div class="check-item">
+            <ion-icon name="checkmark-circle"></ion-icon>
+            Hindi + English
+          </div>
+          <div class="check-item">
+            <ion-icon name="checkmark-circle"></ion-icon>
+            GST-compliant
+          </div>
+        </div>
+      </div>
+
+      <!-- Browser Mockup -->
+      <div class="hero-visual lg:block hidden">
+        <div class="browser-mockup">
+          <div class="browser-header">
+            <div class="dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+            </div>
+            <div class="url-bar">sellassist.in/generate</div>
+          </div>
+          <div class="browser-content space-y-3 p-6">
+            <div class="mock-upload-row">
+              <div class="mock-thumb">
+                <ion-icon name="image" class="text-orange-300 text-2xl"></ion-icon>
+              </div>
+              <div class="flex-1">
+                <div class="mock-label">PRODUCT IMAGE</div>
+                <div class="mock-value text-emerald-600 font-bold flex items-center gap-1">
+                  <ion-icon name="checkmark-circle" class="text-emerald-500"></ion-icon>
+                  Analysed — Cotton Kurta Set
+                </div>
+              </div>
+            </div>
+            <div class="mock-field">
+              <span class="mock-label">AMAZON TITLE</span>
+              <div class="mock-value">Premium Cotton Kurta Set for Women — Floral Print, Ethnic Wear</div>
+            </div>
+            <div class="mock-field-row">
+              <div class="mock-field flex-1">
+                <span class="mock-label">HSN CODE</span>
+                <div class="mock-value text-orange-600 font-bold">6204</div>
+              </div>
+              <div class="mock-field flex-1">
+                <span class="mock-label">GST RATE</span>
+                <div class="mock-value text-orange-600 font-bold">5%</div>
+              </div>
+            </div>
+            <div class="mock-field">
+              <span class="mock-label">INSTAGRAM CAPTION</span>
+              <div class="mock-value italic text-slate-500">✨ Bring tradition home this season... #EthnicWear #IndianFashion</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust Bar -->
+  <section class="trust-section">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-14">
+        <div class="stat-item">
+          <div class="stat-value">50k+</div>
+          <div class="stat-label">Listings Created</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">12k+</div>
+          <div class="stat-label">Active Sellers</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">98%</div>
+          <div class="stat-label">GST Accuracy</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">4.9★</div>
+          <div class="stat-label">Seller Rating</div>
+        </div>
+      </div>
+
+      <div class="partner-strip">
+        <span class="partner-label">Works with</span>
+        <div class="partner-logos">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" class="h-5">
+          <img src="https://upload.wikimedia.org/wikipedia/en/7/7b/Meesho_Logo.png" alt="Meesho" class="h-7">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Flipkart_logo.svg" alt="Flipkart" class="h-5">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/b/bc/Myntra_logo.png" alt="Myntra" class="h-7">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how-section py-24 bg-white">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="text-center mb-16">
+        <p class="section-eyebrow">Simple by design</p>
+        <h2 class="section-title">From photo to listing in 3 steps</h2>
+      </div>
+
+      <div class="how-steps">
+        <div class="how-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-icon bg-orange-50 text-orange-500">
+              <ion-icon name="camera"></ion-icon>
+            </div>
+            <h3 class="step-title">Upload your product photo</h3>
+            <p class="step-text">Take a photo on your phone or use an existing one. No studio setup needed.</p>
+          </div>
+        </div>
+
+        <div class="how-connector"></div>
+
+        <div class="how-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-icon bg-purple-50 text-purple-500">
+              <ion-icon name="sparkles"></ion-icon>
+            </div>
+            <h3 class="step-title">AI reads your product</h3>
+            <p class="step-text">SellAssist identifies color, material, category and writes platform-specific copy in seconds.</p>
+          </div>
+        </div>
+
+        <div class="how-connector"></div>
+
+        <div class="how-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-icon bg-emerald-50 text-emerald-500">
+              <ion-icon name="copy"></ion-icon>
+            </div>
+            <h3 class="step-title">Copy &amp; list instantly</h3>
+            <p class="step-text">Get titles, descriptions, HSN codes and social captions — ready to paste on any marketplace.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Grid -->
+  <section class="features-section py-24 bg-slate-50">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-16">
+        <p class="section-eyebrow">Everything included</p>
+        <h2 class="section-title">One click. Every platform. Done.</h2>
+        <p class="section-subtitle">From listing copy to GST classification — SellAssist handles the boring stuff so you can focus on selling.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="feature-card">
+          <div class="feature-icon bg-orange-100 text-orange-500">
+            <ion-icon name="camera"></ion-icon>
+          </div>
+          <h3 class="feature-title">Image-First AI</h3>
+          <p class="feature-text">Upload a single product photo. Our AI reads colors, materials, and style — and writes the listing for you.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon bg-blue-100 text-blue-500">
+            <ion-icon name="text"></ion-icon>
+          </div>
+          <h3 class="feature-title">Marketplace Titles</h3>
+          <p class="feature-text">SEO-optimized titles tailored for Amazon, Flipkart, and Meesho — each platform gets its own style.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon bg-violet-100 text-violet-500">
+            <ion-icon name="document-text"></ion-icon>
+          </div>
+          <h3 class="feature-title">Rich Descriptions</h3>
+          <p class="feature-text">Compelling product descriptions with bullet points and keywords — ready to paste.</p>
+        </div>
+
+        <div class="feature-card feature-card-highlight">
+          <div class="feature-icon bg-white/20 text-white">
+            <ion-icon name="cash"></ion-icon>
+          </div>
+          <h3 class="feature-title !text-white">HSN + GST</h3>
+          <p class="feature-text !text-orange-100">Get the correct HSN code and GST rate (5/12/18/28%) with a clear explanation — every time.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon bg-pink-100 text-pink-500">
+            <ion-icon name="logo-instagram"></ion-icon>
+          </div>
+          <h3 class="feature-title">Social Captions</h3>
+          <p class="feature-text">Instagram + Facebook captions with hashtags, ready to share with your customers.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon bg-emerald-100 text-emerald-500">
+            <ion-icon name="time"></ion-icon>
+          </div>
+          <h3 class="feature-title">History &amp; Reuse</h3>
+          <p class="feature-text">Every listing is saved. Browse, copy, and re-use anytime from your dashboard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section py-20 bg-white">
+    <div class="max-w-4xl mx-auto px-6">
+      <div class="cta-banner">
+        <div class="cta-glow"></div>
+        <p class="cta-eyebrow">Free to start. No credit card.</p>
+        <h2 class="cta-title">Ready to sell smarter?</h2>
+        <p class="cta-text">Join thousands of Indian sellers using SellAssist to list faster and earn more.</p>
+        @if (isLoggedIn()) {
+          <button (click)="goDashboard.emit()" class="btn-cta-primary">
+            Go to Dashboard
+            <ion-icon name="rocket" class="ml-2"></ion-icon>
+          </button>
+        } @else {
+          <button (click)="getStarted.emit()" class="btn-cta-primary">
+            Create your free account
+            <ion-icon name="arrow-forward" class="ml-2"></ion-icon>
+          </button>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="detailed-footer py-16 px-6 border-t border-slate-100 bg-white">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-14">
+        <div class="footer-brand">
+          <div class="flex items-center gap-2 mb-5">
+            <div class="w-8 h-8 bg-linear-to-br from-orange-400 to-red-600 rounded-lg flex items-center justify-center">
+              <ion-icon name="stats-chart" class="text-white text-lg"></ion-icon>
+            </div>
+            <span class="text-xl font-black tracking-tight text-slate-800 uppercase">SellAssist</span>
+          </div>
+          <p class="text-sm text-slate-500 leading-relaxed max-w-xs">
+            Bharat's AI-powered selling assistant, helping sellers optimize their marketplace presence daily.
+          </p>
+          <div class="flex gap-4 mt-6">
+            <ion-icon name="logo-facebook" class="footer-social-icon"></ion-icon>
+            <ion-icon name="logo-instagram" class="footer-social-icon"></ion-icon>
+            <ion-icon name="logo-twitter" class="footer-social-icon"></ion-icon>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Marketplaces</h4>
+          <ul class="footer-links">
+            <li><a href="https://www.amazon.in" target="_blank">Amazon India</a></li>
+            <li><a href="https://www.flipkart.com" target="_blank">Flipkart</a></li>
+            <li><a href="https://www.meesho.com" target="_blank">Meesho</a></li>
+            <li><a href="https://www.myntra.com" target="_blank">Myntra</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Social Tools</h4>
+          <ul class="footer-links">
+            <li><a href="#">Instagram Captions</a></li>
+            <li><a href="#">Facebook Posts</a></li>
+            <li><a href="#">WhatsApp Catalogs</a></li>
+            <li><a href="#">GST Calculator</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Platform</h4>
+          <ul class="footer-links">
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+            <li><a href="#">Support Helpdesk</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+        <p class="text-xs text-slate-400 font-medium">
+          © 2025 SellAssist. All rights reserved. Built for Bharat's sellers.
+        </p>
+      </div>
+    </div>
+  </footer>
+
+</main>

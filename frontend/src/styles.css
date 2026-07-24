@@ -1,0 +1,358 @@
+/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+/* Ionic CSS */
+@import "@ionic/angular/css/core.css";
+@import "@ionic/angular/css/normalize.css";
+@import "@ionic/angular/css/structure.css";
+@import "@ionic/angular/css/typography.css";
+@import "@ionic/angular/css/padding.css";
+@import "@ionic/angular/css/float-elements.css";
+@import "@ionic/angular/css/text-alignment.css";
+@import "@ionic/angular/css/text-transformation.css";
+@import "@ionic/angular/css/flex-utils.css";
+@import "@ionic/angular/css/display.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --shadow-premium: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(249, 115, 22, 0.2);
+
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f8fafc;
+  --color-border: #e2e8f0;
+}
+
+.dark {
+  --color-surface: #0f172a;
+  --color-surface-elevated: #1e293b;
+  --color-border: #334155;
+}
+
+@layer base {
+  button {
+    @apply border-0;
+    padding: 18px 32px;
+    border-radius: 30px;
+  }
+
+  .landing-container {
+    @apply bg-slate-50 min-h-screen overflow-x-hidden pt-10 font-sans;
+  }
+
+  .hero-section {
+    @apply relative pt-20 pb-32 overflow-hidden;
+  }
+
+  .hero-section::before {
+    content: "";
+    @apply absolute -top-40 -right-40 w-[600px] h-[600px] bg-orange-100 rounded-full blur-[120px] opacity-40;
+  }
+
+  .hero-section::after {
+    content: "";
+    @apply absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-red-100 rounded-full blur-[120px] opacity-30;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-4 py-2 bg-white rounded-2xl shadow-premium border border-slate-100 mb-8 animate-bounce transition-all hover:scale-105;
+    @apply text-[10px] font-black uppercase tracking-[0.25em] text-orange-600;
+  }
+
+  .hero-title {
+    @apply text-5xl md:text-7xl lg:text-8xl font-black text-slate-950 tracking-tighter leading-[0.95] mb-8 font-display italic;
+  }
+
+  .text-orange {
+    @apply text-transparent bg-clip-text bg-linear-to-r from-orange-500 to-red-600 drop-shadow-sm;
+  }
+
+  .hero-description {
+    @apply text-slate-500 leading-relaxed max-w-xl mb-12 font-medium;
+  }
+
+  .hero-actions {
+    @apply flex flex-wrap gap-4 mb-14;
+  }
+
+  .btn-orange {
+    --background: #f97316;
+    --color: #ffffff;
+    @apply h-16 px-8 text-sm font-black uppercase tracking-widest shadow-xl shadow-orange-500/20 transform hover:-translate-y-1 transition-all;
+  }
+
+  .btn-outline {
+    --border-color: #0f172a;
+    --color: #0f172a;
+    @apply h-16 px-8 text-sm font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all;
+  }
+
+  .hero-checklist {
+    @apply flex flex-wrap gap-x-8 gap-y-4;
+  }
+
+  .check-item {
+    @apply flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500;
+  }
+
+  .check-item ion-icon {
+    @apply text-emerald-500 text-lg;
+  }
+
+  .browser-mockup {
+    @apply bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden transform rotate-2 hover:rotate-0 transition-all duration-700 hover:scale-105;
+  }
+
+  .browser-header {
+    @apply bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between;
+  }
+
+  .dots {
+    @apply flex gap-2;
+  }
+
+  .dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+
+  .dot.red { @apply bg-red-400; }
+  .dot.yellow { @apply bg-yellow-400; }
+  .dot.green { @apply bg-green-400; }
+
+  .url-bar {
+    @apply bg-white border border-slate-100 rounded-lg px-4 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-64 text-center;
+  }
+
+  .mock-field {
+    @apply space-y-2 p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:bg-white hover:shadow-md;
+  }
+
+  .mock-label {
+    @apply text-[9px] font-black uppercase tracking-widest text-slate-400 block;
+  }
+
+  .mock-value {
+    @apply text-xs font-bold text-slate-900 leading-snug;
+  }
+
+  /* Trust Section */
+  .trust-section {
+    @apply py-20 border-y border-slate-100 bg-white/50 backdrop-blur-xl;
+  }
+
+  .stat-item {
+    @apply text-center p-6 rounded-3xl transition-all hover:bg-white hover:shadow-sm;
+  }
+
+  .stat-value {
+    @apply text-4xl font-black text-slate-950 tracking-tighter font-display italic mb-2 group-hover:text-orange-600 transition-colors;
+  }
+
+  .stat-label {
+    @apply text-[10px] font-black uppercase tracking-[0.2em] text-slate-400;
+  }
+
+  /* Partner strip */
+  .partner-strip {
+    @apply flex flex-wrap items-center gap-6 justify-center;
+  }
+
+  .partner-label {
+    @apply text-[10px] font-black uppercase tracking-[0.25em] text-slate-300;
+  }
+
+  .partner-logos {
+    @apply flex flex-wrap justify-center items-center gap-8 grayscale opacity-60 hover:opacity-80 transition-opacity;
+  }
+
+  /* How It Works */
+  .how-steps {
+    @apply flex flex-col md:flex-row items-start md:items-center gap-0;
+  }
+
+  .how-step {
+    @apply flex-1 flex flex-col items-center text-center relative;
+  }
+
+  .how-connector {
+    @apply hidden md:block w-16 h-px bg-slate-200 flex-shrink-0 mt-[-60px];
+  }
+
+  .step-number {
+    @apply w-8 h-8 rounded-full bg-orange-500 text-white text-sm font-black flex items-center justify-center mb-6 shadow-lg shadow-orange-500/30;
+  }
+
+  .step-content {
+    @apply flex flex-col items-center;
+  }
+
+  .step-icon {
+    @apply w-20 h-20 rounded-[2rem] flex items-center justify-center text-4xl mb-6 shadow-sm;
+  }
+
+  .step-title {
+    @apply text-xl font-black text-slate-900 tracking-tight mb-3 font-display;
+  }
+
+  .step-text {
+    @apply text-slate-500 font-medium leading-relaxed max-w-[220px] text-sm;
+  }
+
+  /* Feature Cards */
+  .feature-card {
+    @apply bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm transition-all duration-500 hover:shadow-premium hover:-translate-y-1;
+  }
+
+  .feature-card-highlight {
+    @apply bg-linear-to-br from-orange-500 to-red-500 border-0 shadow-xl shadow-orange-500/25;
+  }
+
+  .feature-icon {
+    @apply w-14 h-14 rounded-[1.25rem] flex items-center justify-center text-2xl mb-6;
+  }
+
+  .feature-title {
+    @apply text-lg font-black text-slate-950 tracking-tight mb-3 font-display uppercase;
+  }
+
+  .feature-text {
+    @apply text-slate-500 font-medium leading-relaxed text-sm;
+  }
+
+  /* Sections */
+  .section-eyebrow {
+    @apply inline-block text-[10px] font-black uppercase tracking-[0.3em] text-orange-500 mb-4 bg-orange-50 px-4 py-2 rounded-full;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl lg:text-5xl font-black text-slate-950 tracking-tighter text-center font-display italic uppercase leading-none mb-6;
+  }
+
+  .section-subtitle {
+    @apply text-slate-500 text-center max-w-2xl mx-auto font-medium;
+  }
+
+  /* CTA Section */
+  .cta-banner {
+    @apply bg-slate-950 rounded-[3rem] p-12 md:p-20 text-center relative overflow-hidden shadow-2xl;
+  }
+
+  .cta-glow {
+    @apply absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[300px] bg-orange-600/20 rounded-full blur-[80px] pointer-events-none;
+  }
+
+  .cta-eyebrow {
+    @apply text-[10px] font-black uppercase tracking-[0.3em] text-orange-400 mb-4 relative z-10;
+  }
+
+  .cta-title {
+    @apply text-3xl md:text-5xl font-black text-white tracking-tighter mb-6 font-display italic uppercase leading-none relative z-10;
+  }
+
+  .cta-text {
+    @apply text-slate-400 text-base mb-10 max-w-xl mx-auto font-medium relative z-10;
+  }
+
+  .btn-cta-primary {
+    @apply relative z-10 inline-flex items-center justify-center gap-3 rounded-[12px] font-bold uppercase tracking-[0.15em] text-[11px] transition-all duration-300 bg-orange-500 text-white py-[16px] px-[40px] shadow-[0_12px_30px_rgba(249,115,22,0.5)] hover:bg-orange-400 hover:-translate-y-0.5 active:scale-95;padding:10px !important;
+  }
+
+  .detailed-footer {
+    @apply border-t border-slate-100 bg-white font-sans;
+  }
+
+  .footer-heading {
+    @apply text-[10px] font-black tracking-[0.25em] uppercase text-slate-900 mb-5;
+  }
+
+  .footer-links {
+    @apply space-y-3 text-sm font-medium text-slate-500;
+  }
+
+  .footer-links li a {
+    @apply hover:text-orange-500 transition-colors;
+  }
+
+  .footer-social-icon {
+    @apply text-slate-300 hover:text-orange-500 text-lg cursor-pointer transition-colors;
+  }
+
+  /* Browser mockup improvements */
+  .mock-upload-row {
+    @apply flex items-center gap-3 p-3 bg-emerald-50 rounded-2xl border border-emerald-100;
+  }
+
+  .mock-thumb {
+    @apply w-10 h-10 bg-slate-200 rounded-xl flex items-center justify-center flex-shrink-0;
+  }
+
+  .mock-field-row {
+    @apply flex gap-3;
+  }
+}
+
+@layer components {
+  /* Premium Button System */
+  .btn-premium-base {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[15px] font-bold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none px-[30px] py-[15px];
+  }
+
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-linear-to-br from-[#F97316] to-[#FB923C] text-white py-[18px] px-[42px] shadow-[0_10px_25px_rgba(249,115,22,0.4)] hover:brightness-110 hover:-translate-y-0.5 active:scale-95;padding: 10px !important;
+  }
+
+  .btn-secondary {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-white border border-slate-100 text-slate-950 px-[32px] py-[18px] hover:bg-slate-50 hover:border-slate-200 active:scale-95 shadow-sm;padding: 10px !important;
+  }
+
+  .btn-ghost {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-bold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none text-slate-600 border-2 border-slate-200 py-[14px] px-[26px] hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50/60 active:scale-95;
+  }
+
+  .btn-orange-premium {
+    @apply relative inline-flex items-center justify-center gap-3 rounded-full font-extrabold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-linear-to-r from-orange-600 via-orange-500 to-red-500 text-white py-[16px] px-[36px] shadow-[0_8px_20px_rgba(249,115,22,0.45),inset_0_1px_0_rgba(255,255,255,0.4)] ring-1 ring-orange-300/50 hover:shadow-[0_16px_36px_rgba(234,88,12,0.55),inset_0_1px_0_rgba(255,255,255,0.5)] hover:-translate-y-1 hover:scale-[1.03] active:scale-95 active:translate-y-0;padding:10px !important;
+  }
+
+  .nav-tab {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300 text-slate-400 hover:text-orange-600;
+  }
+
+  .nav-tab-active {
+    @apply bg-linear-to-r from-orange-600 via-orange-500 to-red-500 text-white shadow-[0_8px_18px_rgba(249,115,22,0.4)] hover:text-white;
+  }
+
+  .btn-icon-premium {
+    @apply flex items-center justify-center w-14 h-14 rounded-[15px] transition-all duration-300 border border-slate-100 bg-white text-slate-400 hover:text-orange-600 hover:border-orange-100 hover:bg-orange-50 active:scale-90 shadow-sm;
+  }
+
+  .btn-icon-dark {
+    @apply flex items-center justify-center w-12 h-12 rounded-[15px] transition-all duration-300 bg-slate-950 text-white hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-600/20 active:scale-90;
+  }
+}
+
+@keyframes stageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+:root {
+  --ion-font-family: var(--font-sans);
+  --ion-color-primary: #0f172a;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900;
+}

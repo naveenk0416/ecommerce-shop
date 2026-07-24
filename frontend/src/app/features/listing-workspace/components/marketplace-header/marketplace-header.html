@@ -1,0 +1,31 @@
+<div class="sticky top-0 z-20 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
+  <div class="max-w-7xl mx-auto px-6 pt-6">
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-4">
+        <a routerLink="/inventory" class="btn-icon-premium" aria-label="Back to inventory">
+          <ion-icon name="arrow-back"></ion-icon>
+        </a>
+        <div>
+          <p class="text-[9px] font-black uppercase tracking-[0.25em] text-orange-500">SellAssist Workspace</p>
+          <h1 class="text-xl font-black text-slate-950 dark:text-white tracking-tight font-display">{{ productName() || 'Untitled Product' }}</h1>
+          @if (sku()) {
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ sku() }}</span>
+          }
+        </div>
+      </div>
+
+      <button type="button" (click)="theme.toggle()" class="btn-icon-premium" aria-label="Toggle dark mode">
+        <ion-icon [name]="theme.isDark() ? 'sunny' : 'moon'"></ion-icon>
+      </button>
+    </div>
+
+    <nav class="flex gap-1 overflow-x-auto pb-4 -mb-px scrollbar-none">
+      @for (tab of tabs; track tab.path) {
+        <a [routerLink]="tab.path" routerLinkActive="nav-tab-active" class="nav-tab flex-shrink-0 !rounded-xl !h-11 gap-2 normal-case tracking-normal text-[11px]">
+          <ion-icon [name]="tab.icon"></ion-icon>
+          {{ tab.label }}
+        </a>
+      }
+    </nav>
+  </div>
+</div>

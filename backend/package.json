@@ -1,0 +1,36 @@
+{
+  "name": "ecommerce-shop-backend",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "cross-env NODE_ENV=production tsx src/server.ts"
+  },
+  "dependencies": {
+    "@angular/common": "^21.0.0",
+    "@angular/compiler": "^21.0.0",
+    "@angular/core": "^21.0.0",
+    "@angular/platform-browser": "^21.0.0",
+    "@angular/platform-server": "^21.0.0",
+    "@angular/ssr": "^21.0.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.5.0",
+    "nodemailer": "^9.0.3",
+    "razorpay": "^2.9.6",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.2",
+    "@types/cors": "^2.8.12",
+    "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.2",
+    "@types/node": "^20.17.19",
+    "@types/nodemailer": "^8.0.1",
+    "cross-env": "^10.1.0",
+    "typescript": "~5.9.2"
+  }
+}
