@@ -1,0 +1,75 @@
+<div class="editable-field">
+  <div class="editable-field__label-row">
+    <span class="editable-field__label">{{ label() }}</span>
+    <span class="editable-field__counter">{{ value().length }}/{{ maxLength() }}</span>
+  </div>
+
+  @if (editing()) {
+    <div class="editable-field__edit-row">
+      <mat-form-field appearance="outline" class="editable-field__input">
+        @if (multiline()) {
+          <textarea
+            matInput
+            rows="3"
+            [maxlength]="maxLength()"
+            [ngModel]="draft()"
+            (ngModelChange)="onDraftChange($event)"
+            (keydown.escape)="cancel()"
+            [placeholder]="placeholder()"
+          ></textarea>
+        } @else {
+          <input
+            matInput
+            [maxlength]="maxLength()"
+            [ngModel]="draft()"
+            (ngModelChange)="onDraftChange($event)"
+            (keydown.escape)="cancel()"
+            [placeholder]="placeholder()"
+          />
+        }
+      </mat-form-field>
+      <div class="editable-field__actions">
+        <button mat-icon-button [disabled]="!suggestions().length" (click)="regenerate()" aria-label="Regenerate {{ label() }}" matTooltip="Regenerate">
+          <mat-icon>auto_fix_high</mat-icon>
+        </button>
+        <button mat-icon-button (click)="copy()" aria-label="Copy {{ label() }}" matTooltip="Copy">
+          <mat-icon>content_copy</mat-icon>
+        </button>
+        <button mat-icon-button color="primary" (click)="done()" aria-label="Done editing {{ label() }}" matTooltip="Done">
+          <mat-icon>check</mat-icon>
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="editable-field__view-row">
+      <span class="editable-field__value">{{ value() || placeholder() }}</span>
+      <div class="editable-field__actions">
+        <button mat-icon-button [disabled]="!suggestions().length" (click)="regenerate()" aria-label="Regenerate {{ label() }}" matTooltip="Regenerate">
+          <mat-icon>auto_fix_high</mat-icon>
+        </button>
+        <button mat-icon-button (click)="copy()" aria-label="Copy {{ label() }}" matTooltip="Copy">
+          <mat-icon>content_copy</mat-icon>
+        </button>
+        <button mat-icon-button (click)="startEdit()" aria-label="Edit {{ label() }}" matTooltip="Edit">
+          <mat-icon>edit</mat-icon>
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="editable-field__status" [class.editable-field__status--visible]="copied() || saveStatus() !== 'idle'">
+    @if (copied()) {
+      <span class="editable-field__status-text editable-field__status-text--copied">
+        <mat-icon inline="true">check_circle</mat-icon>
+        Copied
+      </span>
+    } @else if (saveStatus() === 'saving') {
+      <span class="editable-field__status-text">Saving…</span>
+    } @else if (saveStatus() === 'saved') {
+      <span class="editable-field__status-text editable-field__status-text--saved">
+        <mat-icon inline="true">cloud_done</mat-icon>
+        Saved
+      </span>
+    }
+  </div>
+</div>

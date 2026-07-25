@@ -1,0 +1,65 @@
+:host {
+  display: block;
+  min-height: 70vh;
+}
+
+.workspace-shell {
+  min-height: 70vh;
+  background: #f8fafc;
+}
+
+.workspace-sidenav {
+  width: 260px;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 16px;
+    font-size: 17px;
+    font-weight: 800;
+    color: #ea580c;
+  }
+
+  &__item--active {
+    background: #fff7ed;
+    color: #ea580c;
+  }
+}
+
+.workspace-toolbar {
+  &__brand {
+    margin-left: 4px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  &__spacer {
+    flex: 1 1 auto;
+  }
+}
+
+.workspace-tabs {
+  border-bottom: 1px solid #e2e8f0;
+  background: white;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.workspace-content {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .workspace-content {
+    padding: 16px;
+  }
+}

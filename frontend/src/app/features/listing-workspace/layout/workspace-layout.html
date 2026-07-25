@@ -1,0 +1,59 @@
+<mat-sidenav-container class="workspace-shell">
+  <mat-sidenav
+    class="workspace-sidenav"
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="!isHandset() || sidenavOpen()"
+    [fixedInViewport]="isHandset()"
+  >
+    <div class="workspace-sidenav__brand">
+      <mat-icon>storefront</mat-icon>
+      <span>SellAssist</span>
+    </div>
+
+    <mat-nav-list>
+      @for (item of navItems; track item.path) {
+        <a
+          mat-list-item
+          [routerLink]="item.path"
+          routerLinkActive="workspace-sidenav__item--active"
+          (click)="closeSidenavOnHandset()"
+        >
+          <app-marketplace-icon matListItemIcon [marketplace]="item.marketplace" [size]="20" />
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar color="primary" class="workspace-toolbar">
+      <button mat-icon-button (click)="toggleSidenav()" aria-label="Toggle navigation">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span class="workspace-toolbar__brand">SellAssist</span>
+      <span class="workspace-toolbar__spacer"></span>
+      <button mat-icon-button aria-label="Account">
+        <mat-icon>account_circle</mat-icon>
+      </button>
+    </mat-toolbar>
+
+    <app-marketplace-header [listingId]="listingId()" />
+
+    @if (!isHandset()) {
+      <nav mat-tab-nav-bar class="workspace-tabs" mat-stretch-tabs="false" [tabPanel]="tabPanel">
+        @for (item of navItems; track item.path) {
+          <a mat-tab-link [routerLink]="item.path" routerLinkActive #rla="routerLinkActive" [active]="rla.isActive">
+            <app-marketplace-icon [marketplace]="item.marketplace" [size]="18" />
+            <span>{{ item.label }}</span>
+          </a>
+        }
+      </nav>
+    }
+
+    <mat-tab-nav-panel #tabPanel>
+      <main class="workspace-content">
+        <router-outlet></router-outlet>
+      </main>
+    </mat-tab-nav-panel>
+  </mat-sidenav-content>
+</mat-sidenav-container>

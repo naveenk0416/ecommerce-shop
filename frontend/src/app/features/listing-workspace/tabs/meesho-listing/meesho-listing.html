@@ -1,40 +1,14 @@
-<div class="space-y-8 animate-in fade-in">
-  <div>
-    <h2 class="text-2xl font-black text-slate-950 dark:text-white tracking-tight font-display">Meesho Listing</h2>
-    <p class="text-sm text-slate-400 mt-1">Content and category attributes for Meesho Supplier Panel.</p>
-  </div>
+<div class="tab-shell">
+  <app-ui-card [elevated]="true">
+    <app-ui-section title="Meesho Listing" icon="diversity_3" description="Title and description tuned for the Meesho audience.">
+      <app-editable-field label="Listing Title" placeholder="Meesho-optimized product title" />
+      <app-editable-field label="Product Description" placeholder="Simple, value-focused description..." [multiline]="true" />
+    </app-ui-section>
+  </app-ui-card>
 
-  <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-8 shadow-sm">
-    <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white border-l-4 border-pink-500 pl-4 mb-6">Listing Content</h3>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      @for (field of fields; track field.path) {
-        <div [class.lg:col-span-3]="field.kind !== 'text'">
-          @if (field.kind === 'longtext') {
-            <app-editable-textarea [label]="field.label" [value]="getText(field)" [regenerating]="regeneratingPath() === field.path"
-                                    (valueChange)="setValue(field, $event)" (regenerate)="regenerate(field)" />
-          } @else if (field.kind === 'array') {
-            <app-keyword-chips [label]="field.label" [values]="getArray(field)" (valuesChange)="setValue(field, $event)" />
-          } @else {
-            <app-attribute-card [attribute]="asAttribute(field)" [value]="getText(field)" [regenerating]="regeneratingPath() === field.path"
-                                 (valueChange)="setValue(field, $event)" (regenerate)="regenerate(field)" />
-          }
-        </div>
-      }
-    </div>
-  </div>
-
-  @if (categoryAttributes().length > 0) {
-    <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-8 shadow-sm">
-      <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white border-l-4 border-emerald-500 pl-4 mb-6">
-        Dynamic Attributes
-        <span class="text-slate-400 font-medium normal-case tracking-normal">— dynamically loaded for {{ workspaceState.product()?.classification?.category }}</span>
-      </h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        @for (attr of categoryAttributes(); track attr.id) {
-          <app-attribute-card [attribute]="attr" [value]="getCategoryAttributeValue(attr)" [allowRegenerate]="false"
-                               (valueChange)="setCategoryAttributeValue(attr, $event)" />
-        }
-      </div>
-    </div>
-  }
+  <app-ui-card>
+    <app-ui-section title="Meesho Category" icon="category" description="Category tree this listing maps to.">
+      <app-editable-field label="Category Path" placeholder="e.g. Women > Hair Accessories" />
+    </app-ui-section>
+  </app-ui-card>
 </div>

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { GoogleGenAI } from "@google/genai";
 import { GEMINI_API_KEY } from '../env';
 import { PlatformTemplate } from './template';
+import { GENERAL_DETAILS_SECTIONS } from '../features/listing-workspace/tabs/general-details/general-details.mock';
 
 export interface ProductDetails {
   name: string;
@@ -190,5 +191,61 @@ export class GeminiService {
     }
     
     throw new Error("Failed to generate image with white background");
+  }
+
+  /**
+   * Analyzes a product image and returns 3 plausible candidate values per General Details field
+   * (index 0 is the primary recommendation; the rest back the field's Regenerate action).
+   * Fields that can't be read from the photo (SKU, cost, stock, etc.) are estimated by the model.
+   */
+  async extractGeneralDetails(base64Image: string, mimeType: string): Promise<Record<string, string[]>> {
+    const fields = GENERAL_DETAILS_SECTIONS.flatMap((section) => section.fields);
+    const fieldList = fields.map((f) => `- ${f.key}: ${f.label}`).join('\n');
+
+    const prompt = `
+      You are helping an Indian e-commerce seller list this product.
+      Analyze the attached product image and, for every field listed below, return an array of
+      exactly 3 plausible values ordered from most to least likely (the first is your best recommendation).
+      Where a field cannot be determined visually (for example sku, manufacturer, costPrice, stock,
+      marketplaceFee, shippingFee, profitMargin, or exact dimensions), give your best professional
+      estimate based on the product category and typical Indian marketplace conventions rather than
+      leaving it blank.
+      For "images" and "videos" return arrays of plausible comma-separated CDN-style URL lists rather
+      than real files.
+
+      Fields:
+      ${fieldList}
+
+      Respond only with the requested JSON.
+    `;
+
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+    for (const field of fields) {
+      properties[field.key] = { type: 'array', items: { type: 'string' } };
+      required.push(field.key);
+    }
+
+    const response = await this.ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            { inlineData: { data: base64Image, mimeType } },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: { type: 'object', properties, required },
+        temperature: 0.4,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Failed to extract product details: empty response');
+    }
+    return JSON.parse(response.text) as Record<string, string[]>;
   }
 }

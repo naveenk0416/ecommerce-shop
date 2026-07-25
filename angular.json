@@ -35,6 +35,7 @@
               }
             ],
             "styles": [
+              "frontend/src/styles/material-theme.scss",
               "frontend/src/styles.css"
             ]
           },

@@ -1,0 +1,17 @@
+<section class="ui-section">
+  <header class="ui-section__header">
+    @if (icon()) {
+      <mat-icon class="ui-section__icon">{{ icon() }}</mat-icon>
+    }
+    <div>
+      <h3 class="ui-section__title">{{ title() }}</h3>
+      @if (description()) {
+        <p class="ui-section__description">{{ description() }}</p>
+      }
+    </div>
+  </header>
+
+  <div class="ui-section__body">
+    <ng-content></ng-content>
+  </div>
+</section>

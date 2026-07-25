@@ -1,0 +1,16 @@
+<div class="marketplace-header">
+  <div class="marketplace-header__icon">
+    <mat-icon>inventory_2</mat-icon>
+  </div>
+
+  <div class="marketplace-header__info">
+    <span class="marketplace-header__eyebrow">Listing Workspace @if (listingId()) { &middot; {{ listingId() }} }</span>
+    <h1 class="marketplace-header__title">{{ productName() }}</h1>
+  </div>
+
+  <mat-chip-set class="marketplace-header__status">
+    <mat-chip [class]="'marketplace-header__chip marketplace-header__chip--' + status()">
+      {{ status() }}
+    </mat-chip>
+  </mat-chip-set>
+</div>

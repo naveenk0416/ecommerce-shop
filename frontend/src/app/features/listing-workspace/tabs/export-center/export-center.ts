@@ -1,69 +1,27 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
-import { ToastController } from '@ionic/angular/standalone';
-import { WorkspaceStateService } from '../../state/workspace-state.service';
-import { ExportService } from '../../services/export.service';
-import { ExportCard } from '../../components/export-card/export-card';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { UiCard } from '../../ui/card/card';
+import { UiSection } from '../../ui/section/section';
+
+interface ExportFormat {
+  id: string;
+  label: string;
+  icon: string;
+}
 
 @Component({
   selector: 'app-export-center',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ExportCard],
+  imports: [UiCard, UiSection, MatButtonModule, MatIconModule],
   templateUrl: './export-center.html',
+  styleUrl: '../tab-shell.scss',
 })
 export class ExportCenter {
-  workspaceState = inject(WorkspaceStateService);
-  private exportService = inject(ExportService);
-  private toastController = inject(ToastController, { optional: true });
-
-  downloadExcel(marketplaceId: 'amazon' | 'flipkart' | 'meesho') {
-    const product = this.workspaceState.product();
-    if (!product) return;
-    this.exportService.triggerDownload(this.exportService.exportExcel(product, marketplaceId));
-  }
-
-  downloadCSV() {
-    const product = this.workspaceState.product();
-    if (!product) return;
-    this.exportService.triggerDownload(this.exportService.exportCSV(product, 'amazon'));
-  }
-
-  downloadJSON() {
-    const product = this.workspaceState.product();
-    if (!product) return;
-    this.exportService.triggerDownload(this.exportService.exportJSON(product));
-  }
-
-  downloadPDF() {
-    this.exportService.exportPDF();
-  }
-
-  async copyJSON() {
-    const product = this.workspaceState.product();
-    if (!product) return;
-    await this.exportService.copyJSON(product);
-    await this.showToast('Listing JSON copied to clipboard');
-  }
-
-  async copyListing() {
-    const product = this.workspaceState.product();
-    if (!product) return;
-    await navigator.clipboard.writeText(product.marketplaceListings.amazon.seoTitle);
-    await this.showToast('Listing title copied to clipboard');
-  }
-
-  print() {
-    if (typeof window !== 'undefined') window.print();
-  }
-
-  async share() {
-    const product = this.workspaceState.product();
-    if (!product) return;
-    await this.exportService.share(product);
-  }
-
-  private async showToast(message: string) {
-    const toast = await this.toastController?.create?.({ message, duration: 2000 });
-    if (toast) await toast.present();
-  }
+  readonly formats: ExportFormat[] = [
+    { id: 'csv', label: 'CSV', icon: 'table_chart' },
+    { id: 'excel', label: 'Excel', icon: 'grid_on' },
+    { id: 'json', label: 'JSON', icon: 'data_object' },
+  ];
 }

@@ -203,7 +203,7 @@
           </section>
         } @else if (mainView() === 'gst') {
           <app-gst-calculator></app-gst-calculator>
-        } @else if (mainView() === 'workspace') {
+        } @else if (mainView() === 'workspace' || mainView() === 'home') {
           <router-outlet></router-outlet>
         } @else if (!auth.user()) {
             <!-- Login/Auth Section if not logged in -->

@@ -1,86 +1,21 @@
-<div class="space-y-8 animate-in fade-in">
-  <div>
-    <h2 class="text-2xl font-black text-slate-950 dark:text-white tracking-tight font-display">AI Insights</h2>
-    <p class="text-sm text-slate-400 mt-1">Listing quality, SEO health, and AI-estimated market signals.</p>
+<div class="tab-shell">
+  <app-ui-card [elevated]="true">
+    <app-ui-section title="AI Insights" icon="auto_awesome" description="This panel is a placeholder — no AI is wired up yet.">
+      <div class="tab-shell__preview">AI suggestions will appear here</div>
+    </app-ui-section>
+  </app-ui-card>
+
+  <div class="tab-shell__grid">
+    <app-ui-card>
+      <app-ui-section title="SEO Score" icon="query_stats">
+        <div class="tab-shell__preview">Not calculated</div>
+      </app-ui-section>
+    </app-ui-card>
+
+    <app-ui-card>
+      <app-ui-section title="Suggested Keywords" icon="sell">
+        <div class="tab-shell__preview">Not calculated</div>
+      </app-ui-section>
+    </app-ui-card>
   </div>
-
-  @if (insights(); as ai) {
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
-      <app-score-card label="SEO Score" [value]="ai.seoScore" />
-      <app-score-card label="Readability" [value]="ai.readabilityScore" />
-      <app-score-card label="Listing Quality" [value]="ai.listingQualityScore" />
-      <app-score-card label="Duplicate Content" [value]="100 - ai.duplicateContentScore" />
-      <app-score-card label="Marketplace Optimization" [value]="ai.marketplaceOptimizationScore" />
-      <app-score-card label="Market Readiness" [value]="ai.marketReadiness" />
-      <app-score-card label="Est. Conversion" [value]="ai.estimatedConversionScore" />
-      <app-score-card label="Listing Score" [value]="ai.listingScore" />
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-8 shadow-sm space-y-4">
-        <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white border-l-4 border-orange-500 pl-4">Keyword Signals</h3>
-        <div>
-          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Keyword Density</p>
-          <p class="text-2xl font-black font-display">{{ ai.keywordDensity }}%</p>
-        </div>
-        <div>
-          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Character Count</p>
-          <p class="text-2xl font-black font-display">{{ ai.characterCount }}</p>
-        </div>
-        <div>
-          <p class="text-[10px] font-bold uppercase tracking-widest text-red-400 mb-2">Missing Keywords</p>
-          <div class="flex flex-wrap gap-2">
-            @for (kw of ai.missingKeywords; track kw) {
-              <span class="px-3 py-1 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-full text-[11px] font-bold">{{ kw }}</span>
-            }
-          </div>
-        </div>
-        <div>
-          <p class="text-[10px] font-bold uppercase tracking-widest text-emerald-500 mb-2">Trending Keywords</p>
-          <div class="flex flex-wrap gap-2">
-            @for (kw of ai.trendingKeywords; track kw) {
-              <span class="px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-[11px] font-bold">{{ kw }}</span>
-            }
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-8 shadow-sm space-y-4">
-        <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white border-l-4 border-blue-500 pl-4">Market Signals</h3>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Expected Ranking</p>
-            <p class="text-sm font-black mt-1">{{ ai.expectedRanking }}</p>
-          </div>
-          <div>
-            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Search Visibility</p>
-            <p class="text-sm font-black mt-1">{{ ai.expectedSearchVisibility }}</p>
-          </div>
-          <div>
-            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Content Sentiment</p>
-            <p class="text-sm font-black mt-1">{{ ai.contentSentiment }}</p>
-          </div>
-          <div>
-            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Competition Level</p>
-            <p class="text-sm font-black mt-1">{{ ai.competitionLevel }}</p>
-          </div>
-        </div>
-        <div>
-          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Competitor Suggestions</p>
-          <ul class="space-y-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 list-disc list-inside">
-            @for (s of ai.competitorSuggestions; track s) {
-              <li>{{ s }}</li>
-            }
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <div class="space-y-3">
-      <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">AI Suggestions</h3>
-      @for (suggestion of ai.improvementSuggestions; track suggestion; let i = $index) {
-        <app-ai-suggestion-card [suggestion]="suggestion" (dismiss)="dismissSuggestion(i)" />
-      }
-    </div>
-  }
 </div>

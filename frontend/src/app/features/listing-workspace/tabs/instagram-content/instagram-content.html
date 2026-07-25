@@ -1,24 +1,14 @@
-<div class="space-y-8 animate-in fade-in">
-  <div>
-    <h2 class="text-2xl font-black text-slate-950 dark:text-white tracking-tight font-display">Instagram Content</h2>
-    <p class="text-sm text-slate-400 mt-1">Captions, hashtags, and creative prompts for social promotion.</p>
-  </div>
+<div class="tab-shell">
+  <app-ui-card [elevated]="true">
+    <app-ui-section title="Instagram Content" icon="photo_camera" description="Caption and tags for your Instagram post.">
+      <app-editable-field label="Caption" placeholder="Write an engaging caption..." [multiline]="true" />
+      <app-editable-field label="Hashtags" placeholder="#handmade #ecommerce #trending" />
+    </app-ui-section>
+  </app-ui-card>
 
-  <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-8 shadow-sm">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      @for (field of fields; track field.path) {
-        <div [class.lg:col-span-3]="field.kind !== 'text'">
-          @if (field.kind === 'longtext') {
-            <app-editable-textarea [label]="field.label" [value]="getText(field)" [regenerating]="regeneratingPath() === field.path"
-                                    (valueChange)="setValue(field, $event)" (regenerate)="regenerate(field)" />
-          } @else if (field.kind === 'array') {
-            <app-keyword-chips [label]="field.label" [values]="getArray(field)" (valuesChange)="setValue(field, $event)" />
-          } @else {
-            <app-attribute-card [attribute]="asAttribute(field)" [value]="getText(field)" [regenerating]="regeneratingPath() === field.path"
-                                 (valueChange)="setValue(field, $event)" (regenerate)="regenerate(field)" />
-          }
-        </div>
-      }
-    </div>
-  </div>
+  <app-ui-card>
+    <app-ui-section title="Post Preview" icon="image" description="Placeholder preview of the media that will be posted.">
+      <div class="tab-shell__preview">No media selected</div>
+    </app-ui-section>
+  </app-ui-card>
 </div>

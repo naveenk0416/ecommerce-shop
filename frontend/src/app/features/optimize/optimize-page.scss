@@ -1,0 +1,70 @@
+.optimize-toolbar {
+  &__brand {
+    margin-left: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+}
+
+.optimize-body {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.optimize-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 220px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    color: #94a3b8;
+    font-size: 13px;
+
+    mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  &__preview {
+    max-height: 260px;
+    width: auto;
+    max-width: 100%;
+    border-radius: 16px;
+    object-fit: contain;
+    align-self: flex-start;
+    border: 1px solid #e2e8f0;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #64748b;
+  }
+
+  &__error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #dc2626;
+  }
+}

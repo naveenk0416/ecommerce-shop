@@ -1,0 +1,91 @@
+.editable-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  &__label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  &__counter {
+    font-size: 10px;
+    font-weight: 600;
+    color: #cbd5e1;
+    white-space: nowrap;
+  }
+
+  &__view-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 40px;
+  }
+
+  &__value {
+    font-size: 15px;
+    color: #1e293b;
+    word-break: break-word;
+  }
+
+  &__edit-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  &__input {
+    flex: 1 1 auto;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  &__status {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.15s ease;
+
+    &--visible {
+      height: 18px;
+    }
+  }
+
+  &__status-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+
+    &--saved {
+      color: #16a34a;
+    }
+
+    &--copied {
+      color: #0891b2;
+    }
+  }
+}

@@ -1,0 +1,36 @@
+.ui-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  &__icon {
+    color: var(--mat-sys-primary, #ea580c);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #334155;
+  }
+
+  &__description {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: #64748b;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}

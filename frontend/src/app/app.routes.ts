@@ -7,7 +7,7 @@ import { AdminComponent } from './admin';
 export const routes: Routes = [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: 'home', component: Landing },
-  { path: 'optimize', loadComponent: () => import('./app').then(m => m.App) }, // This might be tricky if App is root
+  { path: 'optimize', loadComponent: () => import('./features/optimize/optimize-page').then(m => m.OptimizePage) },
   { path: 'listings', loadComponent: () => import('./app').then(m => m.App) },
   { path: 'inventory', component: Products },
   { path: 'gst-calculator', component: GstCalculator },
