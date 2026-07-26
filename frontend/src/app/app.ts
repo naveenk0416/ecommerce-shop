@@ -62,6 +62,7 @@ export class App {
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<string>('details');
   mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst' | 'workspace'>('home');
+  currentPath = signal<string>('');
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
   editingField = signal<string | null>(null);
@@ -209,6 +210,7 @@ export class App {
   }
 
   private syncViewWithUrl(path: string) {
+    this.currentPath.set(path);
     if (path === '/' || path === '/home') {
       this.showLanding.set(true);
     } else {
@@ -217,7 +219,7 @@ export class App {
       else if (path === '/inventory') this.mainView.set('products');
       else if (path === '/gst-calculator') this.mainView.set('gst');
       else if (path === '/admin') this.mainView.set('admin');
-      else if (path === '/optimize') this.mainView.set('home');
+      else if (path.startsWith('/optimize')) this.mainView.set('workspace');
       else if (path.startsWith('/workspace/')) this.mainView.set('workspace');
     }
   }
@@ -357,23 +359,21 @@ export class App {
       });
 
       // Reactively fetch listings when user changes
-      effect((onCleanup) => {
+      effect(() => {
         const user = this.auth.user();
         const isAdmin = this.auth.isAdmin();
 
         if (user) {
           // Note: no navigation here — profile refreshes (e.g. incrementUsage)
           // re-run this effect and must not yank the user off their current view.
-          const fetchMethod = isAdmin ?
-            this.listingService.getAllListings.bind(this.listingService) : 
-            this.listingService.getListings.bind(this.listingService, user.uid);
-
-          // Prefer a single fetch on initial load to avoid continuous polling
-          const unsubscribe = fetchMethod((listings) => {
-            this.myListings.set(listings);
-          });
-          // If the fetchMethod returned a polling unsubscribe, keep it. Otherwise it's a noop.
-          onCleanup(() => unsubscribe());
+          // Single fetch on initial load/auth change — poll=false avoids hammering
+          // /api/listings every 5s for the whole session; saveListing/updateListing/
+          // deleteListing call refreshListings() directly to keep the list in sync.
+          if (isAdmin) {
+            this.listingService.getAllListings((listings) => this.myListings.set(listings), false);
+          } else {
+            this.listingService.getListings(user.uid, (listings) => this.myListings.set(listings), false);
+          }
         } else {
           this.myListings.set([]);
           if (this.mainView() === 'products' || this.mainView() === 'listings') {
@@ -546,6 +546,7 @@ export class App {
               });
               if (toast) await toast.present();
 
+              this.refreshListings();
               this.navigateTo('listings');
               this.reset();
             } catch (error) {
@@ -585,6 +586,7 @@ export class App {
           handler: async () => {
             try {
               await this.listingService.deleteListing(id);
+              this.refreshListings();
               const toast = await this.toastController?.create?.({
                 message: 'Listing removed from inventory',
                 duration: 2000,
@@ -619,6 +621,7 @@ export class App {
       } else {
         await this.listingService.saveListing(product as ProductDetails, '', null);
       }
+      this.refreshListings();
       const toast = await this.toastController?.create?.({
         message: product.id ? 'Product updated successfully!' : 'Product added successfully!',
         duration: 3000,

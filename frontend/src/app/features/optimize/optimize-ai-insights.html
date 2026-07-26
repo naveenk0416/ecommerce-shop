@@ -1,0 +1,31 @@
+<div class="tab-shell">
+  <app-ai-tab-status [hasImage]="session.hasImage()" />
+
+  @if (session.hasImage()) {
+    <app-seo-score-card [score]="summary().avgConfidence" [criteria]="summary().criteria" />
+
+    <app-ui-card>
+      <app-ui-section
+        title="Fields to Review"
+        icon="fact_check"
+        description="Lower-confidence fields across every generated tab, worth double-checking before you publish."
+      >
+        @if (summary().reviewItems.length === 0) {
+          <div class="tab-shell__preview">No low-confidence fields yet — nice and clean.</div>
+        } @else {
+          <div class="review-list">
+            @for (item of summary().reviewItems; track item.tab + item.label) {
+              <div class="review-item">
+                <div class="review-item__header">
+                  <span class="review-item__label">{{ item.tab }} · {{ item.label }}</span>
+                  <span class="review-item__confidence">{{ item.confidence }}%</span>
+                </div>
+                <p class="review-item__reason">{{ item.reason }}</p>
+              </div>
+            }
+          </div>
+        }
+      </app-ui-section>
+    </app-ui-card>
+  }
+</div>

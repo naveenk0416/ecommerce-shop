@@ -1,0 +1,105 @@
+<div class="inventory">
+  <div class="inventory__stats">
+    <app-ui-card [elevated]="true">
+      <div class="stat">
+        <span class="stat__label">Total Listings</span>
+        <span class="stat__value">{{ listings().length }}</span>
+      </div>
+    </app-ui-card>
+    <app-ui-card [elevated]="true">
+      <div class="stat">
+        <span class="stat__label">Inventory Value</span>
+        <span class="stat__value">₹{{ totalValue() | number: '1.0-0' }}</span>
+      </div>
+    </app-ui-card>
+    <app-ui-card [elevated]="true">
+      <div class="stat">
+        <span class="stat__label">Potential Profit</span>
+        <span class="stat__value stat__value--positive">₹{{ totalProfit() | number: '1.0-0' }}</span>
+      </div>
+    </app-ui-card>
+    <app-ui-card [elevated]="true">
+      <div class="stat">
+        <span class="stat__label">Low Stock Alerts</span>
+        <span class="stat__value" [class.stat__value--warning]="lowStockCount() > 0">{{ lowStockCount() }}</span>
+      </div>
+    </app-ui-card>
+  </div>
+
+  @if (!auth.user()) {
+    <app-ui-card [elevated]="true">
+      <div class="empty-state">
+        <mat-icon>lock</mat-icon>
+        <p>Sign in to view and manage your inventory.</p>
+      </div>
+    </app-ui-card>
+  } @else {
+    <app-ui-card [elevated]="true">
+      <div class="inventory__toolbar">
+        <div class="search-box">
+          <mat-icon>search</mat-icon>
+          <input type="text" placeholder="Search by name, category, or HSN…" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
+        </div>
+        <button mat-flat-button color="primary" (click)="openAddDialog()">
+          <mat-icon>add</mat-icon>
+          Add Product
+        </button>
+      </div>
+
+      @if (filteredListings().length === 0) {
+        <div class="empty-state">
+          <mat-icon>inventory_2</mat-icon>
+          <p>{{ listings().length === 0 ? 'No products yet — add your first one to get started.' : 'No products match your search.' }}</p>
+        </div>
+      } @else {
+        <div class="inventory-table-wrap">
+          <table class="inventory-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Stock</th>
+                <th>Price</th>
+                <th>Profit</th>
+                <th aria-label="Actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (listing of filteredListings(); track listing.id) {
+                <tr>
+                  <td>
+                    <div class="product-cell">
+                      @if (listing.processedImage || listing.originalImage) {
+                        <img [src]="listing.processedImage || listing.originalImage" alt="" class="product-cell__image" referrerpolicy="no-referrer" />
+                      } @else {
+                        <span class="product-cell__placeholder"><mat-icon>image</mat-icon></span>
+                      }
+                      <span class="product-cell__name">{{ listing.name }}</span>
+                    </div>
+                  </td>
+                  <td>{{ listing.category || '—' }}</td>
+                  <td>
+                    <span class="stock-badge" [class.stock-badge--low]="isLowStock(listing)">{{ listing.quantity ?? 0 }} units</span>
+                  </td>
+                  <td>₹{{ listing.sellingPrice || 0 | number: '1.0-0' }}</td>
+                  <td [class.profit--positive]="getProfit(listing) > 0">₹{{ getProfit(listing) | number: '1.0-0' }}</td>
+                  <td class="actions-cell">
+                    <button mat-icon-button (click)="openSaleDialog(listing)" matTooltip="Log sale" aria-label="Log sale for {{ listing.name }}">
+                      <mat-icon>point_of_sale</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="openEditDialog(listing)" matTooltip="Edit" aria-label="Edit {{ listing.name }}">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="deleteListing(listing)" matTooltip="Delete" aria-label="Delete {{ listing.name }}">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </app-ui-card>
+  }
+</div>

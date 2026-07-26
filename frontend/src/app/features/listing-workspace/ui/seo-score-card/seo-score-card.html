@@ -1,0 +1,25 @@
+<app-ui-card [elevated]="true">
+  <div class="seo-score-card">
+    <div class="seo-score-card__ring" [class]="'seo-score-card__ring--' + tier()" [style.--score]="score()">
+      <div class="seo-score-card__ring-value">
+        <span class="seo-score-card__number">{{ score() }}</span>
+        <span class="seo-score-card__max">/100</span>
+      </div>
+    </div>
+
+    <div class="seo-score-card__summary">
+      <span class="seo-score-card__label">SEO Score</span>
+      <span class="seo-score-card__tier" [class]="'seo-score-card__tier--' + tier()">{{ tierLabel() }}</span>
+      <span class="seo-score-card__subtext">{{ passedCount() }}/{{ criteria().length }} checks passed</span>
+    </div>
+
+    <ul class="seo-score-card__criteria">
+      @for (item of criteria(); track item.label) {
+        <li class="seo-score-card__criterion" [class.seo-score-card__criterion--passed]="item.passed">
+          <mat-icon>{{ item.passed ? 'check_circle' : 'cancel' }}</mat-icon>
+          <span>{{ item.label }}</span>
+        </li>
+      }
+    </ul>
+  </div>
+</app-ui-card>

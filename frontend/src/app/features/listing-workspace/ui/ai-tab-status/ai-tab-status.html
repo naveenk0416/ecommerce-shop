@@ -1,0 +1,30 @@
+@if (!hasImage()) {
+  <app-ui-card [elevated]="true">
+    <div class="ai-tab-status">
+      <mat-icon>add_photo_alternate</mat-icon>
+      <p>Upload a product photo on General Details to generate this tab's content.</p>
+      <a mat-flat-button color="primary" routerLink="../general">
+        <mat-icon>arrow_back</mat-icon>
+        Go to General Details
+      </a>
+    </div>
+  </app-ui-card>
+} @else if (isAnalyzing()) {
+  <app-ui-card [elevated]="true">
+    <div class="ai-tab-status">
+      <mat-spinner diameter="28" />
+      <p>{{ analyzingLabel() }}</p>
+    </div>
+  </app-ui-card>
+} @else if (error()) {
+  <app-ui-card [elevated]="true">
+    <div class="ai-tab-status ai-tab-status--error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error() }}</p>
+      <button mat-stroked-button (click)="retry.emit()">
+        <mat-icon>refresh</mat-icon>
+        Retry
+      </button>
+    </div>
+  </app-ui-card>
+}

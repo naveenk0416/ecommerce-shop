@@ -1,0 +1,37 @@
+<h2 mat-dialog-title>Log Sale — {{ listing.name }}</h2>
+
+<mat-dialog-content class="form-dialog">
+  <p class="stock-note">{{ availableStock }} unit{{ availableStock === 1 ? '' : 's' }} currently in stock.</p>
+
+  <label class="field">
+    <span class="field__label">Platform</span>
+    <select class="field__input" [ngModel]="platform()" (ngModelChange)="platform.set($event)">
+      @for (p of platforms; track p) {
+        <option [value]="p">{{ p }}</option>
+      }
+    </select>
+  </label>
+
+  <div class="field-row">
+    <label class="field">
+      <span class="field__label">Quantity sold</span>
+      <input class="field__input" type="number" min="1" [max]="availableStock" [ngModel]="quantity()" (ngModelChange)="quantity.set($event)" />
+    </label>
+    <label class="field">
+      <span class="field__label">Sale price (per unit)</span>
+      <input class="field__input" type="number" min="0" [ngModel]="salePrice()" (ngModelChange)="salePrice.set($event)" />
+    </label>
+  </div>
+
+  @if (errorMessage()) {
+    <p class="error-note">{{ errorMessage() }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="primary" (click)="submit()">
+    <mat-icon>point_of_sale</mat-icon>
+    Log Sale
+  </button>
+</mat-dialog-actions>

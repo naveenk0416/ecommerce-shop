@@ -1,15 +1,23 @@
 <div class="tab-shell">
-  <app-ui-card [elevated]="true">
-    <app-ui-section title="Amazon Listing" icon="shopping_bag" description="Title, bullets, and search terms for the Amazon catalog.">
-      <app-editable-field label="Listing Title" placeholder="Amazon-optimized product title" />
-      <app-editable-field label="Bullet Points" placeholder="Key selling points, one per line..." [multiline]="true" />
-      <app-editable-field label="Backend Search Keywords" placeholder="comma, separated, keywords" />
-    </app-ui-section>
-  </app-ui-card>
+  <app-seo-score-card [score]="seoScore" [criteria]="seoCriteria" />
 
-  <app-ui-card>
-    <app-ui-section title="Amazon Category" icon="category" description="Browse node this listing will map to.">
-      <app-editable-field label="Category Path" placeholder="e.g. Home & Kitchen > Storage" />
-    </app-ui-section>
-  </app-ui-card>
+  @for (section of sections; track section.title) {
+    <app-ui-card>
+      <app-ui-section [title]="section.title" [icon]="section.icon" [description]="section.description">
+        <div class="tab-shell__grid">
+          @for (field of section.fields; track field.key) {
+            <app-editable-field
+              [class.tab-shell__grid-item--full]="field.multiline"
+              [label]="field.label"
+              [maxLength]="field.maxLength"
+              [multiline]="!!field.multiline"
+              [value]="fieldValues[field.key]"
+              [suggestions]="suggestionsFor(field.key)"
+              [storageKey]="'amazon-listing.' + field.key"
+            />
+          }
+        </div>
+      </app-ui-section>
+    </app-ui-card>
+  }
 </div>

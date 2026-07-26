@@ -1,0 +1,154 @@
+<div class="listing-summary">
+  @if (hasDraft()) {
+    <div class="ai-banner">
+      <div class="ai-banner__text">
+        <mat-icon>auto_awesome</mat-icon>
+        <span><strong>Drafted from your photo.</strong> Gemini filled in the details below — review and edit before publishing.</span>
+      </div>
+      <button mat-stroked-button [disabled]="session.isGenerating()" (click)="generate()">
+        <mat-icon>refresh</mat-icon>
+        Regenerate draft
+      </button>
+    </div>
+  }
+
+  @if (session.isGenerating()) {
+    <div class="ai-banner ai-banner--loading">
+      <div class="ai-banner__text">
+        <mat-spinner diameter="18" />
+        <span>Generating your full listing (all tabs) with Gemini AI…</span>
+      </div>
+    </div>
+  }
+
+  @if (session.generationError()) {
+    <div class="ai-banner ai-banner--error">
+      <div class="ai-banner__text">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ session.generationError() }}</span>
+      </div>
+      <button mat-stroked-button (click)="generate()">Retry</button>
+    </div>
+  }
+
+  <div class="listing-summary__grid">
+    <app-ui-card [elevated]="true">
+      <div class="photo-panel">
+        <span class="photo-panel__label">Product photos</span>
+
+        @if (activeImage()) {
+          <img [src]="activeImage()" alt="Product" class="photo-panel__preview" />
+        } @else {
+          <label class="photo-panel__dropzone">
+            <mat-icon>add_a_photo</mat-icon>
+            <span>Upload a photo to get started</span>
+            <input type="file" accept="image/*" hidden (change)="onPrimaryFileSelected($event)" />
+          </label>
+        }
+
+        <div class="photo-panel__thumbs">
+          @for (image of session.galleryImages(); track $index) {
+            <button
+              type="button"
+              class="photo-panel__thumb"
+              [class.photo-panel__thumb--active]="$index === selectedImageIndex()"
+              (click)="selectImage($index)"
+            >
+              <img [src]="image" alt="Product angle {{ $index + 1 }}" />
+            </button>
+          }
+          @if (session.galleryImages().length < 4) {
+            <label class="photo-panel__thumb photo-panel__thumb--add">
+              <mat-icon>add</mat-icon>
+              <input type="file" accept="image/*" hidden (change)="onGalleryFileSelected($event)" />
+            </label>
+          }
+        </div>
+
+        <p class="photo-panel__hint">Add 3+ angles — listings with 4 photos convert 2× better on Amazon &amp; Flipkart.</p>
+      </div>
+    </app-ui-card>
+
+    <app-ui-card [elevated]="true">
+      <div class="details-panel">
+        <div class="details-panel__header">
+          <span class="details-panel__label">Listing details</span>
+          @if (hasDraft()) {
+            <span class="details-panel__ai-pill">
+              <mat-icon>add</mat-icon>
+              AI drafted
+            </span>
+          }
+        </div>
+
+        <label class="field">
+          <span class="field__label">Product title</span>
+          <input class="field__input" [ngModel]="productTitle()" (ngModelChange)="productTitle.set($event)" placeholder="e.g. Layered Coin Charm Necklace" />
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span class="field__label">Category</span>
+            <input class="field__input" [ngModel]="category()" (ngModelChange)="category.set($event)" placeholder="e.g. Jewellery > Necklaces" />
+          </label>
+          <label class="field">
+            <span class="field__label">SKU</span>
+            <input class="field__input" [ngModel]="sku()" (ngModelChange)="sku.set($event)" placeholder="e.g. NCK-RG-2041" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Description</span>
+          <textarea
+            class="field__input field__input--textarea"
+            rows="4"
+            [ngModel]="description()"
+            (ngModelChange)="description.set($event)"
+            placeholder="Describe the product…"
+          ></textarea>
+        </label>
+
+        <div class="field-row field-row--four">
+          <label class="field">
+            <span class="field__label">Cost price</span>
+            <input class="field__input" [ngModel]="costPrice()" (ngModelChange)="costPrice.set($event)" placeholder="₹0" />
+          </label>
+          <label class="field">
+            <span class="field__label">Selling price</span>
+            <input class="field__input" [ngModel]="sellingPrice()" (ngModelChange)="sellingPrice.set($event)" placeholder="₹0" />
+          </label>
+          <label class="field">
+            <span class="field__label">MRP</span>
+            <input class="field__input" [ngModel]="mrp()" (ngModelChange)="mrp.set($event)" placeholder="₹0" />
+          </label>
+          <label class="field">
+            <span class="field__label">Stock</span>
+            <input class="field__input" [ngModel]="stock()" (ngModelChange)="stock.set($event)" placeholder="0 units" />
+          </label>
+        </div>
+
+        @if (searchTags().length) {
+          <div class="field">
+            <span class="field__label">Search tags</span>
+            <div class="tag-list">
+              @for (tag of searchTags(); track tag) {
+                <span class="tag-chip">{{ tag }}</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </app-ui-card>
+  </div>
+
+  <div class="save-bar">
+    <button mat-flat-button color="primary" class="save-bar__button" [disabled]="isSavingToInventory()" (click)="saveToInventory()">
+      @if (isSavingToInventory()) {
+        <mat-spinner diameter="18" />
+      } @else {
+        <mat-icon>{{ savedToInventory() ? 'check_circle' : 'save' }}</mat-icon>
+      }
+      {{ isSavingToInventory() ? 'Saving…' : savedToInventory() ? 'Saved to Inventory' : 'Save to Inventory' }}
+    </button>
+  </div>
+</div>

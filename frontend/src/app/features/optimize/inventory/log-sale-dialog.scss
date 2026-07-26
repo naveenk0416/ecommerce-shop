@@ -1,0 +1,29 @@
+@use '../optimize-fields' as *;
+
+.form-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 380px;
+  max-width: 90vw;
+  padding-top: 4px;
+}
+
+.stock-note {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.error-note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+@media (max-width: 560px) {
+  .form-dialog {
+    min-width: 0;
+  }
+}

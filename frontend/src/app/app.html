@@ -18,7 +18,7 @@
             @if (auth.user()) {
               <button (click)="navigateTo('home')"
                       class="nav-tab"
-                      [class.nav-tab-active]="mainView() === 'home' && !showLanding()">
+                      [class.nav-tab-active]="currentPath().startsWith('/optimize') && !showLanding()">
                 Optimize
               </button>
               @if (auth.isPro()) {
@@ -50,10 +50,10 @@
             </div>
           } @else {
             <div class="flex items-center gap-3">
-              <button (click)="showLanding.set(false); isRegistering.set(false)" class="btn-ghost px-6">
+              <button (click)="showLanding.set(false); isRegistering.set(false); mainView.set('home')" class="btn-ghost px-6">
                 Sign In
               </button>
-              <button (click)="showLanding.set(false); isRegistering.set(true)" class="btn-orange-premium">
+              <button (click)="showLanding.set(false); isRegistering.set(true); mainView.set('home')" class="btn-orange-premium">
                 Get Started
               </button>
             </div>
@@ -66,8 +66,8 @@
   <ion-content [fullscreen]="true">
     @if (showLanding()) {
       <app-landing 
-        (login)="showLanding.set(false); isRegistering.set(false)" 
-        (getStarted)="showLanding.set(false); isRegistering.set(true)" 
+        (login)="showLanding.set(false); isRegistering.set(false); mainView.set('home')"
+        (getStarted)="showLanding.set(false); isRegistering.set(true); mainView.set('home')"
         [isLoggedIn]="!!auth.user()"
         (goDashboard)="showLanding.set(false); mainView.set('home')">
       </app-landing>
@@ -203,7 +203,7 @@
           </section>
         } @else if (mainView() === 'gst') {
           <app-gst-calculator></app-gst-calculator>
-        } @else if (mainView() === 'workspace' || mainView() === 'home') {
+        } @else if (mainView() === 'workspace') {
           <router-outlet></router-outlet>
         } @else if (!auth.user()) {
             <!-- Login/Auth Section if not logged in -->

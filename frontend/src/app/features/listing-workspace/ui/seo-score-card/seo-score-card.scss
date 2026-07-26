@@ -1,0 +1,134 @@
+.seo-score-card {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+
+  &__ring {
+    --ring-color: #16a34a;
+    flex-shrink: 0;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: conic-gradient(var(--ring-color) calc(var(--score) * 1%), #e2e8f0 0);
+
+    &--good {
+      --ring-color: #16a34a;
+    }
+
+    &--fair {
+      --ring-color: #d97706;
+    }
+
+    &--poor {
+      --ring-color: #dc2626;
+    }
+  }
+
+  &__ring-value {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: #ffffff;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  &__number {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  &__max {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+  }
+
+  &__summary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+  }
+
+  &__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  &__tier {
+    font-size: 18px;
+    font-weight: 800;
+
+    &--good {
+      color: #16a34a;
+    }
+
+    &--fair {
+      color: #d97706;
+    }
+
+    &--poor {
+      color: #dc2626;
+    }
+  }
+
+  &__subtext {
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  &__criteria {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 20px;
+    flex: 1 1 260px;
+  }
+
+  &__criterion {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #94a3b8;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: #cbd5e1;
+    }
+
+    &--passed {
+      color: #334155;
+
+      mat-icon {
+        color: #16a34a;
+      }
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .seo-score-card {
+    flex-direction: column;
+    align-items: flex-start;
+
+    &__criteria {
+      grid-template-columns: 1fr;
+    }
+  }
+}

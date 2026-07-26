@@ -19,11 +19,53 @@
     color: #94a3b8;
   }
 
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   &__counter {
     font-size: 10px;
     font-weight: 600;
     color: #cbd5e1;
     white-space: nowrap;
+  }
+
+  &__confidence {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: default;
+
+    mat-icon {
+      font-size: 13px;
+      width: 13px;
+      height: 13px;
+    }
+
+    &--high {
+      color: #16a34a;
+    }
+
+    &--medium {
+      color: #d97706;
+    }
+
+    &--low {
+      color: #dc2626;
+    }
+  }
+
+  &__reason {
+    margin: 0;
+    font-size: 11px;
+    font-style: italic;
+    color: #94a3b8;
   }
 
   &__view-row {

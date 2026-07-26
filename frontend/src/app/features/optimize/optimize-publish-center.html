@@ -1,0 +1,30 @@
+<div class="tab-shell">
+  <app-ai-tab-status [hasImage]="session.hasImage()" />
+
+  @if (session.hasImage()) {
+    <app-ui-card [elevated]="true">
+      <app-ui-section title="Publish Center" icon="publish" description="Publishing is a demo action here — it isn't connected to a live marketplace API.">
+        <div class="tab-shell__checklist">
+          @for (row of rows(); track row.marketplace) {
+            <div class="tab-shell__row">
+              <span class="tab-shell__row-label">
+                <app-marketplace-icon [marketplace]="row.marketplace" [size]="18" />
+                {{ row.label }}
+              </span>
+              @if (row.published) {
+                <span class="tab-shell__badge tab-shell__badge--ready">
+                  <mat-icon inline="true">check_circle</mat-icon>
+                  Published
+                </span>
+              } @else {
+                <button mat-stroked-button color="primary" [disabled]="!row.ready" (click)="publish(row.tab)">
+                  {{ row.ready ? 'Publish' : 'Generate content first' }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </app-ui-section>
+    </app-ui-card>
+  }
+</div>

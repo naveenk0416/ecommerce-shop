@@ -1,0 +1,41 @@
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review-item {
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__label {
+    font-weight: 600;
+    font-size: 13px;
+    color: #1e293b;
+  }
+
+  &__confidence {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #fef2f2;
+    color: #dc2626;
+  }
+
+  &__reason {
+    margin: 4px 0 0;
+    font-size: 12px;
+    font-style: italic;
+    color: #94a3b8;
+  }
+}

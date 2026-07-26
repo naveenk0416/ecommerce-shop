@@ -1,0 +1,246 @@
+:host {
+  display: block;
+  min-height: 70vh;
+}
+
+.optimize-shell {
+  display: flex;
+  align-items: stretch;
+  min-height: 70vh;
+  background: #f8fafc;
+}
+
+.optimize-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  flex-shrink: 0;
+  background: #0f172a;
+  color: #cbd5e1;
+  padding: 20px 14px;
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 6px 24px;
+    font-size: 17px;
+    font-weight: 800;
+    color: #ffffff;
+  }
+
+  &__brand-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: #ea580c;
+    color: #fff;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  &__nav {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  &__group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__group-label {
+    padding: 0 10px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    color: #cbd5e1;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.15s ease;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    &--active {
+      background: rgba(234, 88, 12, 0.16);
+      color: #ffffff;
+      font-weight: 700;
+
+      mat-icon {
+        color: #fb923c;
+      }
+    }
+  }
+
+  &__item-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__score {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+
+    &--high {
+      color: #4ade80;
+    }
+
+    &--medium {
+      color: #fbbf24;
+    }
+
+    &--low {
+      color: #f87171;
+    }
+  }
+
+  &__account {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 10px 4px;
+    margin-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  &__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #ea580c;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__account-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__account-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__account-role {
+    font-size: 11px;
+    color: #64748b;
+  }
+}
+
+.optimize-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.optimize-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 32px;
+  flex-wrap: wrap;
+
+  &__breadcrumb {
+    font-size: 12px;
+    color: #94a3b8;
+  }
+
+  &__title {
+    margin: 4px 0 0;
+    font-size: 28px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #b45309;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  &__status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #d97706;
+  }
+}
+
+.optimize-content {
+  flex: 1 1 auto;
+  padding: 0 32px 32px;
+}
+
+@media (max-width: 900px) {
+  .optimize-sidebar {
+    display: none;
+  }
+
+  .optimize-header,
+  .optimize-content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

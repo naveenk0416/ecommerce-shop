@@ -7,7 +7,31 @@
       primary: mat.$orange-palette,
       tertiary: mat.$blue-palette,
     ),
-    typography: Roboto,
+    // Match the app's brand font (--font-sans in styles.css) instead of Material's default
+    // Roboto, so Material buttons/dialogs/inputs read as one system with the rest of the UI.
+    typography: 'Inter, ui-sans-serif, system-ui, sans-serif',
     density: 0,
+  ));
+
+  // Deliberate padding/radius/weight for every Material button variant, instead of relying on
+  // M3's default full-pill shape — a moderate rounded-rect that matches the app's cards and
+  // sidebar nav items (10-16px radius) elsewhere.
+  @include mat.button-overrides((
+    filled-container-shape: 12px,
+    filled-horizontal-padding: 28px,
+    filled-label-text-weight: 600,
+    outlined-container-shape: 12px,
+    outlined-horizontal-padding: 28px,
+    outlined-label-text-weight: 600,
+    protected-container-shape: 12px,
+    protected-horizontal-padding: 28px,
+    protected-label-text-weight: 600,
+    tonal-container-shape: 12px,
+    tonal-horizontal-padding: 28px,
+    tonal-label-text-weight: 600,
+    text-container-shape: 10px,
+    text-horizontal-padding: 16px,
+    text-with-icon-horizontal-padding: 18px,
+    text-label-text-weight: 600,
   ));
 }

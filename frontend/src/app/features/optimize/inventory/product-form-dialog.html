@@ -1,0 +1,54 @@
+<h2 mat-dialog-title>{{ isEditing ? 'Edit Product' : 'Add Product' }}</h2>
+
+<mat-dialog-content class="form-dialog">
+  <label class="field">
+    <span class="field__label">Product name</span>
+    <input class="field__input" [ngModel]="name()" (ngModelChange)="name.set($event)" placeholder="e.g. Layered Coin Charm Necklace" />
+  </label>
+
+  <div class="field-row">
+    <label class="field">
+      <span class="field__label">Category</span>
+      <input class="field__input" [ngModel]="category()" (ngModelChange)="category.set($event)" placeholder="e.g. Jewellery" />
+    </label>
+    <label class="field">
+      <span class="field__label">Quantity</span>
+      <input class="field__input" type="number" min="0" [ngModel]="quantity()" (ngModelChange)="quantity.set($event)" />
+    </label>
+  </div>
+
+  <div class="field-row">
+    <label class="field">
+      <span class="field__label">Cost price</span>
+      <input class="field__input" type="number" min="0" [ngModel]="costPrice()" (ngModelChange)="costPrice.set($event)" />
+    </label>
+    <label class="field">
+      <span class="field__label">Selling price</span>
+      <input class="field__input" type="number" min="0" [ngModel]="sellingPrice()" (ngModelChange)="sellingPrice.set($event)" />
+    </label>
+  </div>
+
+  <div class="field-row">
+    <label class="field">
+      <span class="field__label">GST rate</span>
+      <input class="field__input" [ngModel]="gstRate()" (ngModelChange)="gstRate.set($event)" placeholder="18%" />
+    </label>
+    <label class="field">
+      <span class="field__label">HSN code</span>
+      <input class="field__input" [ngModel]="hsnCode()" (ngModelChange)="hsnCode.set($event)" placeholder="e.g. 7117" />
+    </label>
+  </div>
+
+  <label class="field">
+    <span class="field__label">Description</span>
+    <textarea class="field__input field__input--textarea" rows="3" [ngModel]="description()" (ngModelChange)="description.set($event)" placeholder="Optional notes about this product…"></textarea>
+  </label>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="primary" [disabled]="!isValid()" (click)="submit()">
+    <mat-icon>{{ isEditing ? 'save' : 'add' }}</mat-icon>
+    {{ isEditing ? 'Save Changes' : 'Add Product' }}
+  </button>
+</mat-dialog-actions>

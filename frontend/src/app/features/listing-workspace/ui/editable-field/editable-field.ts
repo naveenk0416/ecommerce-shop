@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, effect, inject, input, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, effect, inject, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -29,8 +29,20 @@ export class EditableField {
   suggestions = input<string[]>([]);
   /** Unique key used to persist auto-saved edits to localStorage (mock persistence, no API). */
   storageKey = input('');
+  /** AI confidence for the current value, 0-100. Only set when the value came from a live AI generation. */
+  confidence = input<number | null>(null);
+  /** Short explanation of how the value was determined or estimated. Shown alongside the confidence badge. */
+  reason = input<string | null>(null);
 
   value = model('');
+
+  confidenceTier = computed<'high' | 'medium' | 'low'>(() => {
+    const value = this.confidence();
+    if (value === null) return 'low';
+    if (value >= 70) return 'high';
+    if (value >= 40) return 'medium';
+    return 'low';
+  });
 
   editing = signal(false);
   draft = signal('');

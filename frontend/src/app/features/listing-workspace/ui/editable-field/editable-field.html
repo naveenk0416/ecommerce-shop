@@ -1,7 +1,20 @@
 <div class="editable-field">
   <div class="editable-field__label-row">
     <span class="editable-field__label">{{ label() }}</span>
-    <span class="editable-field__counter">{{ value().length }}/{{ maxLength() }}</span>
+    <span class="editable-field__meta">
+      @if (confidence() !== null) {
+        <span
+          class="editable-field__confidence"
+          [class]="'editable-field__confidence--' + confidenceTier()"
+          [matTooltip]="reason() || ''"
+          matTooltipPosition="above"
+        >
+          <mat-icon inline="true">{{ confidenceTier() === 'high' ? 'verified' : confidenceTier() === 'medium' ? 'help' : 'warning' }}</mat-icon>
+          {{ confidence() }}% confidence
+        </span>
+      }
+      <span class="editable-field__counter">{{ value().length }}/{{ maxLength() }}</span>
+    </span>
   </div>
 
   @if (editing()) {
@@ -55,6 +68,10 @@
         </button>
       </div>
     </div>
+  }
+
+  @if (confidence() !== null && reason()) {
+    <p class="editable-field__reason">{{ reason() }}</p>
   }
 
   <div class="editable-field__status" [class.editable-field__status--visible]="copied() || saveStatus() !== 'idle'">

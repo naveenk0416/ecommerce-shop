@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node optimize-tabs-verify.js)",
+      "Bash(node optimize-tabs-verify2.js)",
+      "Bash(node optimize-tabs-verify3.js)",
+      "Bash(node -e ' *)",
+      "Bash(node signin-fix-verify.js)"
+    ]
+  }
+}

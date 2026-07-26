@@ -38,9 +38,7 @@
 
 @layer base {
   button {
-    @apply border-0;
-    padding: 18px 32px;
-    border-radius: 30px;
+    @apply border-0 font-sans font-semibold;
   }
 
   .landing-container {

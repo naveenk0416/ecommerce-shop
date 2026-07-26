@@ -1,0 +1,96 @@
+<div class="optimize-shell">
+  <aside class="optimize-sidebar">
+    <div class="optimize-sidebar__brand">
+      <span class="optimize-sidebar__brand-icon">
+        <mat-icon>storefront</mat-icon>
+      </span>
+      <span>SellAssist</span>
+    </div>
+
+    <nav class="optimize-sidebar__nav">
+      <div class="optimize-sidebar__group">
+        <span class="optimize-sidebar__group-label">Workspace</span>
+        <a class="optimize-sidebar__item" routerLink="general" routerLinkActive="optimize-sidebar__item--active">
+          <mat-icon>widgets</mat-icon>
+          <span class="optimize-sidebar__item-label">General Details</span>
+        </a>
+        <a class="optimize-sidebar__item" routerLink="inventory" routerLinkActive="optimize-sidebar__item--active">
+          <mat-icon>inventory_2</mat-icon>
+          <span class="optimize-sidebar__item-label">Inventory</span>
+        </a>
+      </div>
+
+      <div class="optimize-sidebar__group">
+        <span class="optimize-sidebar__group-label">Marketplaces</span>
+        @for (row of marketplaceRows(); track row.tab) {
+          <a class="optimize-sidebar__item" [routerLink]="row.tab" routerLinkActive="optimize-sidebar__item--active">
+            <app-marketplace-icon [marketplace]="row.marketplace" [size]="18" />
+            <span class="optimize-sidebar__item-label">{{ row.label }}</span>
+            @if (row.score !== null) {
+              <span class="optimize-sidebar__score" [class]="'optimize-sidebar__score--' + scoreTier(row.score)">{{ row.score }}%</span>
+            }
+          </a>
+        }
+      </div>
+
+      <div class="optimize-sidebar__group">
+        <span class="optimize-sidebar__group-label">Intelligence</span>
+        <a class="optimize-sidebar__item" routerLink="insights" routerLinkActive="optimize-sidebar__item--active">
+          <mat-icon>auto_awesome</mat-icon>
+          <span class="optimize-sidebar__item-label">AI Insights</span>
+        </a>
+        <a class="optimize-sidebar__item" routerLink="readiness" routerLinkActive="optimize-sidebar__item--active">
+          <mat-icon>fact_check</mat-icon>
+          <span class="optimize-sidebar__item-label">Marketplace Readiness</span>
+        </a>
+      </div>
+
+      <div class="optimize-sidebar__group">
+        <span class="optimize-sidebar__group-label">Ship</span>
+        <a class="optimize-sidebar__item" routerLink="publish" routerLinkActive="optimize-sidebar__item--active">
+          <mat-icon>rocket_launch</mat-icon>
+          <span class="optimize-sidebar__item-label">Publish Center</span>
+        </a>
+        <a class="optimize-sidebar__item" routerLink="export" routerLinkActive="optimize-sidebar__item--active">
+          <mat-icon>ios_share</mat-icon>
+          <span class="optimize-sidebar__item-label">Export Center</span>
+        </a>
+      </div>
+    </nav>
+
+    <div class="optimize-sidebar__account">
+      <span class="optimize-sidebar__avatar">{{ accountInitials() }}</span>
+      <div class="optimize-sidebar__account-info">
+        <span class="optimize-sidebar__account-name">{{ accountName() }}</span>
+        <span class="optimize-sidebar__account-role">{{ accountRole() }}</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="optimize-main">
+    <header class="optimize-header">
+      <div class="optimize-header__titles">
+        <span class="optimize-header__breadcrumb">Listings / {{ productTitle() }}</span>
+        <h1 class="optimize-header__title">{{ productTitle() }}</h1>
+      </div>
+      <div class="optimize-header__actions">
+        <span class="optimize-header__status">
+          <span class="optimize-header__status-dot"></span>
+          Draft
+        </span>
+        <button mat-stroked-button (click)="startNewProduct()">
+          <mat-icon>add</mat-icon>
+          New Product
+        </button>
+        <button mat-stroked-button>Preview</button>
+        <button mat-flat-button color="primary" routerLink="publish">
+          Publish to {{ readyCount() }} channel{{ readyCount() === 1 ? '' : 's' }}
+        </button>
+      </div>
+    </header>
+
+    <main class="optimize-content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

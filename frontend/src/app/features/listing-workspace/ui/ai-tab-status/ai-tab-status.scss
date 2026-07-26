@@ -1,0 +1,33 @@
+.ai-tab-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  color: #64748b;
+
+  mat-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    color: #cbd5e1;
+  }
+
+  p {
+    margin: 0;
+    max-width: 360px;
+    font-size: 13px;
+  }
+
+  &--error {
+    mat-icon {
+      color: #dc2626;
+    }
+
+    p {
+      color: #dc2626;
+    }
+  }
+}

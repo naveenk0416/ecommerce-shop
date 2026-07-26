@@ -1,0 +1,37 @@
+<div class="tab-shell">
+  <app-ai-tab-status
+    [hasImage]="session.hasImage()"
+    [isAnalyzing]="session.isGenerating()"
+    [error]="session.generationError()"
+    analyzingLabel="Generating your Flipkart listing with Gemini AI…"
+    (retry)="generate()"
+  />
+
+  @if (results(); as r) {
+    @if (seo(); as s) {
+      <app-seo-score-card [score]="s.score" [criteria]="s.criteria" />
+    }
+
+    @for (section of sections; track section.title) {
+      <app-ui-card>
+        <app-ui-section [title]="section.title" [icon]="section.icon" [description]="section.description">
+          <div class="tab-shell__grid">
+            @for (field of section.fields; track field.key) {
+              <app-editable-field
+                [class.tab-shell__grid-item--full]="field.multiline"
+                [label]="field.label"
+                [maxLength]="field.maxLength"
+                [multiline]="!!field.multiline"
+                [value]="r[field.key]?.values?.[0] ?? ''"
+                [suggestions]="r[field.key]?.values ?? []"
+                [confidence]="r[field.key]?.confidence ?? null"
+                [reason]="r[field.key]?.reason ?? null"
+                [storageKey]="'optimize.flipkart.' + field.key"
+              />
+            }
+          </div>
+        </app-ui-section>
+      </app-ui-card>
+    }
+  }
+</div>

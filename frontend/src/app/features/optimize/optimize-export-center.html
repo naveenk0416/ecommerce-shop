@@ -1,0 +1,24 @@
+<div class="tab-shell">
+  <app-ai-tab-status [hasImage]="session.hasImage()" />
+
+  @if (session.hasImage()) {
+    <app-ui-card [elevated]="true">
+      <app-ui-section title="Export Center" icon="ios_share" description="Download everything generated so far across all tabs.">
+        <div class="tab-shell__grid tab-shell__grid--single">
+          @for (format of formats; track format.id) {
+            <div class="tab-shell__row">
+              <span class="tab-shell__row-label">
+                <mat-icon>{{ format.icon }}</mat-icon>
+                {{ format.label }}
+              </span>
+              <button mat-stroked-button [disabled]="!format.available || !hasContent()" (click)="export(format)">
+                <mat-icon>download</mat-icon>
+                {{ format.available ? 'Export' : 'Coming soon' }}
+              </button>
+            </div>
+          }
+        </div>
+      </app-ui-section>
+    </app-ui-card>
+  }
+</div>

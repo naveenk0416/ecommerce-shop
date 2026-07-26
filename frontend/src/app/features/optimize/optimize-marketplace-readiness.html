@@ -1,0 +1,27 @@
+<div class="tab-shell">
+  <app-ai-tab-status [hasImage]="session.hasImage()" />
+
+  @if (session.hasImage()) {
+    <app-ui-card [elevated]="true">
+      <app-ui-section title="Marketplace Readiness" icon="fact_check" description="Live status based on what's been generated for this product so far.">
+        <div class="tab-shell__checklist">
+          @for (row of rows(); track row.marketplace) {
+            <div class="tab-shell__row">
+              <span class="tab-shell__row-label">
+                <app-marketplace-icon [marketplace]="row.marketplace" [size]="18" />
+                {{ row.label }}
+              </span>
+              <span class="tab-shell__badge" [class.tab-shell__badge--ready]="row.ready">
+                @if (row.ready) {
+                  Ready @if (row.score !== null) { ({{ row.score }}%) }
+                } @else {
+                  Not generated yet
+                }
+              </span>
+            </div>
+          }
+        </div>
+      </app-ui-section>
+    </app-ui-card>
+  }
+</div>
