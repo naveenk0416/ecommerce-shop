@@ -19,6 +19,7 @@ import razorpayConfigRouter from './api/razorpay-config.js';
 import barcodeRouter from './api/barcode.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { existsSync } from 'node:fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -112,48 +113,66 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+// Reached only when nothing above handled the request — i.e. no frontend build is present
+// (API-only deployment) and the path isn't a known API route. Keeps responses JSON-consistent
+// instead of falling through to Express's default HTML 404 page.
+app.use((req: Request, res: Response) => {
+  if (req.url === '/' || req.url === '') {
+    res.json({ status: 'ok', service: 'SellAssist API', message: 'Backend is running in API-only mode.' });
+    return;
+  }
+  res.status(404).json({ error: `Not found: ${req.method} ${req.url}` });
+});
+
 // ✅ All setup and app.listen() inside the async IIFE so the event loop
 //    stays alive and tsx doesn't exit prematurely
 (async () => {
-  try {
-    const { pathToFileURL } = await import('node:url');
-    const serverDist = join(__dirname, '..', '..', 'dist', 'app', 'server');
-    const engineManifestPath = join(serverDist, 'angular-app-engine-manifest.mjs');
-    const appManifestPath = join(serverDist, 'angular-app-manifest.mjs');
+  const serverDist = join(__dirname, '..', '..', 'dist', 'app', 'server');
+  const engineManifestPath = join(serverDist, 'angular-app-engine-manifest.mjs');
+  const appManifestPath = join(serverDist, 'angular-app-manifest.mjs');
 
+  if (!existsSync(engineManifestPath) || !existsSync(appManifestPath)) {
+    // No frontend build alongside this deployment (e.g. a backend-only deploy) — run as an
+    // API-only server instead of repeatedly trying and failing to load SSR manifests.
+    console.log('[SSR] No frontend build found at', serverDist, '— running as an API-only backend.');
+  } else {
     try {
-      console.log('[SSR] Attempting to load engine manifest from', engineManifestPath);
-      const engineMod = await import(pathToFileURL(engineManifestPath).href);
+      const { pathToFileURL } = await import('node:url');
+
       try {
-        if (engineMod?.default && Array.isArray(engineMod.default.allowedHosts) && engineMod.default.allowedHosts.length === 0) {
-          engineMod.default.allowedHosts = ['localhost', '127.0.0.1', '0.0.0.0'];
+        console.log('[SSR] Attempting to load engine manifest from', engineManifestPath);
+        const engineMod = await import(pathToFileURL(engineManifestPath).href);
+        try {
+          if (engineMod?.default && Array.isArray(engineMod.default.allowedHosts) && engineMod.default.allowedHosts.length === 0) {
+            engineMod.default.allowedHosts = ['localhost', '127.0.0.1', '0.0.0.0'];
+          }
+        } catch (ex) {
+          // ignore
         }
-      } catch (ex) {
-        // ignore
+        setAngularAppEngineManifest(engineMod.default);
+        console.log('[SSR] Loaded Angular app engine manifest from', engineManifestPath);
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        console.warn('[SSR] Engine manifest load failed:', errorMessage);
       }
-      setAngularAppEngineManifest(engineMod.default);
-      console.log('[SSR] Loaded Angular app engine manifest from', engineManifestPath);
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      console.warn('[SSR] Engine manifest load failed:', errorMessage);
-    }
 
-    try {
-      console.log('[SSR] Attempting to load app manifest from', appManifestPath);
-      const appMod = await import(pathToFileURL(appManifestPath).href);
-      setAngularAppManifest(appMod.default);
-      console.log('[SSR] Loaded Angular app manifest from', appManifestPath);
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      console.warn('[SSR] App manifest load failed:', errorMessage);
-    }
+      try {
+        console.log('[SSR] Attempting to load app manifest from', appManifestPath);
+        const appMod = await import(pathToFileURL(appManifestPath).href);
+        setAngularAppManifest(appMod.default);
+        console.log('[SSR] Loaded Angular app manifest from', appManifestPath);
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        console.warn('[SSR] App manifest load failed:', errorMessage);
+      }
 
-    angularApp = new AngularNodeAppEngine({
-      allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0'],
-    });
-  } catch (err) {
-    console.warn('AngularNodeAppEngine could not be initialized. Prerendering/SSR might be unavailable.', err);
-    angularApp = undefined;
+      angularApp = new AngularNodeAppEngine({
+        allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0'],
+      });
+    } catch (err) {
+      console.warn('AngularNodeAppEngine could not be initialized. Prerendering/SSR might be unavailable.', err);
+      angularApp = undefined;
+    }
   }
 
   // Start server after all async setup is complete
