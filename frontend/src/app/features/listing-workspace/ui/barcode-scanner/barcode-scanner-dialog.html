@@ -1,0 +1,20 @@
+<h2 mat-dialog-title>Scan a Barcode</h2>
+
+<mat-dialog-content class="scanner-dialog">
+  @if (error()) {
+    <div class="scanner-dialog__error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  } @else {
+    <div class="scanner-dialog__viewport">
+      <video #video class="scanner-dialog__video" muted playsinline></video>
+      <div class="scanner-dialog__reticle"></div>
+    </div>
+    <p class="scanner-dialog__hint">Point the camera at a product's UPC/EAN barcode.</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="cancel()">Cancel</button>
+</mat-dialog-actions>

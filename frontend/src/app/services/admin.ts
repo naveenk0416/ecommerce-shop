@@ -42,4 +42,12 @@ export class AdminService {
       body: data
     });
   }
+
+  /** Edits a user's profile/role. Backend restricts the `role` field to admin callers. */
+  async updateUser(uid: string, updates: Partial<Pick<UserProfile, 'displayName' | 'phoneNumber' | 'gstNumber' | 'role'>>) {
+    return apiFetch(`/users/${encodeURIComponent(uid)}`, {
+      method: 'PATCH',
+      body: updates
+    });
+  }
 }

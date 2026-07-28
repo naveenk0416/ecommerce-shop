@@ -73,12 +73,22 @@
       <div class="details-panel">
         <div class="details-panel__header">
           <span class="details-panel__label">Listing details</span>
-          @if (hasDraft()) {
-            <span class="details-panel__ai-pill">
-              <mat-icon>add</mat-icon>
-              AI drafted
-            </span>
-          }
+          <div class="details-panel__header-actions">
+            @if (hasDraft()) {
+              <span class="details-panel__ai-pill">
+                <mat-icon>add</mat-icon>
+                AI drafted
+              </span>
+            }
+            <button mat-stroked-button [disabled]="isLookingUpBarcode()" (click)="scanBarcode()">
+              @if (isLookingUpBarcode()) {
+                <mat-spinner diameter="16" />
+              } @else {
+                <mat-icon>qr_code_scanner</mat-icon>
+              }
+              Scan Barcode
+            </button>
+          </div>
         </div>
 
         <label class="field">

@@ -2,8 +2,8 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { ensureConnected, User } from './common';
-import { sendMail } from '../utils/mailer';
+import { ensureConnected, User } from './common.js';
+import { sendMail } from '../utils/mailer.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env['JWT_SECRET'] || 'dev_jwt_secret_change_me';

@@ -1,6 +1,6 @@
 import express from 'express';
-import { authMiddleware } from './auth';
-import { ensureConnected, TemplateConfig } from './common';
+import { authMiddleware } from './auth.js';
+import { ensureConnected, TemplateConfig } from './common.js';
 
 const router = express.Router();
 

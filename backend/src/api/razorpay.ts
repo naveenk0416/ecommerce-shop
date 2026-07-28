@@ -1,7 +1,7 @@
 import express from 'express';
-import '../utils/env';
+import '../utils/env.js';
 import Razorpay from 'razorpay';
-import { verifyRazorpaySignature } from '../utils/razorpay';
+import { verifyRazorpaySignature } from '../utils/razorpay.js';
 
 const router = express.Router();
 

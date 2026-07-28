@@ -4,9 +4,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { UiCard } from '../listing-workspace/ui/card/card';
+import { BarcodeScannerDialog } from '../listing-workspace/ui/barcode-scanner/barcode-scanner-dialog';
 import { AuthService } from '../../services/auth';
 import { ListingService } from '../../services/listing';
+import { BarcodeLookupResult, BarcodeService } from '../../services/barcode';
+import { AiFieldExtraction } from '../../services/gemini';
 import { parsePrice } from '../../utils/price';
 import { OptimizeSessionService } from './optimize-session.service';
 
@@ -20,16 +24,22 @@ import { OptimizeSessionService } from './optimize-session.service';
 })
 export class OptimizeGeneralDetails {
   private readonly listingService = inject(ListingService);
+  private readonly barcodeService = inject(BarcodeService);
   private readonly injector = inject(Injector);
   protected readonly auth = inject(AuthService);
   protected readonly session = inject(OptimizeSessionService);
 
-  /** Lazily injected — MatSnackBar as a field initializer can throw NG0203 on lazy-loaded routes. */
+  /** Lazily injected — MatSnackBar/MatDialog as field initializers can throw NG0203 on lazy-loaded routes. */
   private get snackBar(): MatSnackBar {
     return runInInjectionContext(this.injector, () => inject(MatSnackBar));
   }
 
+  private get dialog(): MatDialog {
+    return runInInjectionContext(this.injector, () => inject(MatDialog));
+  }
+
   hasDraft = computed(() => this.session.getResult('general') !== undefined);
+  isLookingUpBarcode = signal(false);
 
   selectedImageIndex = signal(0);
   activeImage = computed(() => this.session.galleryImages()[this.selectedImageIndex()] ?? null);
@@ -94,6 +104,59 @@ export class OptimizeGeneralDetails {
   /** Re-runs the single combined Gemini call covering this tab and every other tab. */
   generate(): void {
     this.session.generateAll();
+  }
+
+  /** Opens the live camera scanner and, on a successful scan, looks up the barcode. */
+  scanBarcode(): void {
+    this.dialog
+      .open(BarcodeScannerDialog, { width: '480px' })
+      .afterClosed()
+      .subscribe((code) => {
+        if (code) this.lookupBarcode(code);
+      });
+  }
+
+  private lookupBarcode(code: string): void {
+    this.isLookingUpBarcode.set(true);
+    this.barcodeService
+      .lookup(code)
+      .then((result) => {
+        if (!result.found) {
+          this.snackBar.open(`No product data found for barcode ${code}. You can enter details manually.`, 'Dismiss', { duration: 4000 });
+          return;
+        }
+        this.applyBarcodeResult(result);
+        this.snackBar.open('Filled the mandatory fields from the scanned barcode.', 'Dismiss', { duration: 3000 });
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : 'Barcode lookup failed. Please try again.';
+        this.snackBar.open(message, 'Dismiss', { duration: 4000 });
+      })
+      .finally(() => this.isLookingUpBarcode.set(false));
+  }
+
+  /** Merges barcode-sourced values into the mandatory fields, keeping whatever the AI draft
+   * already filled in for fields the barcode lookup didn't cover (price, stock, etc.). */
+  private applyBarcodeResult(result: BarcodeLookupResult): void {
+    const merged: Record<string, AiFieldExtraction> = { ...(this.session.getResult('general') ?? {}) };
+    const reason = `From barcode ${result.barcode} lookup.`;
+
+    const setField = (key: string, value: string | null | undefined) => {
+      if (!value) return;
+      merged[key] = { values: [value], confidence: 95, reason };
+    };
+
+    setField('productTitle', result.title);
+    setField('category', result.category || result.brand);
+    setField('description', result.description);
+    setField('sku', result.barcode);
+
+    const tags = [result.brand, result.category].filter((v): v is string => !!v);
+    if (tags.length) {
+      merged['searchTags'] = { values: [tags.join(', ')], confidence: 90, reason };
+    }
+
+    this.session.setResult('general', merged);
   }
 
   private uploadPrimary(file: File): void {

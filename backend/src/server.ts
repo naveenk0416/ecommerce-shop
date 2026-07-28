@@ -1,5 +1,5 @@
 import '@angular/compiler';
-import './utils/env';
+import './utils/env.js';
 import {
   AngularNodeAppEngine,
   createNodeRequestHandler,
@@ -9,13 +9,14 @@ import {
 import { ɵsetAngularAppEngineManifest as setAngularAppEngineManifest, ɵsetAngularAppManifest as setAngularAppManifest } from '@angular/ssr';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import authRouter from './api/auth';
-import adminRouter from './api/admin';
-import listingRouter from './api/listing';
-import templateRouter from './api/template';
-import feedbackRouter from './api/feedback';
-import razorpayRouter from './api/razorpay';
-import razorpayConfigRouter from './api/razorpay-config';
+import authRouter from './api/auth.js';
+import adminRouter from './api/admin.js';
+import listingRouter from './api/listing.js';
+import templateRouter from './api/template.js';
+import feedbackRouter from './api/feedback.js';
+import razorpayRouter from './api/razorpay.js';
+import razorpayConfigRouter from './api/razorpay-config.js';
+import barcodeRouter from './api/barcode.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -65,6 +66,7 @@ app.use('/api/templates', templateRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api', razorpayConfigRouter);
 app.use('/api', razorpayRouter);
+app.use('/api/barcode', barcodeRouter);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.url.startsWith('/api/')) {

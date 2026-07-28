@@ -1,4 +1,4 @@
-import '../utils/env';
+import '../utils/env.js';
 import mongoose from 'mongoose';
 
 let connected = false;

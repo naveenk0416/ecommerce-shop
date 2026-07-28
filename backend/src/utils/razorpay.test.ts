@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRazorpaySignature } from './razorpay';
+import { createRazorpaySignature } from './razorpay.js';
 
 test('createRazorpaySignature generates the expected HMAC signature', () => {
   const signature = createRazorpaySignature('order_test_123', 'pay_test_456', 'secret_test_789');

@@ -3,17 +3,17 @@
 
   @if (session.hasImage()) {
     <app-ui-card [elevated]="true">
-      <app-ui-section title="Export Center" icon="ios_share" description="Download everything generated so far across all tabs.">
+      <app-ui-section title="Export Center" icon="ios_share" description="Download each marketplace listing as an Excel file, ready for bulk upload.">
         <div class="tab-shell__grid tab-shell__grid--single">
-          @for (format of formats; track format.id) {
+          @for (entry of marketplaces; track entry.tab) {
             <div class="tab-shell__row">
               <span class="tab-shell__row-label">
-                <mat-icon>{{ format.icon }}</mat-icon>
-                {{ format.label }}
+                <app-marketplace-icon [marketplace]="entry.marketplace" [size]="20" />
+                {{ entry.label }}
               </span>
-              <button mat-stroked-button [disabled]="!format.available || !hasContent()" (click)="export(format)">
+              <button mat-stroked-button [disabled]="!hasResult(entry.tab)" (click)="exportExcel(entry)">
                 <mat-icon>download</mat-icon>
-                {{ format.available ? 'Export' : 'Coming soon' }}
+                {{ hasResult(entry.tab) ? 'Export Excel' : 'Not generated yet' }}
               </button>
             </div>
           }
