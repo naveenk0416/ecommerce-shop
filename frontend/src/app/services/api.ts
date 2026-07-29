@@ -1,15 +1,14 @@
 const isBrowser = typeof window !== 'undefined' && typeof window.location !== 'undefined';
-const apiBase = (() => {
-  if (!isBrowser) return '/api';
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
-    return '/api';
-  }
-  return `${window.location.protocol}//${hostname}:4000/api`;
-})();
+// Always hit the deployed backend, in every environment (including local dev) — no local
+// backend proxying.
+const apiBase = 'https://ecommerce-shop.naveenkumar0416.workers.dev/api';
 
 export interface ApiOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | unknown;
+}
+
+export interface ApiError extends Error {
+  status?: number;
 }
 
 export async function apiFetch<T = unknown>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -43,7 +42,9 @@ export async function apiFetch<T = unknown>(path: string, options: ApiOptions = 
 
   if (!response.ok) {
     const message = data?.error || data?.message || response.statusText || 'API request failed';
-    throw new Error(message);
+    const error: ApiError = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
   return data as T;

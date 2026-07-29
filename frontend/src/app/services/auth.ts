@@ -1,5 +1,6 @@
 import { Injectable, signal, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { apiFetch, ApiError } from './api';
 
 export type UserRole = 'FREE' | 'PAID_PRO' | 'ADMIN';
 
@@ -45,15 +46,6 @@ export class AuthService {
   isAdmin = computed(() => this.profile()?.role === 'ADMIN');
   isPro = computed(() => this.profile()?.role === 'PAID_PRO' || this.profile()?.role === 'ADMIN');
 
-  private get apiBase() {
-    if (!isPlatformBrowser(this.platformId)) {
-      return '';
-    }
-    const hostname = window.location.hostname;
-    
-    return `${window.location.protocol}//${hostname}:4000`;
-  }
-
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       // Restore session from token if present
@@ -61,20 +53,12 @@ export class AuthService {
         const token = window.localStorage.getItem('auth_token');
         if (token) {
           try {
-            const res = await fetch(this.apiBase + '/api/me', {
-              headers: { 'Authorization': `Bearer ${token}` },
-            });
-            if (res.ok) {
-              const body = await res.json();
-              this.user.set({ uid: body.user.uid, email: body.user.email, displayName: body.user.displayName });
-              this.profile.set(body.user as UserProfile);
-            } else {
-              window.localStorage.removeItem('auth_token');
-              this.user.set(null);
-              this.profile.set(null);
-            }
+            await this.syncUserProfileFromAPI();
           } catch (err) {
             console.error('Session restore failed', err);
+            window.localStorage.removeItem('auth_token');
+            this.user.set(null);
+            this.profile.set(null);
           }
         }
         this.isAuthReady.set(true);
@@ -84,12 +68,10 @@ export class AuthService {
     }
   }
 
-  private async syncUserProfileFromAPI(token: string) {
+  private async syncUserProfileFromAPI() {
     try {
-      const res = await fetch(this.apiBase + '/api/me', { headers: { 'Authorization': `Bearer ${token}` } });
-      if (!res.ok) throw new Error('Failed to fetch profile');
-      const body = await res.json();
-      this.profile.set(body.user as UserProfile);
+      const body = await apiFetch<{ user: UserProfile }>('/me');
+      this.profile.set(body.user);
       this.user.set({ uid: body.user.uid, email: body.user.email, displayName: body.user.displayName });
     } catch (err) {
       this.handleAPIError(err);
@@ -98,45 +80,35 @@ export class AuthService {
 
   async registerWithEmail(email: string, password: string, additionalData: AdditionalUserData = {}) {
     try {
-      const res = await fetch(this.apiBase + '/api/register', {
+      const body = await apiFetch<{ token: string }>('/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName: additionalData.displayName, phoneNumber: additionalData.phoneNumber, gstNumber: additionalData.gstNumber })
+        body: { email, password, displayName: additionalData.displayName, phoneNumber: additionalData.phoneNumber, gstNumber: additionalData.gstNumber },
       });
-      const body = await res.json();
-      if (!res.ok) {
-        const err = new Error(body.error || 'Registration failed') as Error & { code?: string };
-        err.code = res.status === 409 ? 'auth/email-already-in-use' : undefined;
-        throw err;
-      }
       window.localStorage.setItem('auth_token', body.token);
-      await this.syncUserProfileFromAPI(body.token);
+      await this.syncUserProfileFromAPI();
       return this.user();
     } catch (error) {
+      const apiError = error as ApiError & { code?: string };
+      if (apiError.status === 409) apiError.code = 'auth/email-already-in-use';
       console.error('Registration failed:', error);
-      throw error;
+      throw apiError;
     }
   }
 
   async loginWithEmail(email: string, password: string) {
     try {
-      const res = await fetch(this.apiBase + '/api/login', {
+      const body = await apiFetch<{ token: string }>('/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: { email, password },
       });
-      const body = await res.json();
-      if (!res.ok) {
-        const err = new Error(body.error || 'Login failed') as Error & { code?: string };
-        err.code = res.status === 401 ? 'auth/wrong-password' : undefined;
-        throw err;
-      }
       window.localStorage.setItem('auth_token', body.token);
-      await this.syncUserProfileFromAPI(body.token);
+      await this.syncUserProfileFromAPI();
       return this.user();
     } catch (error) {
+      const apiError = error as ApiError & { code?: string };
+      if (apiError.status === 401) apiError.code = 'auth/wrong-password';
       console.error('Login failed:', error);
-      throw error;
+      throw apiError;
     }
   }
 
@@ -153,15 +125,10 @@ export class AuthService {
 
   async forgotPassword(email: string): Promise<void> {
     try {
-      const res = await fetch(this.apiBase + '/api/forgot-password', {
+      await apiFetch('/forgot-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: { email },
       });
-      const body = await res.json();
-      if (!res.ok) {
-        throw new Error(body.error || 'Failed to send reset email');
-      }
     } catch (error) {
       console.error('Forgot password failed:', error);
       throw error;
@@ -170,15 +137,10 @@ export class AuthService {
 
   async resetPassword(token: string, password: string): Promise<void> {
     try {
-      const res = await fetch(this.apiBase + '/api/reset-password', {
+      await apiFetch('/reset-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password })
+        body: { token, password },
       });
-      const body = await res.json();
-      if (!res.ok) {
-        throw new Error(body.error || 'Failed to reset password');
-      }
     } catch (error) {
       console.error('Reset password failed:', error);
       throw error;
@@ -188,18 +150,14 @@ export class AuthService {
   async incrementUsage() {
     const p = this.profile();
     const u = this.user();
-    if (!p || !u) return;
+    if (!p || !u || !window.localStorage.getItem('auth_token')) return;
     try {
-      const token = window.localStorage.getItem('auth_token');
-      if (!token) return;
-      const res = await fetch(this.apiBase + `/api/users/${u.uid}`, {
+      await apiFetch(`/users/${u.uid}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ incrementUsage: true })
+        body: { incrementUsage: true },
       });
-      if (!res.ok) throw new Error('Failed to increment usage');
       // Refresh profile
-      await this.syncUserProfileFromAPI(token);
+      await this.syncUserProfileFromAPI();
     } catch (error) {
       this.handleAPIError(error);
     }
@@ -207,17 +165,13 @@ export class AuthService {
 
   async updateProfile(data: Partial<UserProfile>) {
     const u = this.user();
-    if (!u) return;
+    if (!u || !window.localStorage.getItem('auth_token')) return;
     try {
-      const token = window.localStorage.getItem('auth_token');
-      if (!token) return;
-      const res = await fetch(this.apiBase + `/api/users/${u.uid}`, {
+      await apiFetch(`/users/${u.uid}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(data)
+        body: data,
       });
-      if (!res.ok) throw new Error('Failed to update profile');
-      await this.syncUserProfileFromAPI(token);
+      await this.syncUserProfileFromAPI();
     } catch (error) {
       this.handleAPIError(error);
     }

@@ -23,6 +23,7 @@ import { GstCalculator } from './gst-calculator';
 import { ImageEditor } from './image-editor';
 import { resizeImage } from './utils/image';
 import { parsePrice } from './utils/price';
+import { apiFetch } from './services/api';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -97,14 +98,6 @@ export class App {
   confirmNewPassword = signal('');
   resetPasswordSuccess = signal(false);
 
-  private getApiBase() {
-    if (!isPlatformBrowser(this.platformId)) {
-      return '';
-    }
-    const hostname = window.location.hostname;
-    return `${window.location.protocol}//${hostname}:4000`;
-  }
-
   private async ensureRazorpayScript() {
     if (!isPlatformBrowser(this.platformId)) {
       throw new Error('Checkout is only available in the browser.');
@@ -136,21 +129,12 @@ export class App {
     try {
       await this.ensureRazorpayScript();
 
-      const configResponse = await fetch(`${this.getApiBase()}/api/razorpay-config`);
-      if (!configResponse.ok) {
-        throw new Error('Unable to load Razorpay public key.');
-      }
-      const { key_id } = await configResponse.json();
+      const { key_id } = await apiFetch<{ key_id: string }>('/razorpay-config');
 
-      const orderResponse = await fetch(`${this.getApiBase()}/api/create-order`, {
+      const order = await apiFetch<{ order_id: string; amount: number; currency: string }>('/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 49900, currency: 'INR', receipt: 'sellassist-demo' }),
+        body: { amount: 49900, currency: 'INR', receipt: 'sellassist-demo' },
       });
-      const order = await orderResponse.json();
-      if (!orderResponse.ok) {
-        throw new Error(order.error || 'Unable to create Razorpay order.');
-      }
 
       const options = {
         key: key_id,
@@ -162,15 +146,7 @@ export class App {
         handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
           void (async () => {
             try {
-              const verifyResponse = await fetch(`${this.getApiBase()}/api/verify-payment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(response),
-              });
-              const verifyBody = await verifyResponse.json();
-              if (!verifyResponse.ok) {
-                throw new Error(verifyBody.error || 'Payment verification failed.');
-              }
+              await apiFetch('/verify-payment', { method: 'POST', body: response });
               this.checkoutMessage.set('Payment verified successfully.');
             } catch (error) {
               const message = error instanceof Error ? error.message : 'Payment verification failed.';
