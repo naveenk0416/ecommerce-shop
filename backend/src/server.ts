@@ -178,8 +178,12 @@ app.use((req: Request, res: Response) => {
   // Start server after all async setup is complete
   const port = process.env['SERVER_PORT'] || process.env['PORT'] || 4000;
   console.log(`[SERVER] Attempting to listen on port ${port}...`);
-  app.listen(Number(port), 'localhost', () => {
-    console.log(`[SERVER] Node Express server listening on http://localhost:${port}`);
+  // Bind to 0.0.0.0, not 'localhost' — in a container/cloud deployment the platform's routing
+  // layer connects from outside this process's network namespace, so a loopback-only bind
+  // (127.0.0.1) accepts local connections but is unreachable from the outside, even though the
+  // process starts and logs successfully.
+  app.listen(Number(port), '0.0.0.0', () => {
+    console.log(`[SERVER] Node Express server listening on 0.0.0.0:${port}`);
   });
 
   // Keep the process alive (prevents tsx from exiting after async IIFE completes)
