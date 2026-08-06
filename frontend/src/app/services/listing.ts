@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { apiFetch } from './api';
 import { ProductDetails } from './gemini';
-import { handleFirestoreError, OperationType } from '../utils/error-handler';
+import { handleApiError, OperationType } from '../utils/error-handler';
 
 export interface Listing extends ProductDetails {
   id?: string;
@@ -50,7 +50,7 @@ export class ListingService {
         },
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, '/listings');
+      handleApiError(error, OperationType.CREATE, '/listings');
       throw error;
     }
   }
@@ -65,7 +65,7 @@ export class ListingService {
         },
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, '/feedback');
+      handleApiError(error, OperationType.CREATE, '/feedback');
       throw error;
     }
   }
@@ -135,7 +135,7 @@ export class ListingService {
     try {
       return await apiFetch<Listing>(`/listings/${encodeURIComponent(id)}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, `/listings/${id}`);
+      handleApiError(error, OperationType.GET, `/listings/${id}`);
       throw error;
     }
   }
@@ -146,7 +146,7 @@ export class ListingService {
         method: 'DELETE',
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `/listings/${id}`);
+      handleApiError(error, OperationType.DELETE, `/listings/${id}`);
       throw error;
     }
   }
@@ -158,7 +158,7 @@ export class ListingService {
         body: updates,
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `/listings/${id}`);
+      handleApiError(error, OperationType.UPDATE, `/listings/${id}`);
       throw error;
     }
   }
@@ -173,7 +173,7 @@ export class ListingService {
         },
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, `/listings/${sale.listingId}/sales`);
+      handleApiError(error, OperationType.CREATE, `/listings/${sale.listingId}/sales`);
       throw error;
     }
   }

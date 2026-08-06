@@ -10,8 +10,6 @@
 /tmp
 /out-tsc
 /bazel-out
-backend/browser/
-backend/server/
 
 # Node
 node_modules/

@@ -1,7 +1,7 @@
 import { Injectable, signal, effect, inject } from '@angular/core';
 import { AuthService } from './auth';
 import { apiFetch } from './api';
-import { handleFirestoreError, OperationType } from '../utils/error-handler';
+import { handleApiError, OperationType } from '../utils/error-handler';
 
 export interface TemplateField {
   id: string;
@@ -140,7 +140,7 @@ export class TemplateService {
 
       this.templates.set(merged);
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, '/templates');
+      handleApiError(error, OperationType.LIST, '/templates');
     }
   }
 
@@ -155,7 +155,7 @@ export class TemplateService {
       });
       this.templates.set(configs);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, '/templates');
+      handleApiError(error, OperationType.UPDATE, '/templates');
     }
   }
 

@@ -1,7 +1,7 @@
 const isBrowser = typeof window !== 'undefined' && typeof window.location !== 'undefined';
 // Always hit the deployed backend, in every environment (including local dev) — no local
 // backend proxying.
-const apiBase = 'https://ecommerce-shop.naveenkumar0416.workers.dev/api';
+const apiBase = 'https://ecommerce-shop-dins.onrender.com/api';
 
 export interface ApiOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | unknown;

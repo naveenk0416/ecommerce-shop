@@ -23,10 +23,6 @@
               "RAZORPAY_KEY_ID": "process.env.RAZORPAY_KEY_ID"
             },
             "browser": "frontend/src/main.ts",
-            "server": "frontend/src/main.server.ts",
-            "ssr": {
-              "entry": "backend/src/server.ts"
-            },
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
@@ -62,6 +58,50 @@
             }
           },
           "defaultConfiguration": "development"
+        },
+        "build-static": {
+          "builder": "@angular/build:application",
+          "options": {
+            "define": {
+              "RAZORPAY_KEY_ID": "process.env.RAZORPAY_KEY_ID"
+            },
+            "browser": "frontend/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "outputPath": "dist/frontend-static",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "frontend/public"
+              }
+            ],
+            "styles": [
+              "frontend/src/styles/material-theme.scss",
+              "frontend/src/styles.css"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "2MB",
+                  "maximumError": "3MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "10kB",
+                  "maximumError": "20kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular/build:dev-server",

@@ -7,13 +7,13 @@ export enum OperationType {
   WRITE = 'write',
 }
 
-export interface FirestoreErrorInfo {
+export interface ApiErrorInfo {
   error: string;
   operationType: OperationType;
   path: string | null;
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleApiError(error: unknown, operationType: OperationType, path: string | null) {
   const errorMessage = error instanceof Error ? error.message : String(error);
 
   if (errorMessage.toLowerCase().includes('disconnecting idle stream') ||
@@ -22,7 +22,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     return;
   }
 
-  const errInfo: FirestoreErrorInfo = {
+  const errInfo: ApiErrorInfo = {
     error: errorMessage,
     operationType,
     path,

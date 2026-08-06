@@ -108,7 +108,7 @@ export class Products {
     const listing = this.selectedListingForSale();
     if (!data.listingId || Number(data.quantity) <= 0 || !listing) return;
 
-    // Ensure numeric types for Firestore rules validation
+    // Ensure numeric types for API validation
     const submissionData = {
       ...data,
       quantity: Number(data.quantity),
