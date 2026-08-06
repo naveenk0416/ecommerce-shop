@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, output, inject } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonBadge } from '@ionic/angular/standalone';
 import { AuthService } from './services/auth';
+import { apiFetch } from './services/api';
 import { addIcons } from 'ionicons';
 import { checkmarkCircle, sparkles, rocket, flash, star, close } from 'ionicons/icons';
 
@@ -147,44 +148,61 @@ export class Pricing {
       return;
     }
 
-    const options = {
-      key: (typeof RAZORPAY_KEY_ID !== 'undefined' && RAZORPAY_KEY_ID) ? RAZORPAY_KEY_ID : 'rzp_test_SfRB3PwY0etxNE', 
-      amount: "29900", // Amount in paise
-      currency: "INR",
-      name: "SellAssist",
-      description: "PAID_PRO Subscription",
-      image: "https://api.dicebear.com/7.x/avataaars/svg?seed=SellAssist",
-      handler: async (response: { razorpay_payment_id: string }) => {
-        if (response.razorpay_payment_id) {
-          try {
-            await this.auth.updateProfile({ role: 'PAID_PRO' });
-            alert('Payment Successful! Welcome to PAID_PRO.');
-            this.dismiss.emit();
-          } catch (e) {
-            console.error('Profile update failed after payment', e);
-            alert('Payment received but profile update failed. Please contact support.');
-          }
-        }
-      },
-      prefill: {
-        name: user.displayName || "",
-        email: user.email || "",
-      },
-      theme: {
-        color: "#f97316" // Orange 500
-      }
-    };
-
-    if (!options.key) {
-      alert('Razorpay Key ID is not configured. Please add RAZORPAY_KEY_ID to the application secrets.');
-      return;
-    }
-
     try {
+      const { key_id } = await apiFetch<{ key_id: string }>('/razorpay-config');
+      if (!key_id) {
+        alert('Payment system is not configured. Please contact support.');
+        return;
+      }
+
+      const order = await apiFetch<{ order_id: string; amount: number; currency: string }>('/create-order', {
+        method: 'POST',
+        body: { amount: 29900, currency: 'INR', receipt: 'sellassist-pro' },
+      });
+
+      const options = {
+        key: key_id,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.order_id,
+        name: "SellAssist",
+        description: "PAID_PRO Subscription",
+        image: "https://api.dicebear.com/7.x/avataaars/svg?seed=SellAssist",
+        handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+          void (async () => {
+            try {
+              await apiFetch('/verify-payment', { method: 'POST', body: response });
+              await this.auth.updateProfile({ role: 'PAID_PRO' });
+              alert('Payment Successful! Welcome to PAID_PRO.');
+              this.dismiss.emit();
+            } catch (e) {
+              console.error('Payment verification failed', e);
+              alert('Payment could not be verified. If you were charged, please contact support.');
+            }
+          })();
+        },
+        modal: {
+          ondismiss: () => {
+            // User cancelled the checkout — nothing to clean up.
+          },
+        },
+        prefill: {
+          name: user.displayName || "",
+          email: user.email || "",
+        },
+        theme: {
+          color: "#f97316" // Orange 500
+        }
+      };
+
       const rzp = new Razorpay(options);
+      rzp.on('payment.failed', (response) => {
+        const description = (response as { error?: { description?: string } })?.error?.description;
+        alert(description || 'Payment failed. Please try again.');
+      });
       rzp.open();
     } catch (e) {
-      console.error('Razorpay initialization failed', e);
+      console.error('Razorpay checkout failed', e);
       alert('Payment initialization failed. Please try again.');
     }
   }
