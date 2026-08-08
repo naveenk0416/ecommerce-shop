@@ -1,20 +1,60 @@
 <div class="tab-shell">
   <app-ui-card [elevated]="true">
-    <app-ui-section title="Export Center" icon="ios_share" description="Export actions are placeholders — no export logic is wired up yet.">
-      <div class="tab-shell__grid tab-shell__grid--single">
-        @for (format of formats; track format.id) {
-          <div class="tab-shell__row">
-            <span class="tab-shell__row-label">
-              <mat-icon>{{ format.icon }}</mat-icon>
-              {{ format.label }}
-            </span>
-            <button mat-stroked-button disabled>
-              <mat-icon>download</mat-icon>
-              Export
-            </button>
+    <app-ui-section
+      title="Export Center"
+      icon="ios_share"
+      description="Pick a marketplace and product category, upload that marketplace's bulk-upload template (xlsx/xls), and this listing's details will be filled into a matching row for you to download."
+    >
+      @if (loadError()) {
+        <p class="export-center__error">{{ loadError() }}</p>
+      } @else {
+        <div class="export-center__form">
+          <div class="export-center__field">
+            <span class="export-center__field-label">1. Marketplace</span>
+            <div class="export-center__marketplaces">
+              @for (marketplace of marketplaces; track marketplace.id) {
+                <button
+                  type="button"
+                  class="export-center__marketplace"
+                  [class.export-center__marketplace--selected]="selectedMarketplace() === marketplace.id"
+                  (click)="selectMarketplace(marketplace.id)"
+                >
+                  <app-marketplace-icon [marketplace]="marketplace.id" [size]="20" />
+                  {{ marketplace.label }}
+                </button>
+              }
+            </div>
           </div>
-        }
-      </div>
+
+          <div class="export-center__field">
+            <span class="export-center__field-label">2. Product Category</span>
+            <mat-form-field appearance="outline" class="export-center__category-field">
+              <input matInput placeholder="e.g. Jewellery, Apparel, Electronics" [ngModel]="category()" (ngModelChange)="category.set($event)" />
+            </mat-form-field>
+          </div>
+
+          <div class="export-center__field">
+            <span class="export-center__field-label">3. Bulk-Upload Template (.xlsx / .xls)</span>
+            <label class="export-center__file-input">
+              <mat-icon>upload_file</mat-icon>
+              {{ templateFile()?.name || 'Choose file…' }}
+              <input type="file" accept=".xlsx,.xls" (change)="onTemplateSelected($event)" hidden />
+            </label>
+          </div>
+
+          <button mat-flat-button color="primary" class="export-center__submit" [disabled]="!canExport() || exporting()" (click)="exportTemplate()">
+            <mat-icon>download</mat-icon>
+            {{ exporting() ? 'Filling template…' : 'Export Filled Template' }}
+          </button>
+
+          @if (exportError()) {
+            <p class="export-center__error">{{ exportError() }}</p>
+          }
+          @if (exportSuccess()) {
+            <p class="export-center__success">Template filled and downloaded.</p>
+          }
+        </div>
+      }
     </app-ui-section>
   </app-ui-card>
 </div>

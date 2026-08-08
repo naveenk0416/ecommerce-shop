@@ -7,11 +7,14 @@
     "backend"
   ],
   "scripts": {
-    "dev": "npm --workspace backend run dev & npm --workspace frontend run dev",
+    "dev": "concurrently -n backend,frontend -c blue,orange \"npm --workspace backend run dev\" \"npm --workspace frontend run dev\"",
     "start": "npm --workspace backend run start",
     "build": "npm --workspace frontend run build",
     "build:frontend-static": "npm --workspace frontend run build:static",
     "test": "npm --workspace frontend run test",
     "lint": "npm --workspace frontend run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4"
   }
 }

@@ -30,6 +30,26 @@ export class AdminService {
     return apiFetch<Listing[]>('/admin/listings');
   }
 
+  async createUser(data: { email: string; password: string; displayName?: string; role?: string }) {
+    return apiFetch<UserProfile>('/admin/users', {
+      method: 'POST',
+      body: data
+    });
+  }
+
+  async deleteUser(uid: string) {
+    return apiFetch(`/admin/users/${encodeURIComponent(uid)}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async createListing(data: Partial<Listing> & { uid: string; name: string }) {
+    return apiFetch<Listing>('/admin/listings', {
+      method: 'POST',
+      body: data
+    });
+  }
+
   async deleteUserListing(listingId: string) {
     return apiFetch(`/admin/listings/${encodeURIComponent(listingId)}`, {
       method: 'DELETE'

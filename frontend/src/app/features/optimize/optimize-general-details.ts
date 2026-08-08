@@ -48,6 +48,8 @@ export class OptimizeGeneralDetails {
   productTitle = signal('');
   category = signal('');
   sku = signal('');
+  brand = signal('');
+  hsnCode = signal('');
   description = signal('');
   costPrice = signal('');
   sellingPrice = signal('');
@@ -65,6 +67,8 @@ export class OptimizeGeneralDetails {
       this.productTitle.set(result['productTitle']?.values?.[0] ?? '');
       this.category.set(result['category']?.values?.[0] ?? '');
       this.sku.set(result['sku']?.values?.[0] ?? '');
+      this.brand.set(result['brand']?.values?.[0] ?? '');
+      this.hsnCode.set(result['hsnCode']?.values?.[0] ?? '');
       this.description.set(result['description']?.values?.[0] ?? '');
       this.costPrice.set(result['costPrice']?.values?.[0] ?? '');
       this.sellingPrice.set(result['sellingPrice']?.values?.[0] ?? '');
@@ -148,6 +152,7 @@ export class OptimizeGeneralDetails {
 
     setField('productTitle', result.title);
     setField('category', result.category || result.brand);
+    setField('brand', result.brand);
     setField('description', result.description);
     setField('sku', result.barcode);
 
@@ -190,13 +195,14 @@ export class OptimizeGeneralDetails {
         {
           name: this.productTitle().trim(),
           category: this.category().trim(),
+          brand: this.brand().trim(),
           description: this.description().trim(),
           priceINR: `₹${sellingPrice}`,
           sellingPrice,
           costPrice: parsePrice(this.costPrice()),
           quantity: parsePrice(this.stock()),
           gstRate: '18%',
-          hsnCode: '',
+          hsnCode: this.hsnCode().trim(),
           material: '',
           variations: [],
           platformContent: {},

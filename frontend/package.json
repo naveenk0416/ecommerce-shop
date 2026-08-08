@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "[ ! -f src/app/env.ts ] || grep -q \"''\" src/app/env.ts || grep -q \"MY_GEMINI_API_KEY\" src/app/env.ts && [ -n \"$GEMINI_API_KEY\" ] && printf \"export const GEMINI_API_KEY = '%s';\\n\" \"$GEMINI_API_KEY\" > src/app/env.ts; ng serve --host 0.0.0.0 --port 3000 --live-reload=false",
+    "dev": "node scripts/ensure-gemini-env.js && ng serve --host 0.0.0.0 --port 3000 --live-reload=false",
     "build": "ng build",
     "build:static": "ng run app:build-static",
     "watch": "ng build --watch --configuration development",

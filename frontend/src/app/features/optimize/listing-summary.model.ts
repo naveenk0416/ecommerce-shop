@@ -9,6 +9,8 @@ export const LISTING_SUMMARY_FIELDS: readonly FieldConfig[] = [
   { key: 'productTitle', label: 'Product title', maxLength: 150 },
   { key: 'category', label: 'Category', maxLength: 80 },
   { key: 'sku', label: 'SKU', maxLength: 40 },
+  { key: 'brand', label: 'Brand', maxLength: 60 },
+  { key: 'hsnCode', label: 'HSN Code', maxLength: 20 },
   { key: 'description', label: 'Description', maxLength: 1200, multiline: true },
   { key: 'costPrice', label: 'Cost price', maxLength: 12 },
   { key: 'sellingPrice', label: 'Selling price', maxLength: 12 },

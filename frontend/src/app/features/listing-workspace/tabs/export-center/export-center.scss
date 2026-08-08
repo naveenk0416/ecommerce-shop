@@ -1,0 +1,85 @@
+.export-center__form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.export-center__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.export-center__field-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #64748b;
+}
+
+.export-center__marketplaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.export-center__marketplace {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
+
+  &--selected {
+    border-color: #f97316;
+    background: #fff7ed;
+  }
+}
+
+.export-center__category-field {
+  width: 100%;
+  max-width: 360px;
+}
+
+.export-center__file-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 10px 16px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #475569;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #94a3b8;
+  }
+}
+
+.export-center__submit {
+  align-self: flex-start;
+}
+
+.export-center__error {
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.export-center__success {
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 600;
+}

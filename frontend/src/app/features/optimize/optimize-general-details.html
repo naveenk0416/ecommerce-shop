@@ -107,6 +107,17 @@
           </label>
         </div>
 
+        <div class="field-row">
+          <label class="field">
+            <span class="field__label">Brand</span>
+            <input class="field__input" [ngModel]="brand()" (ngModelChange)="brand.set($event)" placeholder="e.g. Sellassist Basics" />
+          </label>
+          <label class="field">
+            <span class="field__label">HSN Code</span>
+            <input class="field__input" [ngModel]="hsnCode()" (ngModelChange)="hsnCode.set($event)" placeholder="e.g. 9615" />
+          </label>
+        </div>
+
         <label class="field">
           <span class="field__label">Description</span>
           <textarea

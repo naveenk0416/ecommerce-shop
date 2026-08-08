@@ -64,6 +64,7 @@ export interface ProductDetails {
   variations: string[];
   platformContent: Record<string, Record<string, string | string[]>>;
   category?: string;
+  brand?: string;
   quantity?: number;
   costPrice?: number;
   sellingPrice?: number;
@@ -438,6 +439,10 @@ export class GeminiService {
          Necklace — Rose Gold, 2-Strand").
        - category: a short category path (for example "Jewellery > Necklaces > Layered").
        - sku: always auto-generate a plausible SKU such as "NCK-RG-2041".
+       - brand: if a brand name or logo is visible use it with high confidence, otherwise use
+         "Generic" with low confidence.
+       - hsnCode: an accurate 6 or 8 digit Indian HSN code based on the most likely GST
+         classification for this product category.
        - description: 2-4 sentences covering material, key features, and care/fit details.
        - sellingPrice, mrp: estimate a recommended price pair based on category and material.
        - costPrice: estimate a plausible cost price, typically 35-55% of the selling price.
@@ -536,6 +541,10 @@ export class GeminiService {
             Necklace — Rose Gold, 2-Strand").
           - category: a short category path (for example "Jewellery > Necklaces > Layered").
           - sku: always auto-generate a plausible SKU such as "NCK-RG-2041".
+          - brand: if a brand name or logo is visible use it with high confidence, otherwise use
+            "Generic" with low confidence.
+          - hsnCode: an accurate 6 or 8 digit Indian HSN code based on the most likely GST
+            classification for this product category.
           - description: 2-4 sentences covering material, key features, and care/fit details.
           - sellingPrice, mrp: estimate a recommended price pair based on category and material.
           - costPrice: estimate a plausible cost price, typically 35-55% of the selling price.

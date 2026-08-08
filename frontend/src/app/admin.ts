@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, Injector, computed, inject, output,
 import { CommonModule } from '@angular/common';
 import { IonIcon, IonSpinner, ToastController, AlertController } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { people, cube, refresh, eye, trash, mailOutline, create, cash, search } from 'ionicons/icons';
+import { people, cube, refresh, eye, trash, mailOutline, create, cash, search, personAdd, add } from 'ionicons/icons';
 import { AdminService, UserProfile } from './services/admin';
 import { Listing, ListingService, Sale } from './services/listing';
 import { parsePrice } from './utils/price';
@@ -68,6 +68,10 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
                   (input)="userSearch.set($any($event.target).value)"
                 />
               </div>
+              <button (click)="addUser()" class="btn-secondary h-9 px-4 whitespace-nowrap">
+                <ion-icon name="person-add" class="mr-2"></ion-icon>
+                Add User
+              </button>
             </div>
           </div>
 
@@ -127,9 +131,14 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
                         <p class="text-[9px] font-bold text-slate-400 mt-1.5 uppercase tracking-widest">{{ user.lastLogin | date:'dd MMM yyyy' }}</p>
                       </td>
                       <td class="py-3 px-3 text-right">
-                        <button (click)="editUser(user)" class="btn-icon-premium w-9 h-9" aria-label="Edit {{ user.displayName || user.email }}">
-                          <ion-icon name="create"></ion-icon>
-                        </button>
+                        <div class="flex justify-end gap-2">
+                          <button (click)="editUser(user)" class="btn-icon-premium w-9 h-9" aria-label="Edit {{ user.displayName || user.email }}">
+                            <ion-icon name="create"></ion-icon>
+                          </button>
+                          <button (click)="deleteUser(user)" class="btn-icon-premium w-9 h-9 text-red-500 hover:text-red-600" aria-label="Delete {{ user.displayName || user.email }}">
+                            <ion-icon name="trash"></ion-icon>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   } @empty {
@@ -161,6 +170,10 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
                   (input)="listingSearch.set($any($event.target).value)"
                 />
               </div>
+              <button (click)="addListing()" class="btn-secondary h-9 px-4 whitespace-nowrap">
+                <ion-icon name="add" class="mr-2"></ion-icon>
+                Add Listing
+              </button>
             </div>
           </div>
 
@@ -279,7 +292,7 @@ export class AdminComponent implements OnInit {
   });
 
   constructor() {
-    addIcons({ people, cube, refresh, eye, trash, mailOutline, create, cash, search });
+    addIcons({ people, cube, refresh, eye, trash, mailOutline, create, cash, search, personAdd, add });
   }
 
   ngOnInit() {
@@ -323,6 +336,109 @@ export class AdminComponent implements OnInit {
     } finally {
       this.savingRole.set(null);
     }
+  }
+
+  async addUser() {
+    const alert = await this.alertController?.create({
+      header: 'Add User',
+      inputs: [
+        { name: 'email', type: 'email', placeholder: 'Email address' },
+        { name: 'password', type: 'password', placeholder: 'Password' },
+        { name: 'displayName', type: 'text', placeholder: 'Display name (optional)' },
+      ],
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Add',
+          handler: async (data) => {
+            const email = String(data.email || '').trim();
+            const password = String(data.password || '');
+            if (!email || !password) {
+              await this.presentToast('Email and password are required.', 'danger');
+              return;
+            }
+            try {
+              await this.adminService.createUser({
+                email,
+                password,
+                displayName: String(data.displayName ?? '').trim(),
+              });
+              await this.loadData();
+              await this.presentToast('User created.');
+            } catch (err) {
+              console.error('Create user failed', err);
+              await this.presentToast('Failed to create user. Please try again.', 'danger');
+            }
+          },
+        },
+      ],
+    });
+    if (alert) await alert.present();
+  }
+
+  async deleteUser(user: UserProfile) {
+    if (!confirm(`Permanently delete ${user.displayName || user.email}? This cannot be undone.`)) return;
+    try {
+      await this.adminService.deleteUser(user.uid);
+      await this.loadData();
+      await this.presentToast('User deleted.');
+    } catch (err) {
+      console.error('Delete user failed', err);
+      await this.presentToast('Failed to delete user. Please try again.', 'danger');
+    }
+  }
+
+  async addListing() {
+    const owners = this.users();
+    if (!owners.length) {
+      await this.presentToast('Add a user first — a listing needs an owner.', 'danger');
+      return;
+    }
+
+    const alert = await this.alertController?.create({
+      header: 'Add Listing',
+      inputs: [
+        { name: 'name', type: 'text', placeholder: 'Product name' },
+        { name: 'sellingPrice', type: 'number', placeholder: 'Selling price (₹)' },
+        { name: 'quantity', type: 'number', placeholder: 'Stock quantity', value: 0 },
+        ...owners.map((u, i) => ({
+          name: 'uid',
+          type: 'radio' as const,
+          label: u.displayName || u.email || u.uid,
+          value: u.uid,
+          checked: i === 0,
+        })),
+      ],
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Add',
+          handler: async (data) => {
+            const name = String(data.name || '').trim();
+            if (!name || !data.uid) {
+              await this.presentToast('Product name and owner are required.', 'danger');
+              return;
+            }
+            const sellingPrice = Number(data.sellingPrice) || 0;
+            try {
+              await this.adminService.createListing({
+                uid: data.uid,
+                name,
+                sellingPrice,
+                priceINR: `₹${sellingPrice}`,
+                quantity: parseInt(data.quantity || '0', 10),
+              });
+              await this.loadData();
+              await this.presentToast('Listing created.');
+            } catch (err) {
+              console.error('Create listing failed', err);
+              await this.presentToast('Failed to create listing. Please try again.', 'danger');
+            }
+          },
+        },
+      ],
+    });
+    if (alert) await alert.present();
   }
 
   async editUser(user: UserProfile) {
