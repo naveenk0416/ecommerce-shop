@@ -98,10 +98,42 @@ ion-toolbar {
 
 .login-card:hover {
   transform: translateY(-2px);
-  box-shadow: 
-    0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
     0 10px 10px -5px rgba(0, 0, 0, 0.04),
     0 50px 70px -20px rgba(255, 126, 51, 0.15) !important;
+}
+
+.field-error {
+  margin: 6px 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #dc2626;
+  animation: field-error-in 0.15s ease;
+}
+
+@keyframes field-error-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.remember-me-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #f97316;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-error {
+    animation: none;
+  }
 }
 
 ion-segment {

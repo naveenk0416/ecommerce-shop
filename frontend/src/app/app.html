@@ -130,7 +130,7 @@
               <div class="space-y-4">
                 <div class="mb-2">
                   <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
-                  <ion-input type="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                  <ion-input type="email" autofocus [value]="email()" (ionInput)="email.set($any($event).target.value)" (keyup.enter)="sendPasswordResetEmail()" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
                 </div>
 
                 @if (authError()) {
@@ -175,14 +175,24 @@
               </ion-button>
             } @else {
               <div class="space-y-4">
-                <div class="mb-2">
-                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">New Password</ion-label>
-                  <ion-input type="password" [value]="newPassword()" (ionInput)="newPassword.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                </div>
-                <div class="mb-2">
-                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Confirm Password</ion-label>
-                  <ion-input type="password" [value]="confirmNewPassword()" (ionInput)="confirmNewPassword.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                </div>
+                <app-password-field
+                  label="New Password"
+                  autocomplete="new-password"
+                  [value]="newPassword()"
+                  (valueChange)="newPassword.set($event)"
+                />
+                <app-password-strength [password]="newPassword()" />
+
+                <app-password-field
+                  label="Confirm Password"
+                  autocomplete="new-password"
+                  [value]="confirmNewPassword()"
+                  (valueChange)="confirmNewPassword.set($event)"
+                  (enter)="submitPasswordReset()"
+                />
+                @if (confirmNewPassword() && newPassword() !== confirmNewPassword()) {
+                  <p class="field-error -mt-2">Passwords do not match.</p>
+                }
 
                 @if (authError()) {
                   <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
@@ -222,36 +232,74 @@
               </div>
 
               <div class="space-y-4">
-                <div class="mb-2">
-                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
-                  <ion-input type="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                </div>
-
-                <div class="mb-2">
-                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Password</ion-label>
-                  <ion-input type="password" [value]="password()" (ionInput)="password.set($any($event).target.value)" placeholder="••••••••" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                </div>
-
-                @if (!isRegistering()) {
-                  <div class="text-right -mt-2">
-                    <button (click)="passwordResetMode.set('forgot'); authError.set(null)" class="text-xs text-slate-400 hover:text-orange-600 font-bold transition-colors">
-                      Forgot password?
-                    </button>
+                @if (isRegistering()) {
+                  <div class="mb-2">
+                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Full Name</ion-label>
+                    <ion-input type="text" [value]="regName()" (ionInput)="regName.set($any($event).target.value)" (ionBlur)="nameTouched.set(true)" placeholder="Your full name" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                    @if (nameTouched() && nameError()) {
+                      <p class="field-error">{{ nameError() }}</p>
+                    }
                   </div>
                 }
 
+                <div class="mb-2">
+                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
+                  <ion-input type="email" autofocus [value]="email()" (ionInput)="email.set($any($event).target.value)" (ionBlur)="emailTouched.set(true)" (keyup.enter)="isRegistering() ? register() : loginWithEmail()" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                  @if (emailTouched() && emailError()) {
+                    <p class="field-error">{{ emailError() }}</p>
+                  }
+                </div>
+
                 @if (isRegistering()) {
                   <div class="mb-2">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Business Name</ion-label>
-                    <ion-input type="text" [value]="regName()" (ionInput)="regName.set($any($event).target.value)" placeholder="Your Store Name" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Mobile Number</ion-label>
+                    <ion-input type="tel" [value]="regPhone()" (ionInput)="regPhone.set($any($event).target.value)" (ionBlur)="phoneTouched.set(true)" placeholder="10-digit mobile number" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                    @if (phoneTouched() && phoneError()) {
+                      <p class="field-error">{{ phoneError() }}</p>
+                    }
                   </div>
-                  <div class="mb-2">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Phone Number</ion-label>
-                    <ion-input type="tel" [value]="regPhone()" (ionInput)="regPhone.set($any($event).target.value)" placeholder="+91 XXXXX XXXXX" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                  </div>
+                }
+
+                <app-password-field
+                  label="Password"
+                  [autocomplete]="isRegistering() ? 'new-password' : 'current-password'"
+                  [value]="password()"
+                  (valueChange)="password.set($event)"
+                  (enter)="isRegistering() ? register() : loginWithEmail()"
+                />
+                @if (isRegistering()) {
+                  <app-password-strength [password]="password()" />
+                } @else if (passwordTouched() && !password()) {
+                  <p class="field-error -mt-2">Enter your password.</p>
+                }
+
+                @if (isRegistering()) {
+                  <app-password-field
+                    label="Confirm Password"
+                    autocomplete="new-password"
+                    [value]="confirmPassword()"
+                    (valueChange)="confirmPassword.set($event)"
+                    (enter)="register()"
+                  />
+                  @if (confirmPasswordTouched() && confirmPasswordError()) {
+                    <p class="field-error -mt-2">{{ confirmPasswordError() }}</p>
+                  }
+
                   <div class="mb-2">
                     <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">GST Number (Optional)</ion-label>
                     <ion-input type="text" [value]="regGST()" (ionInput)="regGST.set($any($event).target.value)" placeholder="GSTIN" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                  </div>
+                }
+
+                @if (!isRegistering()) {
+                  <div class="flex items-center justify-between -mt-2">
+                    <label class="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer">
+                      <input type="checkbox" [checked]="rememberMe()" (change)="rememberMe.set($any($event.target).checked)" class="remember-me-checkbox" />
+                      Remember me
+                    </label>
+                    <button (click)="passwordResetMode.set('forgot'); authError.set(null)" class="text-xs text-slate-400 hover:text-orange-600 font-bold transition-colors">
+                      Forgot password?
+                    </button>
                   </div>
                 }
 
@@ -261,7 +309,7 @@
                   </div>
                 }
 
-                <ion-button (click)="isRegistering() ? register() : loginWithEmail()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isProcessing()">
+                <ion-button (click)="isRegistering() ? register() : loginWithEmail()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isProcessing() || (isRegistering() && !registrationValid())">
                   @if (isProcessing()) {
                     <ion-spinner name="crescent" slot="start"></ion-spinner>
                     Processing...

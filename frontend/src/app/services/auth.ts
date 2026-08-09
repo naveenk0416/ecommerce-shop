@@ -1,6 +1,6 @@
 import { Injectable, signal, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { apiFetch, ApiError } from './api';
+import { apiFetch, ApiError, clearAuthToken, getAuthToken, setAuthToken } from './api';
 
 export type UserRole = 'FREE' | 'PAID_PRO' | 'ADMIN';
 
@@ -50,13 +50,13 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       // Restore session from token if present
       (async () => {
-        const token = window.localStorage.getItem('auth_token');
+        const token = getAuthToken();
         if (token) {
           try {
             await this.syncUserProfileFromAPI();
           } catch (err) {
             console.error('Session restore failed', err);
-            window.localStorage.removeItem('auth_token');
+            clearAuthToken();
             this.user.set(null);
             this.profile.set(null);
           }
@@ -78,13 +78,13 @@ export class AuthService {
     }
   }
 
-  async registerWithEmail(email: string, password: string, additionalData: AdditionalUserData = {}) {
+  async registerWithEmail(email: string, password: string, additionalData: AdditionalUserData = {}, rememberMe = true) {
     try {
       const body = await apiFetch<{ token: string }>('/register', {
         method: 'POST',
         body: { email, password, displayName: additionalData.displayName, phoneNumber: additionalData.phoneNumber, gstNumber: additionalData.gstNumber },
       });
-      window.localStorage.setItem('auth_token', body.token);
+      setAuthToken(body.token, rememberMe);
       await this.syncUserProfileFromAPI();
       return this.user();
     } catch (error) {
@@ -95,18 +95,19 @@ export class AuthService {
     }
   }
 
-  async loginWithEmail(email: string, password: string) {
+  async loginWithEmail(email: string, password: string, rememberMe = true) {
     try {
       const body = await apiFetch<{ token: string }>('/login', {
         method: 'POST',
         body: { email, password },
       });
-      window.localStorage.setItem('auth_token', body.token);
+      setAuthToken(body.token, rememberMe);
       await this.syncUserProfileFromAPI();
       return this.user();
     } catch (error) {
       const apiError = error as ApiError & { code?: string };
       if (apiError.status === 401) apiError.code = 'auth/wrong-password';
+      if (apiError.status === 429) apiError.code = 'auth/too-many-requests';
       console.error('Login failed:', error);
       throw apiError;
     }
@@ -114,7 +115,7 @@ export class AuthService {
 
   async logout() {
     try {
-      window.localStorage.removeItem('auth_token');
+      clearAuthToken();
       this.user.set(null);
       this.profile.set(null);
     } catch (error) {
@@ -150,7 +151,7 @@ export class AuthService {
   async incrementUsage() {
     const p = this.profile();
     const u = this.user();
-    if (!p || !u || !window.localStorage.getItem('auth_token')) return;
+    if (!p || !u || !getAuthToken()) return;
     try {
       await apiFetch(`/users/${u.uid}`, {
         method: 'PATCH',
@@ -165,7 +166,7 @@ export class AuthService {
 
   async updateProfile(data: Partial<UserProfile>) {
     const u = this.user();
-    if (!u || !window.localStorage.getItem('auth_token')) return;
+    if (!u || !getAuthToken()) return;
     try {
       await apiFetch(`/users/${u.uid}`, {
         method: 'PATCH',

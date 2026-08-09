@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect, computed } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Title, Meta } from '@angular/platform-browser';
@@ -11,7 +11,7 @@ import { IonApp, IonHeader, IonToolbar, IonContent,
   ToastController, AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, heart, trendingUp } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, eyeOff, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, heart, trendingUp } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
@@ -24,6 +24,8 @@ import { ImageEditor } from './image-editor';
 import { resizeImage } from './utils/image';
 import { parsePrice } from './utils/price';
 import { apiFetch } from './services/api';
+import { PasswordField } from './ui/password-field/password-field';
+import { PasswordStrength } from './ui/password-strength/password-strength';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,7 +36,8 @@ import { apiFetch } from './services/api';
     IonApp, IonHeader, IonToolbar, IonContent,
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle,
     IonLabel, IonSpinner,
-    IonInput, IonTextarea
+    IonInput, IonTextarea,
+    PasswordField, PasswordStrength
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -79,11 +82,58 @@ export class App {
   // Auth Form State
   email = signal('');
   password = signal('');
+  confirmPassword = signal('');
+  rememberMe = signal(true);
 
   // Additional Registration Fields
   regName = signal('');
   regPhone = signal('');
   regGST = signal('');
+
+  // Real-time validation — only shown once a field has been touched, so errors don't appear
+  // before the user has had a chance to type anything.
+  emailTouched = signal(false);
+  passwordTouched = signal(false);
+  nameTouched = signal(false);
+  phoneTouched = signal(false);
+  confirmPasswordTouched = signal(false);
+
+  emailError = computed(() => {
+    const value = this.email().trim();
+    if (!value) return 'Email is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter a valid email address.';
+    return '';
+  });
+
+  nameError = computed(() => (this.regName().trim().length < 2 ? 'Enter your full name.' : ''));
+
+  phoneError = computed(() => {
+    const digits = this.regPhone().replace(/\D/g, '');
+    if (!digits) return 'Mobile number is required.';
+    if (digits.length !== 10) return 'Mobile number must be exactly 10 digits.';
+    return '';
+  });
+
+  /** Kept in sync with the backend's STRONG_PASSWORD_RE in auth.ts. */
+  passwordValid = computed(() => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(this.password()));
+
+  confirmPasswordError = computed(() => {
+    if (!this.confirmPassword()) return '';
+    return this.confirmPassword() !== this.password() ? 'Passwords do not match.' : '';
+  });
+
+  /** Gates the register button — every rule must pass before submission is allowed. */
+  registrationValid = computed(
+    () =>
+      !this.emailError() &&
+      !this.nameError() &&
+      !this.phoneError() &&
+      this.passwordValid() &&
+      this.confirmPassword() === this.password() &&
+      !!this.confirmPassword(),
+  );
+
+  loginValid = computed(() => !this.emailError() && this.password().length > 0);
 
   isRegistering = signal(false);
   authError = signal<string | null>(null);
@@ -225,8 +275,8 @@ export class App {
       this.authError.set('Invalid or missing reset token.');
       return;
     }
-    if (this.newPassword().length < 6) {
-      this.authError.set('Password must be at least 6 characters.');
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(this.newPassword())) {
+      this.authError.set('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.');
       return;
     }
     if (this.newPassword() !== this.confirmNewPassword()) {
@@ -269,7 +319,7 @@ export class App {
   }
 
   constructor() {
-    addIcons({calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,arrowForward,sparkles,cloudUpload,colorPalette,image,pencil,save,time,add,albumsOutline,search,logoAmazon,flash,heart,eye,trash,trendingUp,logoFacebook,logoInstagram,logoTwitter,list,camera,pricetag,copy,checkmark,logIn,logOutOutline,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
+    addIcons({calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,arrowForward,sparkles,cloudUpload,colorPalette,image,pencil,save,time,add,albumsOutline,search,logoAmazon,flash,heart,eye,eyeOff,trash,trendingUp,logoFacebook,logoInstagram,logoTwitter,list,camera,pricetag,copy,checkmark,logIn,logOutOutline,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
     
     // Subscribe to route changes
     this.router.events.pipe(
@@ -643,15 +693,17 @@ export class App {
   }
 
   async loginWithEmail() {
+    this.emailTouched.set(true);
+    this.passwordTouched.set(true);
     this.authError.set(null);
-    if (!this.email() || !this.password()) {
-      this.authError.set('Please enter both email and password.');
+    if (!this.loginValid()) {
+      this.authError.set(this.emailError() || 'Enter your password.');
       return;
     }
 
     this.isProcessing.set(true);
     try {
-      await this.auth.loginWithEmail(this.email(), this.password());
+      await this.auth.loginWithEmail(this.email(), this.password(), this.rememberMe());
       this.navigateTo('home');
       this.resetAuthForm();
     } catch (error: unknown) {
@@ -663,24 +715,30 @@ export class App {
   }
 
   async register() {
+    this.emailTouched.set(true);
+    this.passwordTouched.set(true);
+    this.nameTouched.set(true);
+    this.phoneTouched.set(true);
+    this.confirmPasswordTouched.set(true);
     this.authError.set(null);
-    if (!this.email() || !this.password()) {
-      this.authError.set('Please enter both email and password.');
-      return;
-    }
 
-    if (this.password().length < 6) {
-      this.authError.set('Password should be at least 6 characters.');
+    if (!this.registrationValid()) {
+      this.authError.set(this.nameError() || this.emailError() || this.phoneError() || this.confirmPasswordError() || 'Please fix the highlighted fields before continuing.');
       return;
     }
 
     this.isProcessing.set(true);
     try {
-      await this.auth.registerWithEmail(this.email(), this.password(), {
-        displayName: this.regName(),
-        phoneNumber: this.regPhone(),
-        gstNumber: this.regGST()
-      });
+      await this.auth.registerWithEmail(
+        this.email(),
+        this.password(),
+        {
+          displayName: this.regName().trim(),
+          phoneNumber: this.regPhone().replace(/\D/g, ''),
+          gstNumber: this.regGST().trim(),
+        },
+        this.rememberMe(),
+      );
       this.navigateTo('home');
       this.resetAuthForm();
     } catch (error: unknown) {
@@ -694,26 +752,37 @@ export class App {
   private resetAuthForm() {
     this.email.set('');
     this.password.set('');
+    this.confirmPassword.set('');
     this.regName.set('');
     this.regPhone.set('');
     this.regGST.set('');
     this.isRegistering.set(false);
+    this.emailTouched.set(false);
+    this.passwordTouched.set(false);
+    this.nameTouched.set(false);
+    this.phoneTouched.set(false);
+    this.confirmPasswordTouched.set(false);
   }
 
   private getAuthErrorMessage(code: string): string {
     switch (code) {
       case 'auth/email-already-in-use':
-        return 'This email is already registered.';
+        return 'This email is already registered. Try signing in instead.';
       case 'auth/invalid-email':
-        return 'Invalid email address.';
+        return 'Enter a valid email address.';
       case 'auth/weak-password':
-        return 'Password is too weak.';
+        return 'Password is too weak. Use at least 8 characters with a mix of upper/lowercase letters, a number, and a special character.';
+      case 'auth/too-many-requests':
+        return 'Too many login attempts. Please wait 15 minutes and try again.';
       case 'auth/user-not-found':
       case 'auth/wrong-password':
       case 'auth/invalid-credential':
-        return 'Invalid email or password.';
+        // Intentionally the same message for "no such account" and "wrong password" — telling
+        // them apart lets an attacker discover which emails are registered (the same reason
+        // /forgot-password always returns a generic response).
+        return 'Incorrect email or password. Please try again.';
       default:
-        return 'Authentication failed. Please try again.';
+        return 'Something went wrong signing you in. Please try again.';
     }
   }
 
