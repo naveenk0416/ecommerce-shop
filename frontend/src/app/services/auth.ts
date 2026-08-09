@@ -78,15 +78,14 @@ export class AuthService {
     }
   }
 
-  async registerWithEmail(email: string, password: string, additionalData: AdditionalUserData = {}, rememberMe = true) {
+  /** Registration no longer signs the user in directly — the account stays inactive until they
+   * verify their email (see verifyEmail below). */
+  async registerWithEmail(email: string, password: string, additionalData: AdditionalUserData = {}) {
     try {
-      const body = await apiFetch<{ token: string }>('/register', {
+      await apiFetch<{ requiresVerification: true; email: string }>('/register', {
         method: 'POST',
         body: { email, password, displayName: additionalData.displayName, phoneNumber: additionalData.phoneNumber, gstNumber: additionalData.gstNumber },
       });
-      setAuthToken(body.token, rememberMe);
-      await this.syncUserProfileFromAPI();
-      return this.user();
     } catch (error) {
       const apiError = error as ApiError & { code?: string };
       // The backend returns 409 for both a duplicate email and a duplicate phone number with
@@ -111,10 +110,30 @@ export class AuthService {
     } catch (error) {
       const apiError = error as ApiError & { code?: string };
       if (apiError.status === 401) apiError.code = 'auth/wrong-password';
+      if (apiError.status === 403 && /not been verified/i.test(apiError.message)) apiError.code = 'auth/email-not-verified';
       if (apiError.status === 429) apiError.code = 'auth/too-many-requests';
       console.error('Login failed:', error);
       throw apiError;
     }
+  }
+
+  /** Verifies the emailed token and, on success, signs the user in — they just proved ownership
+   * of the email, so there's no need to make them type their password again. */
+  async verifyEmail(token: string, rememberMe = true) {
+    const body = await apiFetch<{ token: string }>('/verify-email', {
+      method: 'POST',
+      body: { token },
+    });
+    setAuthToken(body.token, rememberMe);
+    await this.syncUserProfileFromAPI();
+    return this.user();
+  }
+
+  async resendVerification(email: string): Promise<void> {
+    await apiFetch('/resend-verification', {
+      method: 'POST',
+      body: { email },
+    });
   }
 
   async logout() {

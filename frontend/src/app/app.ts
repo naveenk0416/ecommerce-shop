@@ -149,6 +149,17 @@ export class App {
   confirmNewPassword = signal('');
   resetPasswordSuccess = signal(false);
 
+  // Email Verification State
+  /** Non-null while showing the "check your inbox" screen after registration. */
+  verificationPendingEmail = signal<string | null>(null);
+  /** Shown on a login attempt that failed specifically because the account isn't verified yet. */
+  showResendVerification = signal(false);
+  isResendingVerification = signal(false);
+  resendVerificationSent = signal(false);
+  /** Set when the URL is /verify-email?token=... — drives the auto-verify screen. */
+  emailVerificationState = signal<'none' | 'verifying' | 'success' | 'error'>('none');
+  emailVerificationError = signal<string | null>(null);
+
   private async ensureRazorpayScript() {
     if (!isPlatformBrowser(this.platformId)) {
       throw new Error('Checkout is only available in the browser.');
@@ -344,6 +355,15 @@ export class App {
       } else if (window.location.pathname === '/forgot-password') {
         this.passwordResetMode.set('forgot');
         this.showLanding.set(false);
+      } else if (window.location.pathname === '/verify-email') {
+        const token = new URLSearchParams(window.location.search).get('token');
+        this.showLanding.set(false);
+        if (token) {
+          this.verifyEmailFromLink(token);
+        } else {
+          this.emailVerificationState.set('error');
+          this.emailVerificationError.set('Missing verification token.');
+        }
       }
 
       // SEO Effect
@@ -697,6 +717,7 @@ export class App {
     this.emailTouched.set(true);
     this.passwordTouched.set(true);
     this.authError.set(null);
+    this.showResendVerification.set(false);
     if (!this.loginValid()) {
       this.authError.set(this.emailError() || 'Enter your password.');
       return;
@@ -710,6 +731,7 @@ export class App {
     } catch (error: unknown) {
       const code = (error as { code?: string }).code || (error as Error).message;
       this.authError.set(this.getAuthErrorMessage(code));
+      this.showResendVerification.set(code === 'auth/email-not-verified');
     } finally {
       this.isProcessing.set(false);
     }
@@ -730,23 +752,49 @@ export class App {
 
     this.isProcessing.set(true);
     try {
-      await this.auth.registerWithEmail(
-        this.email(),
-        this.password(),
-        {
-          displayName: this.regName().trim(),
-          phoneNumber: this.regPhone().replace(/\D/g, ''),
-          gstNumber: this.regGST().trim(),
-        },
-        this.rememberMe(),
-      );
-      this.navigateTo('home');
+      const registeredEmail = this.email();
+      await this.auth.registerWithEmail(registeredEmail, this.password(), {
+        displayName: this.regName().trim(),
+        phoneNumber: this.regPhone().replace(/\D/g, ''),
+        gstNumber: this.regGST().trim(),
+      });
       this.resetAuthForm();
+      this.verificationPendingEmail.set(registeredEmail);
     } catch (error: unknown) {
       const code = (error as { code?: string }).code || (error as Error).message;
       this.authError.set(this.getAuthErrorMessage(code));
     } finally {
       this.isProcessing.set(false);
+    }
+  }
+
+  async resendVerificationEmail() {
+    const email = this.verificationPendingEmail() || this.email();
+    if (!email) return;
+
+    this.isResendingVerification.set(true);
+    this.resendVerificationSent.set(false);
+    try {
+      await this.auth.resendVerification(email);
+      this.resendVerificationSent.set(true);
+    } catch (error) {
+      console.error('Resend verification failed', error);
+      this.authError.set('Failed to resend verification email. Please try again.');
+    } finally {
+      this.isResendingVerification.set(false);
+    }
+  }
+
+  private async verifyEmailFromLink(token: string) {
+    this.emailVerificationState.set('verifying');
+    try {
+      await this.auth.verifyEmail(token, this.rememberMe());
+      this.emailVerificationState.set('success');
+    } catch (error) {
+      this.emailVerificationState.set('error');
+      this.emailVerificationError.set(
+        (error instanceof Error && error.message) || 'Your verification link has expired. Request a new verification email.',
+      );
     }
   }
 
@@ -777,6 +825,8 @@ export class App {
         return 'Password is too weak. Use at least 8 characters with a mix of upper/lowercase letters, a number, and a special character.';
       case 'auth/too-many-requests':
         return 'Too many login attempts. Please wait 15 minutes and try again.';
+      case 'auth/email-not-verified':
+        return 'Your email address has not been verified. Please verify your email before logging in.';
       case 'auth/user-not-found':
       case 'auth/wrong-password':
       case 'auth/invalid-credential':
@@ -792,6 +842,8 @@ export class App {
   toggleRegister() {
     this.isRegistering.set(!this.isRegistering());
     this.authError.set(null);
+    this.showResendVerification.set(false);
+    this.resendVerificationSent.set(false);
   }
 
   async logout() {

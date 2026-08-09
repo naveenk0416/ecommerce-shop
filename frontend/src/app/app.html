@@ -102,6 +102,57 @@
             <ion-spinner name="crescent" color="primary"></ion-spinner>
             <p class="text-slate-500 mt-4">Initializing...</p>
           </div>
+        } @else if (emailVerificationState() !== 'none') {
+          <!-- Email Verification Link Landing -->
+          <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card text-center">
+            @if (emailVerificationState() === 'verifying') {
+              <ion-spinner name="crescent" color="primary"></ion-spinner>
+              <p class="text-slate-500 mt-4 font-medium">Verifying your email…</p>
+            } @else if (emailVerificationState() === 'success') {
+              <div class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ion-icon name="checkmark" class="text-4xl text-emerald-500"></ion-icon>
+              </div>
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight">Email Verified</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium mb-6">Your account is active. Let's get your first listing optimized.</p>
+              <ion-button (click)="navigateTo('home')" expand="block" shape="round" color="primary" class="h-14 font-black shadow-sm">
+                Continue
+              </ion-button>
+            } @else {
+              <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ion-icon name="close" class="text-4xl text-red-500"></ion-icon>
+              </div>
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight">Verification Failed</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium mb-6">{{ emailVerificationError() }}</p>
+              <button (click)="emailVerificationState.set('none'); passwordResetMode.set('none'); showLanding.set(false); isRegistering.set(false)" class="text-sm text-orange-600 font-bold hover:underline">
+                Back to Login
+              </button>
+            }
+          </section>
+        } @else if (verificationPendingEmail()) {
+          <!-- Check-Your-Inbox Screen, shown right after registration -->
+          <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card text-center">
+            <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ion-icon name="mail-outline" class="text-4xl text-orange-500"></ion-icon>
+            </div>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Check Your Inbox</h2>
+            <p class="text-slate-500 mt-2 text-sm font-medium">
+              We sent a verification link to <strong>{{ verificationPendingEmail() }}</strong>. Click it to activate your account — the link expires in 24 hours.
+            </p>
+
+            @if (resendVerificationSent()) {
+              <p class="text-emerald-600 text-sm font-bold mt-6">Verification email resent — check your inbox.</p>
+            } @else {
+              <button (click)="resendVerificationEmail()" [disabled]="isResendingVerification()" class="text-sm text-orange-600 font-bold hover:underline mt-6 disabled:opacity-50">
+                {{ isResendingVerification() ? 'Sending…' : "Didn't get it? Resend verification email" }}
+              </button>
+            }
+
+            <div class="pt-6">
+              <button (click)="verificationPendingEmail.set(null); resendVerificationSent.set(false)" class="text-sm text-slate-400 font-bold hover:text-slate-600">
+                Back to Login
+              </button>
+            </div>
+          </section>
         } @else if (passwordResetMode() === 'forgot') {
           <!-- Forgot Password Section -->
           <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
@@ -306,6 +357,15 @@
                 @if (authError()) {
                   <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
                     {{ authError() }}
+                    @if (showResendVerification()) {
+                      @if (resendVerificationSent()) {
+                        <p class="text-emerald-600 font-bold mt-2">Verification email resent — check your inbox.</p>
+                      } @else {
+                        <button (click)="resendVerificationEmail()" [disabled]="isResendingVerification()" class="block text-orange-600 font-bold hover:underline mt-2 disabled:opacity-50">
+                          {{ isResendingVerification() ? 'Sending…' : 'Resend verification email' }}
+                        </button>
+                      }
+                    }
                   </div>
                 }
 

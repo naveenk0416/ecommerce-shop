@@ -29,6 +29,9 @@ const userSchema = new mongoose.Schema({
   lastLogin: { type: String },
   resetPasswordTokenHash: { type: String },
   resetPasswordExpires: { type: Date },
+  emailVerified: { type: Boolean, default: false },
+  emailVerificationTokenHash: { type: String },
+  emailVerificationExpires: { type: Date },
 }, { timestamps: true });
 
 export const User = (mongoose.models as any).User || mongoose.model('User', userSchema);

@@ -44,6 +44,15 @@ const forgotPasswordLimiter = rateLimit({
   message: { error: 'Too many reset requests. Please wait 15 minutes and try again.' },
 });
 
+const resendVerificationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: loginRateKey,
+  message: { error: 'Too many verification requests. Please wait 15 minutes and try again.' },
+});
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STRONG_PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
@@ -56,6 +65,29 @@ function passwordPolicyError(password: string): string | null {
 
 function signToken(user: any) {
   return jwt.sign({ uid: user._id.toString(), email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+/** Generates a fresh verification token, stores its hash (24h expiry) on `user`, and emails the
+ * link. Caller is responsible for saving `user` if it hasn't been saved already. */
+async function sendVerificationEmail(user: any): Promise<void> {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  user.emailVerificationTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  await user.save();
+
+  const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:4200';
+  const verifyLink = `${frontendUrl}/verify-email?token=${rawToken}`;
+
+  await sendMail({
+    to: user.email,
+    subject: 'Verify your SellAssist email address',
+    html: `
+      <p>Hi ${user.displayName || 'there'},</p>
+      <p>Welcome to SellAssist! Click the link below to verify your email address. This link expires in 24 hours.</p>
+      <p><a href="${verifyLink}">${verifyLink}</a></p>
+      <p>If you didn't create this account, you can safely ignore this email.</p>
+    `,
+  });
 }
 
 async function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -136,24 +168,22 @@ router.post('/register', registerLimiter, async (req, res) => {
       phoneNumber,
       gstNumber,
       lastLogin: new Date().toISOString(),
+      emailVerified: false,
     });
 
     await user.save();
-    const token = signToken(user);
+
+    try {
+      await sendVerificationEmail(user);
+    } catch (mailErr) {
+      // Account is created either way — don't fail registration over a flaky mail send. The
+      // "Resend verification email" action covers this case.
+      console.error('Verification email failed to send', mailErr);
+    }
 
     res.json({
-      token,
-      user: {
-        uid: user._id.toString(),
-        email: user.email,
-        displayName: user.displayName,
-        phoneNumber: user.phoneNumber,
-        gstNumber: user.gstNumber,
-        role: user.role,
-        usageCount: user.usageCount,
-        lastLogin: user.lastLogin,
-        dailyStats: user.dailyStats,
-      },
+      requiresVerification: true,
+      email: user.email,
     });
   } catch (err: any) {
     console.error('Register error', err);
@@ -189,6 +219,14 @@ router.post('/login', loginLimiter, async (req, res) => {
       return;
     }
 
+    if (!user.emailVerified) {
+      res.status(403).json({
+        error: 'Your email address has not been verified. Please verify your email before logging in.',
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+      return;
+    }
+
     user.lastLogin = new Date().toISOString();
     await user.save();
     const token = signToken(user);
@@ -210,6 +248,92 @@ router.post('/login', loginLimiter, async (req, res) => {
   } catch (err: any) {
     console.error('Login error', err);
     res.status(500).json({ error: err?.message || 'Login failed' });
+  }
+});
+
+router.post('/verify-email', async (req, res) => {
+  try {
+    await ensureConnected();
+  } catch (error: any) {
+    res.status(503).json({ error: error?.message || 'Database is not configured.' });
+    return;
+  }
+
+  const { token } = req.body || {};
+  if (!token) {
+    res.status(400).json({ error: 'Verification token required' });
+    return;
+  }
+
+  try {
+    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+    const user = await User.findOne({
+      emailVerificationTokenHash: tokenHash,
+      emailVerificationExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      res.status(400).json({ error: 'Your verification link has expired. Request a new verification email.' });
+      return;
+    }
+
+    user.emailVerified = true;
+    user.emailVerificationTokenHash = undefined;
+    user.emailVerificationExpires = undefined;
+    user.lastLogin = new Date().toISOString();
+    await user.save();
+
+    // Sign the user in immediately — they just proved ownership of the email, no need to make
+    // them type their password again right after clicking the link.
+    const authToken = signToken(user);
+
+    res.json({
+      token: authToken,
+      user: {
+        uid: user._id.toString(),
+        email: user.email,
+        displayName: user.displayName,
+        phoneNumber: user.phoneNumber,
+        gstNumber: user.gstNumber,
+        role: user.role,
+        usageCount: user.usageCount,
+        lastLogin: user.lastLogin,
+        dailyStats: user.dailyStats,
+      },
+    });
+  } catch (err: any) {
+    console.error('Verify email error', err);
+    res.status(500).json({ error: 'Failed to verify email' });
+  }
+});
+
+router.post('/resend-verification', resendVerificationLimiter, async (req, res) => {
+  try {
+    await ensureConnected();
+  } catch (error: any) {
+    res.status(503).json({ error: error?.message || 'Database is not configured.' });
+    return;
+  }
+
+  const { email } = req.body || {};
+  if (!email) {
+    res.status(400).json({ error: 'Email required' });
+    return;
+  }
+
+  // Generic response either way — same reasoning as /forgot-password: don't reveal whether an
+  // email is registered.
+  const genericResponse = { message: 'If that account needs verification, a new link has been sent.' };
+
+  try {
+    const user = await User.findOne({ email });
+    if (user && !user.emailVerified) {
+      await sendVerificationEmail(user);
+    }
+    res.json(genericResponse);
+  } catch (err: any) {
+    console.error('Resend verification error', err);
+    res.status(500).json({ error: 'Failed to resend verification email' });
   }
 });
 
