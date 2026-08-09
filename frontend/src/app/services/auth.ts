@@ -89,7 +89,11 @@ export class AuthService {
       return this.user();
     } catch (error) {
       const apiError = error as ApiError & { code?: string };
-      if (apiError.status === 409) apiError.code = 'auth/email-already-in-use';
+      // The backend returns 409 for both a duplicate email and a duplicate phone number with
+      // different messages — check which one it actually was rather than assuming email.
+      if (apiError.status === 409) {
+        apiError.code = /phone/i.test(apiError.message) ? 'auth/phone-already-in-use' : 'auth/email-already-in-use';
+      }
       console.error('Registration failed:', error);
       throw apiError;
     }

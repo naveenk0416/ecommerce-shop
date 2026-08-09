@@ -107,9 +107,10 @@ export class App {
 
   nameError = computed(() => (this.regName().trim().length < 2 ? 'Enter your full name.' : ''));
 
+  /** Mobile number is optional (matches the backend), but its format is validated when provided. */
   phoneError = computed(() => {
     const digits = this.regPhone().replace(/\D/g, '');
-    if (!digits) return 'Mobile number is required.';
+    if (!digits) return '';
     if (digits.length !== 10) return 'Mobile number must be exactly 10 digits.';
     return '';
   });
@@ -768,6 +769,8 @@ export class App {
     switch (code) {
       case 'auth/email-already-in-use':
         return 'This email is already registered. Try signing in instead.';
+      case 'auth/phone-already-in-use':
+        return 'This mobile number is already registered to another account.';
       case 'auth/invalid-email':
         return 'Enter a valid email address.';
       case 'auth/weak-password':

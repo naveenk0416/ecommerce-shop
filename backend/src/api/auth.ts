@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { ensureConnected, User } from './common.js';
 import { sendMail } from '../utils/mailer.js';
 
@@ -11,9 +11,11 @@ const JWT_SECRET = process.env['JWT_SECRET'] || 'dev_jwt_secret_change_me';
 
 // Keyed on IP + email together (not IP alone) so one abusive IP can't lock out every account
 // behind a shared NAT/office network, and one targeted account can't be brute-forced from many IPs.
+// IPv6 addresses are normalized to their /56 subnet via ipKeyGenerator — using the raw address
+// would let an attacker bypass the limit just by requesting a new address from their ISP's pool.
 function loginRateKey(req: express.Request): string {
   const email = String(req.body?.email || '').toLowerCase().trim();
-  return `${req.ip}:${email}`;
+  return `${ipKeyGenerator(req.ip || '')}:${email}`;
 }
 
 const loginLimiter = rateLimit({

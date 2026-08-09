@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, input, model, output, signal } from '@angular/core';
-import { IonIcon, IonInput, IonLabel } from '@ionic/angular/standalone';
+import { IonInput, IonLabel } from '@ionic/angular/standalone';
 
 @Component({
   selector: 'app-password-field',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IonLabel, IonInput, IonIcon],
+  imports: [IonLabel, IonInput],
   templateUrl: './password-field.html',
   styleUrl: './password-field.scss',
 })
