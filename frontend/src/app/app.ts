@@ -11,11 +11,12 @@ import { IonApp, IonHeader, IonToolbar, IonContent,
   ToastController, AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, eyeOff, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, heart, trendingUp } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, eyeOff, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, storefront, linkOutline, unlink, heart, trendingUp } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
 import { TemplateService } from './services/template';
+import { MarketplaceConnectionsService, MarketplaceConnectionsResponse } from './services/marketplace-connections';
 import { Landing } from './landing';
 import { Products } from './products';
 import { AdminComponent } from './admin';
@@ -47,6 +48,7 @@ export class App {
   public auth = inject(AuthService);
   private listingService = inject(ListingService);
   public templateService = inject(TemplateService);
+  private marketplaceConnections = inject(MarketplaceConnectionsService);
   private platformId = inject(PLATFORM_ID);
   private toastController = inject(ToastController, { optional: true });
   private alertController = inject(AlertController, { optional: true });
@@ -160,6 +162,17 @@ export class App {
   emailVerificationState = signal<'none' | 'verifying' | 'success' | 'error'>('none');
   emailVerificationError = signal<string | null>(null);
 
+  // Marketplace Connections (Settings)
+  marketplaceConnectionsData = signal<MarketplaceConnectionsResponse | null>(null);
+  loadingMarketplaceConnections = signal(false);
+  connectingAmazon = signal(false);
+  disconnectingMarketplace = signal<'amazon' | 'flipkart' | null>(null);
+  marketplaceConnectionMessage = signal<string | null>(null);
+  /** Set when we've landed here via Amazon's own "Manage" link (the Amazon-initiated OAuth entry
+   * point) and the seller isn't logged in yet — resumed automatically once they are. */
+  pendingAmazonLogin = signal<{ callbackUri: string; state: string } | null>(null);
+  resumingAmazonLogin = signal(false);
+
   private async ensureRazorpayScript() {
     if (!isPlatformBrowser(this.platformId)) {
       throw new Error('Checkout is only available in the browser.');
@@ -257,6 +270,7 @@ export class App {
       else if (path === '/inventory') this.mainView.set('products');
       else if (path === '/gst-calculator') this.mainView.set('gst');
       else if (path === '/admin') this.mainView.set('admin');
+      else if (path === '/settings') { this.mainView.set('settings'); this.loadMarketplaceConnections(); }
       else if (path.startsWith('/optimize')) this.mainView.set('workspace');
       else if (path.startsWith('/workspace/')) this.mainView.set('workspace');
     }
@@ -318,7 +332,7 @@ export class App {
     this.navigateTo('landing');
   }
 
-  navigateTo(view: 'home' | 'listings' | 'products' | 'gst' | 'admin' | 'landing') {
+  navigateTo(view: 'home' | 'listings' | 'products' | 'gst' | 'admin' | 'settings' | 'landing') {
     if (view === 'landing') {
       this.showLanding.set(true);
       this.router.navigate(['/home']);
@@ -327,11 +341,14 @@ export class App {
       this.mainView.set(view);
       const path = view === 'products' ? 'inventory' : (view === 'gst' ? 'gst-calculator' : (view === 'home' ? 'optimize' : view));
       this.router.navigate(['/' + path]);
+      if (view === 'settings') {
+        this.loadMarketplaceConnections();
+      }
     }
   }
 
   constructor() {
-    addIcons({calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,arrowForward,sparkles,cloudUpload,colorPalette,image,pencil,save,time,add,albumsOutline,search,logoAmazon,flash,heart,eye,eyeOff,trash,trendingUp,logoFacebook,logoInstagram,logoTwitter,list,camera,pricetag,copy,checkmark,logIn,logOutOutline,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
+    addIcons({calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,arrowForward,sparkles,cloudUpload,colorPalette,image,pencil,save,time,add,albumsOutline,search,logoAmazon,storefront,linkOutline,unlink,flash,heart,eye,eyeOff,trash,trendingUp,logoFacebook,logoInstagram,logoTwitter,list,camera,pricetag,copy,checkmark,logIn,logOutOutline,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
     
     // Subscribe to route changes
     this.router.events.pipe(
@@ -364,7 +381,54 @@ export class App {
           this.emailVerificationState.set('error');
           this.emailVerificationError.set('Missing verification token.');
         }
+      } else if (window.location.pathname === '/settings') {
+        // Landing back here after the Amazon OAuth redirect round-trip.
+        const params = new URLSearchParams(window.location.search);
+        const amazonResult = params.get('amazon');
+        if (amazonResult === 'connected') {
+          this.marketplaceConnectionMessage.set('Amazon connected successfully.');
+        } else if (amazonResult === 'error') {
+          this.marketplaceConnectionMessage.set(params.get('message') || 'Failed to connect Amazon. Please try again.');
+        }
+        if (amazonResult) {
+          window.history.replaceState({}, '', '/settings');
+        }
       }
+
+      // Amazon-initiated OAuth entry point (seller clicked "Manage" from Seller Central) —
+      // independent of the path-specific branches above since /amazon/login redirects here to
+      // the site root. Resumed once the seller is confirmed logged in (effect below).
+      const amazonLoginParams = new URLSearchParams(window.location.search);
+      if (amazonLoginParams.get('amazonLogin') === '1') {
+        const callbackUri = amazonLoginParams.get('amazon_callback_uri');
+        const state = amazonLoginParams.get('amazon_state');
+        if (callbackUri && state) {
+          this.pendingAmazonLogin.set({ callbackUri, state });
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      // Resumes the Amazon-initiated flow the moment the seller is authenticated — whether they
+      // were already logged in when they landed here, or just completed login/registration.
+      effect(() => {
+        const pending = this.pendingAmazonLogin();
+        const user = this.auth.user();
+        if (!pending || !user || this.resumingAmazonLogin()) return;
+
+        this.resumingAmazonLogin.set(true);
+        this.marketplaceConnections
+          .resumeAmazonLogin(pending.callbackUri, pending.state)
+          .then((redirectUrl) => {
+            window.location.href = redirectUrl;
+          })
+          .catch((error) => {
+            console.error('Failed to resume Amazon login', error);
+            this.marketplaceConnectionMessage.set('Failed to resume Amazon authorization. Please try connecting from Settings instead.');
+            this.pendingAmazonLogin.set(null);
+            this.resumingAmazonLogin.set(false);
+            this.navigateTo('settings');
+          });
+      });
 
       // SEO Effect
       effect(() => {
@@ -718,8 +782,9 @@ export class App {
     this.passwordTouched.set(true);
     this.authError.set(null);
     this.showResendVerification.set(false);
+    // Inline field errors (from the touched flags above) already cover this — no need to repeat
+    // the same message in the alert box below.
     if (!this.loginValid()) {
-      this.authError.set(this.emailError() || 'Enter your password.');
       return;
     }
 
@@ -745,8 +810,9 @@ export class App {
     this.confirmPasswordTouched.set(true);
     this.authError.set(null);
 
+    // Inline field errors (from the touched flags above) already cover this — no need to repeat
+    // the same message in the alert box below.
     if (!this.registrationValid()) {
-      this.authError.set(this.nameError() || this.emailError() || this.phoneError() || this.confirmPasswordError() || 'Please fix the highlighted fields before continuing.');
       return;
     }
 
@@ -795,6 +861,49 @@ export class App {
       this.emailVerificationError.set(
         (error instanceof Error && error.message) || 'Your verification link has expired. Request a new verification email.',
       );
+    }
+  }
+
+  async loadMarketplaceConnections() {
+    if (!this.auth.user()) return;
+    this.loadingMarketplaceConnections.set(true);
+    try {
+      const data = await this.marketplaceConnections.getConnections();
+      this.marketplaceConnectionsData.set(data);
+    } catch (error) {
+      console.error('Failed to load marketplace connections', error);
+    } finally {
+      this.loadingMarketplaceConnections.set(false);
+    }
+  }
+
+  async connectAmazon() {
+    this.connectingAmazon.set(true);
+    this.marketplaceConnectionMessage.set(null);
+    try {
+      const authorizeUrl = await this.marketplaceConnections.getAmazonAuthorizeUrl();
+      window.location.href = authorizeUrl;
+    } catch (error) {
+      console.error('Failed to start Amazon connection', error);
+      this.marketplaceConnectionMessage.set(
+        (error instanceof Error && error.message) || 'Failed to start Amazon connection. Please try again.',
+      );
+      this.connectingAmazon.set(false);
+    }
+  }
+
+  async disconnectMarketplace(marketplace: 'amazon' | 'flipkart') {
+    if (!confirm(`Disconnect your ${marketplace === 'amazon' ? 'Amazon' : 'Flipkart'} account? You'll need to re-authorize to reconnect.`)) return;
+
+    this.disconnectingMarketplace.set(marketplace);
+    try {
+      await this.marketplaceConnections.disconnect(marketplace);
+      await this.loadMarketplaceConnections();
+    } catch (error) {
+      console.error('Failed to disconnect marketplace', error);
+      this.marketplaceConnectionMessage.set('Failed to disconnect. Please try again.');
+    } finally {
+      this.disconnectingMarketplace.set(null);
     }
   }
 

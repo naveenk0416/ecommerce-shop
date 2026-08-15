@@ -9,6 +9,7 @@ import feedbackRouter from './api/feedback.js';
 import razorpayRouter from './api/razorpay.js';
 import razorpayConfigRouter from './api/razorpay-config.js';
 import barcodeRouter from './api/barcode.js';
+import marketplaceConnectionsRouter, { amazonOAuthRouter } from './api/marketplace-connections.js';
 
 // Origins allowed to call this API in addition to localhost dev servers. Configure the deployed
 // frontend's origin (e.g. https://your-site.hostinger.com) via FRONTEND_URL in the backend .env.
@@ -37,6 +38,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Prevents the full request URL (which can carry OAuth state/codes as query params) from
+// leaking to a third-party site via the Referer header when a page links out.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
+
 app.get('/debug', (req: Request, res: Response) => {
   res.json({ url: req.url, headers: req.headers });
 });
@@ -53,6 +61,10 @@ app.use('/api/feedback', feedbackRouter);
 app.use('/api', razorpayConfigRouter);
 app.use('/api', razorpayRouter);
 app.use('/api/barcode', barcodeRouter);
+app.use('/api/marketplace-connections', marketplaceConnectionsRouter);
+// Mounted at the true root, not under /api — these two paths must exactly match the "Login URI"
+// and "Redirect URI" registered for the app in Amazon's Solution Provider Portal.
+app.use(amazonOAuthRouter);
 
 app.get('/', (req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'SellAssist API' });

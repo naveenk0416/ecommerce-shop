@@ -43,6 +43,9 @@
                   <ion-icon name="shield-checkmark"></ion-icon>
                 </button>
               }
+              <button (click)="navigateTo('settings')" class="btn-icon-premium w-10 h-10" aria-label="Settings">
+                <ion-icon name="settings"></ion-icon>
+              </button>
               <button (click)="logout()" class="btn-primary px-4 text-[9px] gap-2">
                 <ion-icon name="log-out" class="text-xs"></ion-icon>
                 Logout
@@ -97,10 +100,10 @@
             </div>
           </section>
         }
-        @if (!auth.isAuthReady()) {
+        @if (!auth.isAuthReady() || resumingAmazonLogin()) {
           <div class="flex flex-col items-center justify-center py-20">
             <ion-spinner name="crescent" color="primary"></ion-spinner>
-            <p class="text-slate-500 mt-4">Initializing...</p>
+            <p class="text-slate-500 mt-4">{{ resumingAmazonLogin() ? 'Resuming Amazon authorization…' : 'Initializing...' }}</p>
           </div>
         } @else if (emailVerificationState() !== 'none') {
           <!-- Email Verification Link Landing -->
@@ -114,7 +117,7 @@
               </div>
               <h2 class="text-2xl font-black text-slate-900 tracking-tight">Email Verified</h2>
               <p class="text-slate-500 mt-2 text-sm font-medium mb-6">Your account is active. Let's get your first listing optimized.</p>
-              <ion-button (click)="navigateTo('home')" expand="block" shape="round" color="primary" class="h-14 font-black shadow-sm">
+              <ion-button (click)="navigateTo('home')" expand="block" shape="round" class="btn-ion-orange h-14 font-black">
                 Continue
               </ion-button>
             } @else {
@@ -170,8 +173,8 @@
             </div>
 
             @if (forgotEmailSent()) {
-              <div class="bg-emerald-50 text-emerald-700 p-5 rounded-2xl text-sm font-medium border border-emerald-100 text-center space-y-3">
-                <ion-icon name="checkmark" class="text-3xl"></ion-icon>
+              <div class="auth-alert auth-alert--success">
+                <span class="auth-alert__icon"></span>
                 <p>If an account exists for <strong>{{ email() }}</strong>, a reset link has been sent. Check your inbox.</p>
               </div>
               <button (click)="backToLogin()" class="text-sm text-orange-600 font-bold hover:underline mt-6 block mx-auto">
@@ -185,12 +188,13 @@
                 </div>
 
                 @if (authError()) {
-                  <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
-                    {{ authError() }}
+                  <div class="auth-alert auth-alert--error">
+                    <span class="auth-alert__icon"></span>
+                    <span>{{ authError() }}</span>
                   </div>
                 }
 
-                <ion-button (click)="sendPasswordResetEmail()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isProcessing()">
+                <ion-button (click)="sendPasswordResetEmail()" expand="block" shape="round" class="btn-ion-orange h-14 font-black mt-4" [disabled]="isProcessing()">
                   @if (isProcessing()) {
                     <ion-spinner name="crescent" slot="start"></ion-spinner>
                     Sending...
@@ -221,7 +225,7 @@
             </div>
 
             @if (resetPasswordSuccess()) {
-              <ion-button (click)="backToLogin()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm">
+              <ion-button (click)="backToLogin()" expand="block" shape="round" class="btn-ion-orange h-14 font-black mt-4">
                 Go to Login
               </ion-button>
             } @else {
@@ -242,16 +246,17 @@
                   (enter)="submitPasswordReset()"
                 />
                 @if (confirmNewPassword() && newPassword() !== confirmNewPassword()) {
-                  <p class="field-error -mt-2">Passwords do not match.</p>
+                  <p class="field-error">Passwords do not match.</p>
                 }
 
                 @if (authError()) {
-                  <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
-                    {{ authError() }}
+                  <div class="auth-alert auth-alert--error">
+                    <span class="auth-alert__icon"></span>
+                    <span>{{ authError() }}</span>
                   </div>
                 }
 
-                <ion-button (click)="submitPasswordReset()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isProcessing()">
+                <ion-button (click)="submitPasswordReset()" expand="block" shape="round" class="btn-ion-orange h-14 font-black mt-4" [disabled]="isProcessing()">
                   @if (isProcessing()) {
                     <ion-spinner name="crescent" slot="start"></ion-spinner>
                     Updating...
@@ -321,7 +326,7 @@
                 @if (isRegistering()) {
                   <app-password-strength [password]="password()" />
                 } @else if (passwordTouched() && !password()) {
-                  <p class="field-error -mt-2">Enter your password.</p>
+                  <p class="field-error">Enter your password.</p>
                 }
 
                 @if (isRegistering()) {
@@ -333,7 +338,7 @@
                     (enter)="register()"
                   />
                   @if (confirmPasswordTouched() && confirmPasswordError()) {
-                    <p class="field-error -mt-2">{{ confirmPasswordError() }}</p>
+                    <p class="field-error">{{ confirmPasswordError() }}</p>
                   }
 
                   <div class="mb-2">
@@ -343,7 +348,7 @@
                 }
 
                 @if (!isRegistering()) {
-                  <div class="flex items-center justify-between -mt-2">
+                  <div class="flex items-center justify-between">
                     <label class="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer">
                       <input type="checkbox" [checked]="rememberMe()" (change)="rememberMe.set($any($event.target).checked)" class="remember-me-checkbox" />
                       Remember me
@@ -355,21 +360,24 @@
                 }
 
                 @if (authError()) {
-                  <div class="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
-                    {{ authError() }}
-                    @if (showResendVerification()) {
-                      @if (resendVerificationSent()) {
-                        <p class="text-emerald-600 font-bold mt-2">Verification email resent — check your inbox.</p>
-                      } @else {
-                        <button (click)="resendVerificationEmail()" [disabled]="isResendingVerification()" class="block text-orange-600 font-bold hover:underline mt-2 disabled:opacity-50">
-                          {{ isResendingVerification() ? 'Sending…' : 'Resend verification email' }}
-                        </button>
+                  <div class="auth-alert auth-alert--error">
+                    <span class="auth-alert__icon"></span>
+                    <div>
+                      {{ authError() }}
+                      @if (showResendVerification()) {
+                        @if (resendVerificationSent()) {
+                          <p class="text-emerald-600 font-bold mt-2">Verification email resent — check your inbox.</p>
+                        } @else {
+                          <button (click)="resendVerificationEmail()" [disabled]="isResendingVerification()" class="block text-orange-600 font-bold hover:underline mt-2 disabled:opacity-50">
+                            {{ isResendingVerification() ? 'Sending…' : 'Resend verification email' }}
+                          </button>
+                        }
                       }
-                    }
+                    </div>
                   </div>
                 }
 
-                <ion-button (click)="isRegistering() ? register() : loginWithEmail()" expand="block" shape="round" color="primary" class="h-14 font-black mt-4 shadow-sm" [disabled]="isProcessing() || (isRegistering() && !registrationValid())">
+                <ion-button (click)="isRegistering() ? register() : loginWithEmail()" expand="block" shape="round" class="btn-ion-orange h-14 font-black mt-4" [disabled]="isProcessing() || (isRegistering() && !registrationValid())">
                   @if (isProcessing()) {
                     <ion-spinner name="crescent" slot="start"></ion-spinner>
                     Processing...
@@ -769,19 +777,211 @@
             } @else if (mainView() === 'admin') {
               <app-admin (view)="viewListing($event)"></app-admin>
             } @else if (mainView() === 'settings') {
-              <div class="space-y-6">
-                <div class="flex items-center justify-between">
-                  <h2 class="text-2xl font-bold text-slate-800">Custom Templates</h2>
-                  <ion-button (click)="templateService.resetToDefault()" fill="clear" color="danger" size="small">Reset All</ion-button>
+              <div class="space-y-10">
+                <section class="space-y-4">
+                  <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Marketplace Connections</h2>
+                    <p class="text-sm text-slate-500 mt-1">Connect your seller accounts so SellAssist can publish listings and sync orders on your behalf.</p>
+                  </div>
+
+                  @if (marketplaceConnectionMessage()) {
+                    <div class="auth-alert auth-alert--error">
+                      <span class="auth-alert__icon"></span>
+                      <span>{{ marketplaceConnectionMessage() }}</span>
+                    </div>
+                  }
+
+                  @if (loadingMarketplaceConnections()) {
+                    <div class="flex justify-center py-10">
+                      <ion-spinner name="crescent" color="primary"></ion-spinner>
+                    </div>
+                  } @else if (marketplaceConnectionsData(); as connections) {
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <!-- Amazon -->
+                      <div class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                          <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center">
+                              <ion-icon name="logo-amazon" class="text-xl text-slate-700"></ion-icon>
+                            </div>
+                            <div>
+                              <h3 class="font-bold text-slate-900">Amazon</h3>
+                              @if (connections.amazon.connected) {
+                                <span class="text-[10px] font-black uppercase tracking-widest text-emerald-600">Connected</span>
+                              } @else if (connections.amazon.revoked) {
+                                <span class="text-[10px] font-black uppercase tracking-widest text-red-500">Revoked — reconnect needed</span>
+                              } @else if (connections.amazon.configured) {
+                                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Not connected</span>
+                              } @else {
+                                <span class="text-[10px] font-black uppercase tracking-widest text-amber-500">Not configured</span>
+                              }
+                            </div>
+                          </div>
+                        </div>
+
+                        @if (connections.amazon.connected) {
+                          <p class="text-xs text-slate-400 mb-2 font-mono truncate">
+                            Selling Partner: {{ connections.amazon.sellingPartnerId || 'unknown' }}
+                          </p>
+                          @if (connections.amazon.needsReauth) {
+                            <p class="text-xs text-amber-600 font-semibold mb-3">
+                              It's been almost a year since you connected — Amazon recommends reauthorizing annually.
+                            </p>
+                          }
+                          <div class="flex gap-2">
+                            @if (connections.amazon.needsReauth) {
+                              <button
+                                (click)="connectAmazon()"
+                                [disabled]="connectingAmazon()"
+                                class="btn-orange-premium flex-1 justify-center disabled:opacity-50"
+                              >
+                                {{ connectingAmazon() ? 'Redirecting…' : 'Reauthorize' }}
+                              </button>
+                            }
+                            <button
+                              (click)="disconnectMarketplace('amazon')"
+                              [disabled]="disconnectingMarketplace() === 'amazon'"
+                              class="btn-secondary flex-1 justify-center disabled:opacity-50"
+                            >
+                              <ion-icon name="unlink" class="mr-2"></ion-icon>
+                              {{ disconnectingMarketplace() === 'amazon' ? 'Disconnecting…' : 'Disconnect' }}
+                            </button>
+                          </div>
+                        } @else if (connections.amazon.revoked) {
+                          <p class="text-xs text-slate-400 mb-3">Amazon says this authorization is no longer valid — you'll need to reconnect.</p>
+                          <button
+                            (click)="connectAmazon()"
+                            [disabled]="connectingAmazon()"
+                            class="btn-orange-premium w-full justify-center disabled:opacity-50"
+                          >
+                            <ion-icon name="link-outline" class="mr-2"></ion-icon>
+                            {{ connectingAmazon() ? 'Redirecting…' : 'Reconnect Amazon' }}
+                          </button>
+                        } @else if (connections.amazon.configured) {
+                          <button
+                            (click)="connectAmazon()"
+                            [disabled]="connectingAmazon()"
+                            class="btn-orange-premium w-full justify-center disabled:opacity-50"
+                          >
+                            <ion-icon name="link-outline" class="mr-2"></ion-icon>
+                            {{ connectingAmazon() ? 'Redirecting…' : 'Connect Amazon' }}
+                          </button>
+                        } @else {
+                          <p class="text-xs text-slate-400">Amazon integration hasn't been configured on the server yet.</p>
+                        }
+                      </div>
+
+                      <!-- Flipkart -->
+                      <div class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                          <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center">
+                              <ion-icon name="storefront" class="text-xl text-blue-600"></ion-icon>
+                            </div>
+                            <div>
+                              <h3 class="font-bold text-slate-900">Flipkart</h3>
+                              @if (connections.flipkart.connected) {
+                                <span class="text-[10px] font-black uppercase tracking-widest text-emerald-600">Connected</span>
+                              } @else {
+                                <span class="text-[10px] font-black uppercase tracking-widest text-amber-500">Not configured</span>
+                              }
+                            </div>
+                          </div>
+                        </div>
+
+                        @if (connections.flipkart.connected) {
+                          <button
+                            (click)="disconnectMarketplace('flipkart')"
+                            [disabled]="disconnectingMarketplace() === 'flipkart'"
+                            class="btn-secondary w-full justify-center disabled:opacity-50"
+                          >
+                            <ion-icon name="unlink" class="mr-2"></ion-icon>
+                            {{ disconnectingMarketplace() === 'flipkart' ? 'Disconnecting…' : 'Disconnect' }}
+                          </button>
+                        } @else {
+                          <button disabled class="btn-secondary w-full justify-center opacity-50 cursor-not-allowed">
+                            Coming soon
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </section>
+
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h2 class="text-2xl font-bold text-slate-800">Custom Templates</h2>
+                      <p class="text-sm text-slate-500 mt-1">Choose which fields SellAssist's AI generates for each marketplace, reorder them, and add custom instructions.</p>
+                    </div>
+                    <ion-button (click)="templateService.resetToDefault()" fill="clear" color="danger" size="small">Reset All</ion-button>
+                  </div>
+
+                  @for (platform of templateService.templates(); track platform.id) {
+                    <section class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-orange-50 space-y-5">
+                      <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            class="w-5 h-5 accent-orange-500 cursor-pointer"
+                            [checked]="platform.enabled"
+                            (change)="updateTemplatePlatform(platform.id, $any($event.target).checked)"
+                          />
+                          <h3 class="font-bold text-lg text-slate-900">{{ platform.label }}</h3>
+                        </label>
+                        <span class="text-[10px] uppercase tracking-widest text-slate-400 font-black">{{ platform.fields.length }} fields</span>
+                      </div>
+
+                      @if (platform.enabled) {
+                        <div class="space-y-1">
+                          <label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">AI Instructions (optional)</label>
+                          <textarea
+                            class="w-full bg-slate-50 rounded-2xl px-5 py-3 border border-slate-100 text-sm text-slate-700"
+                            rows="2"
+                            [value]="platform.customPrompt || ''"
+                            (blur)="updateTemplatePrompt(platform.id, $any($event.target).value)"
+                            placeholder="e.g. Emphasize eco-friendly materials and premium quality."
+                          ></textarea>
+                        </div>
+
+                        <div class="divide-y divide-slate-50">
+                          @for (field of platform.fields; track field.id; let i = $index) {
+                            <div class="flex items-center justify-between py-3">
+                              <label class="flex items-center gap-3 cursor-pointer min-w-0">
+                                <input
+                                  type="checkbox"
+                                  class="w-4 h-4 accent-orange-500 cursor-pointer flex-shrink-0"
+                                  [checked]="field.enabled"
+                                  (change)="updateTemplateField(platform.id, field.id, $any($event.target).checked)"
+                                />
+                                <span class="text-sm font-semibold text-slate-700 truncate">{{ field.label }}</span>
+                                <span class="text-[9px] uppercase font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full flex-shrink-0">{{ field.type }}</span>
+                              </label>
+                              <div class="flex items-center gap-1 flex-shrink-0">
+                                <button
+                                  (click)="moveField(platform.id, field.id, 'up')"
+                                  [disabled]="i === 0"
+                                  class="btn-icon-premium w-7 h-7 disabled:opacity-20 disabled:pointer-events-none"
+                                  aria-label="Move {{ field.label }} up"
+                                >
+                                  <ion-icon name="chevron-up-outline" class="text-sm"></ion-icon>
+                                </button>
+                                <button
+                                  (click)="moveField(platform.id, field.id, 'down')"
+                                  [disabled]="i === platform.fields.length - 1"
+                                  class="btn-icon-premium w-7 h-7 disabled:opacity-20 disabled:pointer-events-none"
+                                  aria-label="Move {{ field.label }} down"
+                                >
+                                  <ion-icon name="chevron-down-outline" class="text-sm"></ion-icon>
+                                </button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </section>
+                  }
                 </div>
-                @for (platform of templateService.templates(); track platform.id) {
-                  <section class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-orange-50 space-y-4">
-                    <!-- Template settings form... -->
-                    @if (platform.enabled) {
-                      <!-- details... -->
-                    }
-                  </section>
-                }
               </div>
             } @else if (mainView() === 'listings') {
               <div class="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">

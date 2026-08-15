@@ -13,5 +13,9 @@ export const routes: Routes = [
   { path: 'inventory', component: Products },
   { path: 'gst-calculator', component: GstCalculator },
   { path: 'admin', component: AdminComponent },
+  // Rendered via app.html's own mainView branching (see App component), same as 'admin' and
+  // 'inventory' above — this route entry only exists so router.navigate(['/settings']) resolves
+  // without a "cannot match route" warning.
+  { path: 'settings', component: GstCalculator },
   { path: 'workspace/:listingId', canActivate: [authGuard], loadChildren: () => import('./features/listing-workspace/listing-workspace.routes').then(m => m.LISTING_WORKSPACE_ROUTES) },
 ];

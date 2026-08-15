@@ -72,3 +72,47 @@ const templateSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 export const TemplateConfig = (mongoose.models as any).TemplateConfig || mongoose.model('TemplateConfig', templateSchema);
+
+const marketplaceConnectionSchema = new mongoose.Schema({
+  uid: { type: String, required: true },
+  marketplace: { type: String, required: true, enum: ['amazon', 'flipkart'] },
+  // 'revoked' = the seller pulled authorization on Amazon's side (or the refresh token
+  // otherwise stopped working) — distinct from 'disconnected', which is a seller-initiated
+  // action on our side. Surfaced to the frontend so it can prompt reconnection specifically.
+  status: { type: String, default: 'connected', enum: ['connected', 'disconnected', 'revoked'] },
+  // Amazon: the seller's Selling Partner ID, returned on the OAuth callback.
+  sellingPartnerId: { type: String },
+  // Restricted-classification — encrypted at rest (see utils/token-crypto.ts), never returned
+  // to the frontend as-is. See docs/security/05-data-protection-policy.md and 07-api-security-policy.md.
+  refreshTokenEnc: { type: String },
+  accessTokenEnc: { type: String },
+  accessTokenExpiresAt: { type: Date },
+  scopes: { type: [String], default: [] },
+  region: { type: String },
+  connectedAt: { type: Date },
+  disconnectedAt: { type: Date },
+  revokedAt: { type: Date },
+}, { timestamps: true });
+
+marketplaceConnectionSchema.index({ uid: 1, marketplace: 1 }, { unique: true });
+
+export const MarketplaceConnection = (mongoose.models as any).MarketplaceConnection
+  || mongoose.model('MarketplaceConnection', marketplaceConnectionSchema);
+
+// Backs the OAuth `state` parameter for both entry points of Amazon's Website Authorization
+// Workflow (seller-initiated via /amazon/connect, and Amazon-initiated via /amazon/login).
+// Mongo's TTL index is the direct equivalent of a Firestore TTL policy — expired documents are
+// removed automatically by a background sweep (typically within ~60s of expiresAt), independent
+// of the explicit expiresAt/used checks the routes also perform at read time.
+const amazonAuthStateSchema = new mongoose.Schema({
+  state: { type: String, required: true, unique: true },
+  uid: { type: String, required: true },
+  createdAt: { type: Date, required: true, default: () => new Date() },
+  expiresAt: { type: Date, required: true },
+  used: { type: Boolean, default: false },
+});
+
+amazonAuthStateSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+export const AmazonAuthState = (mongoose.models as any).AmazonAuthState
+  || mongoose.model('AmazonAuthState', amazonAuthStateSchema);
