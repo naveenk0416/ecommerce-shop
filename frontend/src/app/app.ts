@@ -381,17 +381,25 @@ export class App {
           this.emailVerificationState.set('error');
           this.emailVerificationError.set('Missing verification token.');
         }
-      } else if (window.location.pathname === '/settings') {
-        // Landing back here after the Amazon OAuth redirect round-trip.
+      } else if (window.location.pathname === '/home') {
+        // Landing back here after the Amazon OAuth redirect round-trip. Shown as a toast (rather
+        // than the marketplaceConnectionMessage banner, which only renders inside the Settings
+        // view's markup) since this redirect target isn't the Settings page.
         const params = new URLSearchParams(window.location.search);
         const amazonResult = params.get('amazon');
-        if (amazonResult === 'connected') {
-          this.marketplaceConnectionMessage.set('Amazon connected successfully.');
-        } else if (amazonResult === 'error') {
-          this.marketplaceConnectionMessage.set(params.get('message') || 'Failed to connect Amazon. Please try again.');
-        }
-        if (amazonResult) {
-          window.history.replaceState({}, '', '/settings');
+        if (amazonResult === 'connected' || amazonResult === 'error') {
+          (async () => {
+            const toast = await this.toastController?.create?.({
+              message: amazonResult === 'connected'
+                ? 'Amazon connected successfully.'
+                : (params.get('message') || 'Failed to connect Amazon. Please try again.'),
+              duration: 3000,
+              color: amazonResult === 'connected' ? 'success' : 'danger',
+              position: 'bottom',
+            });
+            if (toast) await toast.present();
+          })();
+          window.history.replaceState({}, '', '/home');
         }
       }
 

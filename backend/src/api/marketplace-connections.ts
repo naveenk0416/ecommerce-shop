@@ -200,7 +200,7 @@ amazonOAuthRouter.get('/amazon/callback', async (req, res) => {
   const { spapi_oauth_code: code, state, selling_partner_id: sellingPartnerId, error: oauthError } = req.query as Record<string, string>;
 
   const redirectWithResult = (result: 'connected' | 'error', message?: string) => {
-    const url = new URL(`${frontendUrl()}/settings`);
+    const url = new URL(`${frontendUrl()}/home`);
     url.searchParams.set('amazon', result);
     if (message) url.searchParams.set('message', message);
     res.redirect(url.toString());
