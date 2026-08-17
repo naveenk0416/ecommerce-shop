@@ -166,6 +166,7 @@ export class App {
   marketplaceConnectionsData = signal<MarketplaceConnectionsResponse | null>(null);
   loadingMarketplaceConnections = signal(false);
   connectingAmazon = signal(false);
+  connectingFlipkart = signal(false);
   disconnectingMarketplace = signal<'amazon' | 'flipkart' | null>(null);
   marketplaceConnectionMessage = signal<string | null>(null);
   /** Set when we've landed here via Amazon's own "Manage" link (the Amazon-initiated OAuth entry
@@ -382,19 +383,20 @@ export class App {
           this.emailVerificationError.set('Missing verification token.');
         }
       } else if (window.location.pathname === '/home') {
-        // Landing back here after the Amazon OAuth redirect round-trip. Shown as a toast (rather
-        // than the marketplaceConnectionMessage banner, which only renders inside the Settings
-        // view's markup) since this redirect target isn't the Settings page.
+        // Landing back here after the Amazon or Flipkart OAuth redirect round-trip. Shown as a
+        // toast (rather than the marketplaceConnectionMessage banner, which only renders inside
+        // the Settings view's markup) since this redirect target isn't the Settings page.
         const params = new URLSearchParams(window.location.search);
-        const amazonResult = params.get('amazon');
-        if (amazonResult === 'connected' || amazonResult === 'error') {
+        const marketplace = params.get('amazon') ? 'Amazon' : (params.get('flipkart') ? 'Flipkart' : null);
+        const result = params.get('amazon') || params.get('flipkart');
+        if (marketplace && (result === 'connected' || result === 'error')) {
           (async () => {
             const toast = await this.toastController?.create?.({
-              message: amazonResult === 'connected'
-                ? 'Amazon connected successfully.'
-                : (params.get('message') || 'Failed to connect Amazon. Please try again.'),
+              message: result === 'connected'
+                ? `${marketplace} connected successfully.`
+                : (params.get('message') || `Failed to connect ${marketplace}. Please try again.`),
               duration: 3000,
-              color: amazonResult === 'connected' ? 'success' : 'danger',
+              color: result === 'connected' ? 'success' : 'danger',
               position: 'bottom',
             });
             if (toast) await toast.present();
@@ -897,6 +899,21 @@ export class App {
         (error instanceof Error && error.message) || 'Failed to start Amazon connection. Please try again.',
       );
       this.connectingAmazon.set(false);
+    }
+  }
+
+  async connectFlipkart() {
+    this.connectingFlipkart.set(true);
+    this.marketplaceConnectionMessage.set(null);
+    try {
+      const authorizeUrl = await this.marketplaceConnections.getFlipkartAuthorizeUrl();
+      window.location.href = authorizeUrl;
+    } catch (error) {
+      console.error('Failed to start Flipkart connection', error);
+      this.marketplaceConnectionMessage.set(
+        (error instanceof Error && error.message) || 'Failed to start Flipkart connection. Please try again.',
+      );
+      this.connectingFlipkart.set(false);
     }
   }
 

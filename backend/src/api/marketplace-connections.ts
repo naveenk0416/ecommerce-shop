@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import { authMiddleware } from './auth.js';
 import { ensureConnected, AmazonAuthState, MarketplaceConnection } from './common.js';
 import { encryptToken } from '../utils/token-crypto.js';
-import { clearCachedAccessToken } from '../utils/amazon-token-service.js';
+import { clearCachedAccessToken as clearCachedAmazonAccessToken } from '../utils/amazon-token-service.js';
+import { clearCachedAccessToken as clearCachedFlipkartAccessToken } from '../utils/flipkart-token-service.js';
 
 const router = express.Router();
 // Amazon redirects the seller's browser directly to these two paths, so they must exactly match
@@ -12,6 +13,10 @@ const router = express.Router();
 // server.ts (app.use(amazonOAuthRouter)), not nested under /api/marketplace-connections like the
 // rest of this file.
 const amazonOAuthRouter = express.Router();
+
+// Same reasoning as amazonOAuthRouter above — Flipkart's registered callback URL is
+// domain + path together, so this is mounted at the backend's true root too.
+const flipkartOAuthRouter = express.Router();
 
 const STATE_TTL_MS = 10 * 60 * 1000;
 // Amazon's authorization codes are short-lived; this is a defensive fast-fail checked against
@@ -41,6 +46,10 @@ function frontendUrl() {
 
 function amazonCallbackRedirectUri() {
   return `${backendUrl()}/amazon/callback`;
+}
+
+function flipkartCallbackRedirectUri() {
+  return `${backendUrl()}/flipkart/callback`;
 }
 
 async function createAuthState(uid: string): Promise<string> {
@@ -96,7 +105,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
     res.json({
       amazon: byMarketplace['amazon'] || { connected: false, configured: !!process.env['AMAZON_LWA_CLIENT_ID'] },
-      flipkart: byMarketplace['flipkart'] || { connected: false, configured: false },
+      flipkart: byMarketplace['flipkart'] || { connected: false, configured: !!process.env['FLIPKART_CLIENT_ID'] },
     });
   } catch (err: any) {
     console.error('List marketplace connections error', err);
@@ -276,12 +285,130 @@ amazonOAuthRouter.get('/amazon/callback', async (req, res) => {
       },
       { upsert: true, new: true },
     );
-    clearCachedAccessToken(pending.uid);
+    clearCachedAmazonAccessToken(pending.uid);
 
     redirectWithResult('connected');
   } catch (err: any) {
     console.error('Amazon callback error', err);
     redirectWithResult('error', 'Something went wrong completing Amazon authorization.');
+  }
+});
+
+// Flipkart's "Authorization Code Flow (For Third Party Application)" — same shape as Amazon's
+// seller-initiated entry point above (JSON-returning POST, since a raw navigation can't carry
+// our Bearer header). Flipkart has no Amazon-style "app is installed, seller clicks Manage"
+// second entry point, so this is the only way in.
+router.post('/flipkart/connect', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+
+  const clientId = process.env['FLIPKART_CLIENT_ID'];
+  if (!clientId) {
+    res.status(503).json({ error: 'Flipkart integration is not configured yet. Add FLIPKART_CLIENT_ID and FLIPKART_CLIENT_SECRET to the backend environment.' });
+    return;
+  }
+
+  await ensureConnected();
+  const state = await createAuthState(authUser._id.toString());
+
+  const authorizeUrl = new URL('https://api.flipkart.net/oauth-service/oauth/authorize');
+  authorizeUrl.searchParams.set('client_id', clientId);
+  authorizeUrl.searchParams.set('redirect_uri', flipkartCallbackRedirectUri());
+  authorizeUrl.searchParams.set('response_type', 'code');
+  authorizeUrl.searchParams.set('scope', 'Seller_Api');
+  authorizeUrl.searchParams.set('state', state);
+
+  res.json({ authorizeUrl: authorizeUrl.toString() });
+});
+
+flipkartOAuthRouter.get('/flipkart/callback', async (req, res) => {
+  const { code, state, error: oauthError } = req.query as Record<string, string>;
+
+  const redirectWithResult = (result: 'connected' | 'error', message?: string) => {
+    const url = new URL(`${frontendUrl()}/home`);
+    url.searchParams.set('flipkart', result);
+    if (message) url.searchParams.set('message', message);
+    res.redirect(url.toString());
+  };
+
+  if (oauthError) {
+    redirectWithResult('error', 'Authorization was cancelled or denied.');
+    return;
+  }
+
+  if (!code || !state) {
+    redirectWithResult('error', 'Missing authorization code from Flipkart.');
+    return;
+  }
+
+  await ensureConnected();
+  const pending = await consumeAuthState(state);
+  if (!pending) {
+    redirectWithResult('error', 'This authorization link has expired or was already used. Please try connecting again.');
+    return;
+  }
+
+  if (Date.now() - pending.createdAt.getTime() > CODE_EXCHANGE_DEADLINE_MS) {
+    redirectWithResult('error', 'Authorization took too long to complete. Please try connecting again.');
+    return;
+  }
+
+  const clientId = process.env['FLIPKART_CLIENT_ID'];
+  const clientSecret = process.env['FLIPKART_CLIENT_SECRET'];
+  if (!clientId || !clientSecret) {
+    redirectWithResult('error', 'Flipkart integration is not fully configured on the server.');
+    return;
+  }
+
+  try {
+    // Flipkart authenticates the token exchange via HTTP Basic (base64 clientId:clientSecret),
+    // not a client_secret body param like Amazon — and it's a GET with the params on the query
+    // string, per Flipkart's own curl examples (no POST body).
+    const tokenUrl = new URL('https://api.flipkart.net/oauth-service/oauth/token');
+    tokenUrl.searchParams.set('redirect_uri', flipkartCallbackRedirectUri());
+    tokenUrl.searchParams.set('grant_type', 'authorization_code');
+    tokenUrl.searchParams.set('state', state);
+    tokenUrl.searchParams.set('code', code);
+
+    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const tokenResponse = await fetch(tokenUrl.toString(), {
+      method: 'GET',
+      headers: { Authorization: `Basic ${basicAuth}` },
+    });
+
+    const tokenBody = await tokenResponse.json() as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string; error?: string; error_description?: string };
+
+    if (!tokenResponse.ok || !tokenBody.refresh_token || !tokenBody.access_token) {
+      // Never log tokenBody wholesale — it may contain a valid access/refresh token even
+      // alongside an error in some edge responses. Log only Flipkart's own error fields.
+      console.error('Flipkart token exchange failed', tokenResponse.status, tokenBody.error, tokenBody.error_description);
+      redirectWithResult('error', tokenBody.error_description || 'Failed to complete Flipkart authorization.');
+      return;
+    }
+
+    const now = new Date();
+    await MarketplaceConnection.findOneAndUpdate(
+      { uid: pending.uid, marketplace: 'flipkart' },
+      {
+        uid: pending.uid,
+        marketplace: 'flipkart',
+        status: 'connected',
+        refreshTokenEnc: encryptToken(tokenBody.refresh_token),
+        accessTokenEnc: encryptToken(tokenBody.access_token),
+        accessTokenExpiresAt: new Date(now.getTime() + (tokenBody.expires_in || 0) * 1000),
+        scopes: tokenBody.scope ? tokenBody.scope.split(',') : [],
+        connectedAt: now,
+        disconnectedAt: undefined,
+        revokedAt: undefined,
+      },
+      { upsert: true, new: true },
+    );
+
+    clearCachedFlipkartAccessToken(pending.uid);
+
+    redirectWithResult('connected');
+  } catch (err: any) {
+    console.error('Flipkart callback error', err);
+    redirectWithResult('error', 'Something went wrong completing Flipkart authorization.');
   }
 });
 
@@ -305,7 +432,8 @@ router.delete('/:marketplace', authMiddleware, async (req, res) => {
         disconnectedAt: new Date(),
       },
     );
-    if (marketplace === 'amazon') clearCachedAccessToken(authUser._id.toString());
+    if (marketplace === 'amazon') clearCachedAmazonAccessToken(authUser._id.toString());
+    else if (marketplace === 'flipkart') clearCachedFlipkartAccessToken(authUser._id.toString());
     res.json({ ok: true });
   } catch (err: any) {
     console.error('Disconnect marketplace error', err);
@@ -314,4 +442,4 @@ router.delete('/:marketplace', authMiddleware, async (req, res) => {
 });
 
 export default router;
-export { amazonOAuthRouter };
+export { amazonOAuthRouter, flipkartOAuthRouter };

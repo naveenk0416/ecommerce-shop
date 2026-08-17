@@ -43,6 +43,14 @@ export class MarketplaceConnectionsService {
     return redirectUrl;
   }
 
+  /** Returns Flipkart's authorization URL — same navigation pattern as getAmazonAuthorizeUrl(). */
+  async getFlipkartAuthorizeUrl(): Promise<string> {
+    const { authorizeUrl } = await apiFetch<{ authorizeUrl: string }>('/marketplace-connections/flipkart/connect', {
+      method: 'POST',
+    });
+    return authorizeUrl;
+  }
+
   async disconnect(marketplace: 'amazon' | 'flipkart'): Promise<void> {
     await apiFetch(`/marketplace-connections/${marketplace}`, { method: 'DELETE' });
   }

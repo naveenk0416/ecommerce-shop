@@ -9,7 +9,7 @@ import feedbackRouter from './api/feedback.js';
 import razorpayRouter from './api/razorpay.js';
 import razorpayConfigRouter from './api/razorpay-config.js';
 import barcodeRouter from './api/barcode.js';
-import marketplaceConnectionsRouter, { amazonOAuthRouter } from './api/marketplace-connections.js';
+import marketplaceConnectionsRouter, { amazonOAuthRouter, flipkartOAuthRouter } from './api/marketplace-connections.js';
 
 // Origins allowed to call this API in addition to localhost dev servers. Configure the deployed
 // frontend's origin (e.g. https://your-site.hostinger.com) via FRONTEND_URL in the backend .env.
@@ -65,6 +65,9 @@ app.use('/api/marketplace-connections', marketplaceConnectionsRouter);
 // Mounted at the true root, not under /api — these two paths must exactly match the "Login URI"
 // and "Redirect URI" registered for the app in Amazon's Solution Provider Portal.
 app.use(amazonOAuthRouter);
+// Same reasoning — must match the callback URL registered in Flipkart's Seller APIs Developer
+// Admin portal exactly.
+app.use(flipkartOAuthRouter);
 
 app.get('/', (req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'SellAssist API' });
