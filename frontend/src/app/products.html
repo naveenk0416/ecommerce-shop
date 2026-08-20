@@ -77,6 +77,10 @@
         <ion-icon name="logo-amazon" class="text-sm"></ion-icon>
         {{ syncingAmazon() ? 'Syncing…' : 'Sync from Amazon' }}
       </button>
+      <button (click)="syncFlipkart.emit()" [disabled]="syncingFlipkart()" class="btn-secondary flex-shrink-0 gap-2 disabled:opacity-50">
+        <ion-icon name="storefront" class="text-sm"></ion-icon>
+        {{ syncingFlipkart() ? 'Syncing…' : 'Sync from Flipkart' }}
+      </button>
       <button (click)="refresh.emit()" class="btn-primary flex-shrink-0 gap-2">
         <ion-icon name="refresh" class="text-sm"></ion-icon>
         Refresh
@@ -108,6 +112,11 @@
                       <h4 class="text-sm font-bold text-slate-900 group-hover:text-orange-600 transition-colors tracking-tight leading-tight line-clamp-2 uppercase">{{ listing.name }}</h4>
                       <div class="flex items-center gap-3 mt-2.5">
                          <span class="text-[8px] font-black text-white bg-slate-950 px-2 py-0.5 rounded-md uppercase tracking-widest">{{ listing.category || 'GEN' }}</span>
+                         @if (listing.source === 'amazon') {
+                           <span class="text-[8px] font-black text-white bg-orange-500 px-2 py-0.5 rounded-md uppercase tracking-widest">Amazon</span>
+                         } @else if (listing.source === 'flipkart') {
+                           <span class="text-[8px] font-black text-white bg-blue-600 px-2 py-0.5 rounded-md uppercase tracking-widest">Flipkart</span>
+                         }
                          <span class="text-[8px] font-bold text-slate-300 uppercase tracking-[0.15em]">{{ listing.createdAt | date:'MMM d, y' }}</span>
                       </div>
                     </div>

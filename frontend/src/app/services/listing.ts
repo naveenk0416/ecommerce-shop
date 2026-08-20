@@ -11,6 +11,9 @@ export interface Listing extends ProductDetails {
   createdAt: string;
   costPrice?: number;
   sellingPrice?: number;
+  /** Set when this listing was imported from a marketplace sync rather than added manually. */
+  source?: 'amazon' | 'flipkart';
+  sku?: string;
 }
 
 export interface Sale {

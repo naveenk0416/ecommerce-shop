@@ -4,8 +4,9 @@ import { authMiddleware } from './auth.js';
 import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from './common.js';
 import { encryptToken } from '../utils/token-crypto.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
-import { clearCachedAccessToken as clearCachedFlipkartAccessToken } from '../utils/flipkart-token-service.js';
+import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
 import { fetchMerchantListingsReport } from '../utils/amazon-sp-api.js';
+import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku } from '../utils/flipkart-listings-api.js';
 
 const router = express.Router();
 // Amazon redirects the seller's browser directly to these two paths, so they must exactly match
@@ -317,21 +318,25 @@ router.post('/amazon/sync-inventory', authMiddleware, async (req, res) => {
       const quantity = parseInt(row['quantity'] || '', 10) || 0;
 
       const alreadyExists = await Listing.exists({ uid, sku });
+      // $set, not a plain replacement object — a bare update doc replaces the entire document in
+      // MongoDB, which would wipe out costPrice/hsnCode/gstRate/etc. the seller edited by hand
+      // after a previous sync.
       await Listing.findOneAndUpdate(
         { uid, sku },
         {
-          uid,
-          sku,
-          asin: row['asin1'] || undefined,
-          source: 'amazon',
-          name: row['item-name'] || sku,
-          description: row['item-description'] || '',
-          category: 'Amazon Import',
-          quantity,
-          sellingPrice: price,
-          priceINR: `₹${price}`,
-          originalImage: row['image-url'] || '',
-          listingStatus: row['status'] || undefined,
+          $set: {
+            uid,
+            sku,
+            asin: row['asin1'] || undefined,
+            source: 'amazon',
+            name: row['item-name'] || sku,
+            description: row['item-description'] || '',
+            quantity,
+            sellingPrice: price,
+            priceINR: `₹${price}`,
+            originalImage: row['image-url'] || '',
+            listingStatus: row['status'] || undefined,
+          },
         },
         { upsert: true },
       );
@@ -347,6 +352,61 @@ router.post('/amazon/sync-inventory', authMiddleware, async (req, res) => {
     }
     console.error('Amazon inventory sync error', err);
     res.status(500).json({ error: err?.message || 'Failed to sync Amazon inventory.' });
+  }
+});
+
+// Same idea as the Amazon sync above, pulling from Flipkart's Listing Management API instead —
+// upserts into the same Listing collection, keyed by {uid, sku}, tagged source: 'flipkart'.
+router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const uid = authUser._id.toString();
+
+  await ensureConnected();
+  try {
+    const items = await fetchAllFlipkartListings(uid);
+    const skus = items.map((item) => item.sku).filter(Boolean);
+    const quantities = await fetchFlipkartInventoryBySku(uid, skus);
+
+    let imported = 0;
+    let updated = 0;
+    for (const item of items) {
+      const sku = item.sku;
+      if (!sku) continue;
+
+      const price = item.product_description?.ssp || item.product_description?.mrp || 0;
+      const quantity = quantities.get(sku) ?? 0;
+
+      const alreadyExists = await Listing.exists({ uid, sku });
+      await Listing.findOneAndUpdate(
+        { uid, sku },
+        {
+          $set: {
+            uid,
+            sku,
+            flipkartProductId: item.productId || undefined,
+            source: 'flipkart',
+            name: item.product_name || sku,
+            quantity,
+            sellingPrice: price,
+            priceINR: `₹${price}`,
+            originalImage: item.product_image_url || '',
+            listingStatus: item.status || undefined,
+          },
+        },
+        { upsert: true },
+      );
+      if (alreadyExists) updated += 1;
+      else imported += 1;
+    }
+
+    res.json({ imported, updated, total: items.length });
+  } catch (err: any) {
+    if (err instanceof FlipkartReauthorizationRequiredError) {
+      res.status(409).json({ error: 'Your Flipkart authorization is no longer valid. Please reconnect Flipkart and try again.' });
+      return;
+    }
+    console.error('Flipkart inventory sync error', err);
+    res.status(500).json({ error: err?.message || 'Failed to sync Flipkart inventory.' });
   }
 });
 

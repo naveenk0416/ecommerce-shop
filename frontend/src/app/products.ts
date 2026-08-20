@@ -12,7 +12,7 @@ import {
   cube, cubeOutline, search, refresh,
   eye, trash, alertCircle, add,
   pricetag, barcodeOutline, chevronDown, close,
-  save, list, cart, paperPlane, logoAmazon
+  save, list, cart, paperPlane, logoAmazon, storefront
 } from 'ionicons/icons';
 
 @Component({
@@ -39,13 +39,15 @@ export class Products {
   refresh = output<void>();
   syncAmazon = output<void>();
   syncingAmazon = input<boolean>(false);
+  syncFlipkart = output<void>();
+  syncingFlipkart = input<boolean>(false);
   searchQuery = '';
 
   constructor() {
     addIcons({
       cube, cubeOutline, search, refresh, eye, trash,
       alertCircle, add, pricetag, barcodeOutline,
-      chevronDown, close, save, list, cart, paperPlane, logoAmazon
+      chevronDown, close, save, list, cart, paperPlane, logoAmazon, storefront
     });
   }
 

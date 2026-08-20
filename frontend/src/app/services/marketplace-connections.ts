@@ -51,6 +51,13 @@ export class MarketplaceConnectionsService {
     });
   }
 
+  /** Pulls the seller's full Flipkart catalog into Inventory (upserted by SKU). */
+  async syncFlipkartInventory(): Promise<{ imported: number; updated: number; total: number }> {
+    return apiFetch<{ imported: number; updated: number; total: number }>('/marketplace-connections/flipkart/sync-inventory', {
+      method: 'POST',
+    });
+  }
+
   /** Returns Flipkart's authorization URL — same navigation pattern as getAmazonAuthorizeUrl(). */
   async getFlipkartAuthorizeUrl(): Promise<string> {
     const { authorizeUrl } = await apiFetch<{ authorizeUrl: string }>('/marketplace-connections/flipkart/connect', {
