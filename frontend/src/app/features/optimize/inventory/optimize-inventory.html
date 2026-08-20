@@ -40,6 +40,14 @@
           <mat-icon>search</mat-icon>
           <input type="text" placeholder="Search by name, category, or HSN…" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
         </div>
+        <button mat-stroked-button (click)="syncAmazon()" [disabled]="syncingAmazon()">
+          <mat-icon>sync</mat-icon>
+          {{ syncingAmazon() ? 'Syncing…' : 'Sync from Amazon' }}
+        </button>
+        <button mat-stroked-button (click)="syncFlipkart()" [disabled]="syncingFlipkart()">
+          <mat-icon>sync</mat-icon>
+          {{ syncingFlipkart() ? 'Syncing…' : 'Sync from Flipkart' }}
+        </button>
         <button mat-flat-button color="primary" (click)="openAddDialog()">
           <mat-icon>add</mat-icon>
           Add Product
@@ -74,7 +82,14 @@
                       } @else {
                         <span class="product-cell__placeholder"><mat-icon>image</mat-icon></span>
                       }
-                      <span class="product-cell__name">{{ listing.name }}</span>
+                      <div class="product-cell__info">
+                        <span class="product-cell__name">{{ listing.name }}</span>
+                        @if (listing.source === 'amazon') {
+                          <span class="source-badge source-badge--amazon">Amazon</span>
+                        } @else if (listing.source === 'flipkart') {
+                          <span class="source-badge source-badge--flipkart">Flipkart</span>
+                        }
+                      </div>
                     </div>
                   </td>
                   <td>{{ listing.category || '—' }}</td>

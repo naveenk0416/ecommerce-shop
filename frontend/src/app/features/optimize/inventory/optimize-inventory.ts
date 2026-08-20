@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { UiCard } from '../../listing-workspace/ui/card/card';
 import { AuthService } from '../../../services/auth';
 import { Listing, ListingService } from '../../../services/listing';
+import { MarketplaceConnectionsService } from '../../../services/marketplace-connections';
 import { parsePrice } from '../../../utils/price';
 import { ProductFormDialog, ProductFormResult } from './product-form-dialog';
 import { LogSaleDialog, LogSaleResult } from './log-sale-dialog';
@@ -26,6 +27,7 @@ const LOW_STOCK_THRESHOLD = 5;
 export class OptimizeInventory {
   protected readonly auth = inject(AuthService);
   private readonly listingService = inject(ListingService);
+  private readonly marketplaceConnections = inject(MarketplaceConnectionsService);
   private readonly injector = inject(Injector);
 
   /** MatDialog/MatSnackBar are constructed lazily on first use, in a guaranteed injection
@@ -41,6 +43,8 @@ export class OptimizeInventory {
 
   listings = signal<Listing[]>([]);
   searchQuery = signal('');
+  syncingAmazon = signal(false);
+  syncingFlipkart = signal(false);
 
   filteredListings = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
@@ -74,6 +78,33 @@ export class OptimizeInventory {
         : this.listingService.getListings(user.uid, (listings) => this.listings.set(listings));
       onCleanup(() => stop());
     });
+  }
+
+  /** Pulls the seller's Amazon catalog into Inventory — the polling subscription set up in the
+   * constructor picks up the new/updated rows automatically, no manual refetch needed here. */
+  async syncAmazon(): Promise<void> {
+    this.syncingAmazon.set(true);
+    try {
+      const result = await this.marketplaceConnections.syncAmazonInventory();
+      this.snackBar.open(`Synced ${result.total} Amazon listings (${result.imported} new, ${result.updated} updated).`, 'Dismiss', { duration: 4000 });
+    } catch (error) {
+      this.snackBar.open((error instanceof Error && error.message) || 'Failed to sync Amazon inventory. Please try again.', 'Dismiss', { duration: 5000 });
+    } finally {
+      this.syncingAmazon.set(false);
+    }
+  }
+
+  /** Pulls the seller's Flipkart catalog into Inventory. */
+  async syncFlipkart(): Promise<void> {
+    this.syncingFlipkart.set(true);
+    try {
+      const result = await this.marketplaceConnections.syncFlipkartInventory();
+      this.snackBar.open(`Synced ${result.total} Flipkart listings (${result.imported} new, ${result.updated} updated).`, 'Dismiss', { duration: 4000 });
+    } catch (error) {
+      this.snackBar.open((error instanceof Error && error.message) || 'Failed to sync Flipkart inventory. Please try again.', 'Dismiss', { duration: 5000 });
+    } finally {
+      this.syncingFlipkart.set(false);
+    }
   }
 
   isLowStock(listing: Listing): boolean {

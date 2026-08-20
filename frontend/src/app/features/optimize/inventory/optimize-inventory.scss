@@ -181,9 +181,38 @@
     }
   }
 
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
   &__name {
     font-weight: 600;
     color: #0f172a;
+  }
+}
+
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+
+  &--amazon {
+    background: #fff7ed;
+    color: #ea580c;
+  }
+
+  &--flipkart {
+    background: #eff6ff;
+    color: #2563eb;
   }
 }
 
