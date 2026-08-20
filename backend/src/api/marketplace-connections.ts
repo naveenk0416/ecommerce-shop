@@ -1,10 +1,11 @@
 import express from 'express';
 import crypto from 'crypto';
 import { authMiddleware } from './auth.js';
-import { ensureConnected, AmazonAuthState, MarketplaceConnection } from './common.js';
+import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from './common.js';
 import { encryptToken } from '../utils/token-crypto.js';
-import { clearCachedAccessToken as clearCachedAmazonAccessToken } from '../utils/amazon-token-service.js';
+import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken } from '../utils/flipkart-token-service.js';
+import { fetchMerchantListingsReport } from '../utils/amazon-sp-api.js';
 
 const router = express.Router();
 // Amazon redirects the seller's browser directly to these two paths, so they must exactly match
@@ -294,6 +295,61 @@ amazonOAuthRouter.get('/amazon/callback', async (req, res) => {
   }
 });
 
+// Pulls the seller's full Amazon catalog via the Reports API (GET_MERCHANT_LISTINGS_ALL_DATA)
+// and upserts each row into the Listing collection — the same collection that already backs the
+// Inventory page — keyed by {uid, sku} so re-running this updates existing rows instead of
+// duplicating them.
+router.post('/amazon/sync-inventory', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const uid = authUser._id.toString();
+
+  await ensureConnected();
+  try {
+    const rows = await fetchMerchantListingsReport(uid, 'GET_MERCHANT_LISTINGS_ALL_DATA');
+
+    let imported = 0;
+    let updated = 0;
+    for (const row of rows) {
+      const sku = row['seller-sku'];
+      if (!sku) continue;
+
+      const price = parseFloat(row['price'] || '') || 0;
+      const quantity = parseInt(row['quantity'] || '', 10) || 0;
+
+      const alreadyExists = await Listing.exists({ uid, sku });
+      await Listing.findOneAndUpdate(
+        { uid, sku },
+        {
+          uid,
+          sku,
+          asin: row['asin1'] || undefined,
+          source: 'amazon',
+          name: row['item-name'] || sku,
+          description: row['item-description'] || '',
+          category: 'Amazon Import',
+          quantity,
+          sellingPrice: price,
+          priceINR: `₹${price}`,
+          originalImage: row['image-url'] || '',
+          listingStatus: row['status'] || undefined,
+        },
+        { upsert: true },
+      );
+      if (alreadyExists) updated += 1;
+      else imported += 1;
+    }
+
+    res.json({ imported, updated, total: rows.length });
+  } catch (err: any) {
+    if (err instanceof AmazonReauthorizationRequiredError) {
+      res.status(409).json({ error: 'Your Amazon authorization is no longer valid. Please reconnect Amazon and try again.' });
+      return;
+    }
+    console.error('Amazon inventory sync error', err);
+    res.status(500).json({ error: err?.message || 'Failed to sync Amazon inventory.' });
+  }
+});
+
 // Flipkart's "Authorization Code Flow (For Third Party Application)" — same shape as Amazon's
 // seller-initiated entry point above (JSON-returning POST, since a raw navigation can't carry
 // our Bearer header). Flipkart has no Amazon-style "app is installed, seller clicks Manage"
@@ -408,7 +464,7 @@ flipkartOAuthRouter.get('/flipkart/callback', async (req, res) => {
     redirectWithResult('connected');
   } catch (err: any) {
     console.error('Flipkart callback error', err);
-    redirectWithResult('error', 'Something went wrong completing Flipkart authorization.');
+    redirectWithResult('error', ' went wrong completing Flipkart authorization.');
   }
 });
 

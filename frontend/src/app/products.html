@@ -73,6 +73,10 @@
           placeholder="Search by product name or category..."
           class="w-full h-14 pl-12 pr-4 bg-white border border-slate-200 rounded-2xl text-sm font-medium placeholder:text-slate-300 focus:outline-none transition-all focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 shadow-sm">
       </div>
+      <button (click)="syncAmazon.emit()" [disabled]="syncingAmazon()" class="btn-secondary flex-shrink-0 gap-2 disabled:opacity-50">
+        <ion-icon name="logo-amazon" class="text-sm"></ion-icon>
+        {{ syncingAmazon() ? 'Syncing…' : 'Sync from Amazon' }}
+      </button>
       <button (click)="refresh.emit()" class="btn-primary flex-shrink-0 gap-2">
         <ion-icon name="refresh" class="text-sm"></ion-icon>
         Refresh

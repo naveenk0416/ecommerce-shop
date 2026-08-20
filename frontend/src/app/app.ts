@@ -167,6 +167,7 @@ export class App {
   loadingMarketplaceConnections = signal(false);
   connectingAmazon = signal(false);
   connectingFlipkart = signal(false);
+  syncingAmazonInventory = signal(false);
   disconnectingMarketplace = signal<'amazon' | 'flipkart' | null>(null);
   marketplaceConnectionMessage = signal<string | null>(null);
   /** Set when we've landed here via Amazon's own "Manage" link (the Amazon-initiated OAuth entry
@@ -767,6 +768,34 @@ export class App {
     this.selectedImage.set(listing.originalImage);
     this.processedImage.set(listing.processedImage);
     this.navigateTo('home');
+  }
+
+  /** Pulls the seller's Amazon catalog into Inventory via the Reports API — can take up to
+   * ~90s since Amazon's report generation is asynchronous. */
+  async syncAmazonInventory() {
+    this.syncingAmazonInventory.set(true);
+    try {
+      const result = await this.marketplaceConnections.syncAmazonInventory();
+      this.refreshListings();
+      const toast = await this.toastController?.create?.({
+        message: `Synced ${result.total} Amazon listings (${result.imported} new, ${result.updated} updated).`,
+        duration: 3000,
+        color: 'success',
+        position: 'bottom',
+      });
+      if (toast) await toast.present();
+    } catch (error) {
+      console.error('Failed to sync Amazon inventory', error);
+      const toast = await this.toastController?.create?.({
+        message: (error instanceof Error && error.message) || 'Failed to sync Amazon inventory. Please try again.',
+        duration: 4000,
+        color: 'danger',
+        position: 'bottom',
+      });
+      if (toast) await toast.present();
+    } finally {
+      this.syncingAmazonInventory.set(false);
+    }
   }
 
   /** One-time re-fetch of listings, used by the Refresh button on the inventory page. */

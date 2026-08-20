@@ -43,6 +43,14 @@ export class MarketplaceConnectionsService {
     return redirectUrl;
   }
 
+  /** Pulls the seller's full Amazon catalog into Inventory (upserted by SKU). Can take up to
+   * ~90s — Amazon's report generation is asynchronous and this awaits the whole poll loop. */
+  async syncAmazonInventory(): Promise<{ imported: number; updated: number; total: number }> {
+    return apiFetch<{ imported: number; updated: number; total: number }>('/marketplace-connections/amazon/sync-inventory', {
+      method: 'POST',
+    });
+  }
+
   /** Returns Flipkart's authorization URL — same navigation pattern as getAmazonAuthorizeUrl(). */
   async getFlipkartAuthorizeUrl(): Promise<string> {
     const { authorizeUrl } = await apiFetch<{ authorizeUrl: string }>('/marketplace-connections/flipkart/connect', {

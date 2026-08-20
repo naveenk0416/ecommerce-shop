@@ -769,10 +769,12 @@
             } @else if (mainView() === 'products') {
               <app-products
                 [listings]="myListings()"
+                [syncingAmazon]="syncingAmazonInventory()"
                 (view)="viewListing($event)"
                 (delete)="deleteListing($event)"
                 (addManual)="handleAddManualProduct($event)"
-                (refresh)="refreshListings()">
+                (refresh)="refreshListings()"
+                (syncAmazon)="syncAmazonInventory()">
               </app-products>
             } @else if (mainView() === 'admin') {
               <app-admin (view)="viewListing($event)"></app-admin>

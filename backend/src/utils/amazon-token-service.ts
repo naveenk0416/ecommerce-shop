@@ -57,7 +57,6 @@ export async function getAccessToken(uid: string): Promise<string> {
       client_secret: clientSecret,
     }),
   });
-
   const body = await response.json() as { access_token?: string; expires_in?: number; error?: string; error_description?: string };
 
   if (!response.ok) {

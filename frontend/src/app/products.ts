@@ -12,7 +12,7 @@ import {
   cube, cubeOutline, search, refresh,
   eye, trash, alertCircle, add,
   pricetag, barcodeOutline, chevronDown, close,
-  save, list, cart, paperPlane
+  save, list, cart, paperPlane, logoAmazon
 } from 'ionicons/icons';
 
 @Component({
@@ -37,13 +37,15 @@ export class Products {
   delete = output<string>();
   addManual = output<Partial<Listing>>();
   refresh = output<void>();
+  syncAmazon = output<void>();
+  syncingAmazon = input<boolean>(false);
   searchQuery = '';
 
   constructor() {
     addIcons({
       cube, cubeOutline, search, refresh, eye, trash,
       alertCircle, add, pricetag, barcodeOutline,
-      chevronDown, close, save, list, cart, paperPlane
+      chevronDown, close, save, list, cart, paperPlane, logoAmazon
     });
   }
 
