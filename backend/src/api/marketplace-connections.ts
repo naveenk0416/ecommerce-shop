@@ -499,8 +499,13 @@ router.get('/amazon/product-type-schema', authMiddleware, async (req, res) => {
     };
 
     // Always include purchasable_offer/fulfillment_availability even though the schema doesn't
-    // mark them "required" — a listing needs a price and stock to actually be sellable.
-    const attributeNames = Array.from(new Set([...required, 'purchasable_offer', 'fulfillment_availability']));
+    // mark them "required" — a listing needs a price and stock to actually be sellable. An
+    // explicit ?attributes= list adds more (or replaces required entirely with ?required=false)
+    // — useful for inspecting attributes Amazon's real submission validation flagged as missing
+    // that weren't in the schema's own declared "required" array (a known gap between the two).
+    const extraAttributes = String(req.query['attributes'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const baseNames = req.query['required'] === 'false' ? [] : required;
+    const attributeNames = Array.from(new Set([...baseNames, ...extraAttributes, 'purchasable_offer', 'fulfillment_availability']));
     const attributes = attributeNames.map(summarizeAttribute);
 
     res.json({ productType, required, attributes, totalProperties: Object.keys(properties).length });
