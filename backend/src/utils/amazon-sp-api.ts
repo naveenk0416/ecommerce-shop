@@ -105,12 +105,21 @@ export async function fetchMerchantListingsReport(uid: string, reportType: strin
   }
   const rawBuffer = Buffer.from(await fileResponse.arrayBuffer());
   const textBuffer = compressionAlgorithm === 'GZIP' ? zlib.gunzipSync(rawBuffer) : rawBuffer;
-  const text = textBuffer.toString('utf-8');
+  // Strip a leading UTF-8 BOM if present — Amazon's flat-file reports sometimes include one,
+  // which would otherwise corrupt the *first* header's key (e.g. "item-name" silently becomes
+  // "﻿item-name"), making every row's row['item-name'] lookup come back undefined.
+  const BOM = '﻿';
+  const text = textBuffer.toString('utf-8').replace(new RegExp(`^${BOM}`), '');
 
   const lines = text.split(/\r?\n/).filter((line) => line.length > 0);
   if (lines.length === 0) return [];
 
   const headers = lines[0].split('\t');
+  // TEMPORARY: logs the actual column names this report came back with, so a field-mapping
+  // mismatch (e.g. name/image showing up wrong) can be diagnosed from Render logs precisely
+  // instead of guessed at — remove once the mapping in the sync route is confirmed correct.
+  console.error('Amazon report headers:', JSON.stringify(headers));
+
   return lines.slice(1).map((line) => {
     const cells = line.split('\t');
     const row: Record<string, string> = {};
