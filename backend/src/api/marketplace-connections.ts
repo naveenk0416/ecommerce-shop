@@ -344,7 +344,12 @@ router.post('/amazon/sync-inventory', authMiddleware, async (req, res) => {
       else imported += 1;
     }
 
-    res.json({ imported, updated, total: rows.length });
+    // TEMPORARY: surfaces a few raw image-url values in the API response itself (visible in the
+    // browser's Network tab / console), since reading Render's server logs has been the actual
+    // blocker so far, not the underlying bug. Remove once the image mapping is confirmed correct.
+    const debugImageSample = rows.slice(0, 5).map((r) => ({ sku: r['seller-sku'], imageUrl: r['image-url'] }));
+
+    res.json({ imported, updated, total: rows.length, debugImageSample });
   } catch (err: any) {
     if (err instanceof AmazonReauthorizationRequiredError) {
       res.status(409).json({ error: 'Your Amazon authorization is no longer valid. Please reconnect Amazon and try again.' });

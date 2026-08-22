@@ -86,6 +86,9 @@ export class OptimizeInventory {
     this.syncingAmazon.set(true);
     try {
       const result = await this.marketplaceConnections.syncAmazonInventory();
+      // TEMPORARY: see the matching TEMPORARY block in the backend route — remove both once the
+      // image mapping is confirmed correct.
+      console.log('%cAmazon sync debug — sample image-url values:', 'font-weight: bold; font-size: 13px;', result.debugImageSample);
       this.snackBar.open(`Synced ${result.total} Amazon listings (${result.imported} new, ${result.updated} updated).`, 'Dismiss', { duration: 4000 });
     } catch (error) {
       this.snackBar.open((error instanceof Error && error.message) || 'Failed to sync Amazon inventory. Please try again.', 'Dismiss', { duration: 5000 });
