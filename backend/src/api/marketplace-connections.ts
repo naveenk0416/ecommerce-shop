@@ -474,10 +474,32 @@ router.get('/amazon/product-type-schema', authMiddleware, async (req, res) => {
     const properties = schema?.properties || {};
     const required: string[] = schema?.required || [];
 
-    // One level deeper than before: each attribute's value is an array of objects (e.g.
-    // item_name -> [{ value, language_tag }]) — this pulls out that object's own sub-fields,
-    // falling back to the first oneOf variant if the schema expresses it that way instead of a
-    // flat properties object (Amazon's schemas mix both styles across attributes).
+    // ?listAllNames=true returns just the full property name list — cheap and authoritative,
+    // for finding an attribute's real name by searching rather than guessing snake_case
+    // conversions of Amazon's human-readable error labels (several guesses have been wrong).
+    if (req.query['listAllNames'] === 'true') {
+      res.json({ productType, allPropertyNames: Object.keys(properties).sort() });
+      return;
+    }
+
+    const summarizeFields = (itemProps: Record<string, any>) => Object.keys(itemProps).map((k) => {
+      const field = itemProps[k] || {};
+      const nested = field.type === 'object' && field.properties ? field.properties : null;
+      return {
+        name: k,
+        type: field.type,
+        enum: field.enum,
+        description: field.description,
+        // One more level for object-typed sub-fields (e.g. item_dimensions.length is itself an
+        // object with its own value/unit) — avoids yet another round trip for those.
+        nestedFields: nested ? summarizeFields(nested) : undefined,
+      };
+    });
+
+    // Each attribute's value is an array of objects (e.g. item_name -> [{ value, language_tag }])
+    // — this pulls out that object's own sub-fields, falling back to the first oneOf variant if
+    // the schema expresses it that way instead of a flat properties object (Amazon's schemas mix
+    // both styles across attributes).
     const summarizeAttribute = (key: string) => {
       const prop = properties[key];
       if (!prop) return { name: key, missing: true };
@@ -489,12 +511,7 @@ router.get('/amazon/product-type-schema', authMiddleware, async (req, res) => {
         description: prop.description,
         oneOfVariantCount: prop.items?.oneOf?.length,
         itemRequired: itemSchema?.required,
-        fields: Object.keys(itemProps).map((k) => ({
-          name: k,
-          type: itemProps[k]?.type,
-          enum: itemProps[k]?.enum,
-          description: itemProps[k]?.description,
-        })),
+        fields: summarizeFields(itemProps),
       };
     };
 
