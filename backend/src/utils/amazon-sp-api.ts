@@ -123,6 +123,65 @@ export async function fetchMerchantListingsReport(uid: string, reportType: strin
   });
 }
 
+interface ListingsPatchResponse {
+  sku?: string;
+  status?: 'ACCEPTED' | 'VALID' | 'INVALID';
+  issues?: Array<{ code?: string; message?: string; severity?: string }>;
+}
+
+export interface PublishResult {
+  ok: boolean;
+  issues?: Array<{ code?: string; message?: string; severity?: string }>;
+}
+
+/** Pushes price and quantity to an existing Amazon listing via the Listings Items API's partial
+ * update (JSON Patch, RFC 6902). "productType": "PRODUCT" is the generic value Amazon's own docs
+ * use for this kind of patch — patching purchasable_offer/fulfillment_availability doesn't
+ * require the listing's real category-specific product type the way creating a new listing
+ * would. Amazon validates the patch and returns `issues` describing anything it rejected, which
+ * is surfaced to the caller rather than assumed to have succeeded. */
+export async function updateAmazonListingPriceAndQuantity(
+  uid: string,
+  sellerId: string,
+  sku: string,
+  price: number,
+  quantity: number,
+): Promise<PublishResult> {
+  const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID });
+  const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      productType: 'PRODUCT',
+      patches: [
+        {
+          op: 'replace',
+          path: '/attributes/purchasable_offer',
+          value: [
+            {
+              marketplace_id: INDIA_MARKETPLACE_ID,
+              currency: 'INR',
+              audience: 'ALL',
+              our_price: [{ schedule: [{ value_with_tax: price }] }],
+            },
+          ],
+        },
+        {
+          op: 'replace',
+          path: '/attributes/fulfillment_availability',
+          value: [{ fulfillment_channel_code: 'DEFAULT', quantity }],
+        },
+      ],
+    }),
+  });
+
+  const body = await response.json() as ListingsPatchResponse;
+  if (!response.ok || body.status === 'INVALID') {
+    console.error('Amazon listing update failed', sku, response.status, JSON.stringify(body.issues));
+    return { ok: false, issues: body.issues };
+  }
+  return { ok: true, issues: body.issues };
+}
+
 interface CatalogItemImagesResponse {
   images?: Array<{ marketplaceId: string; images: Array<{ variant: string; link: string }> }>;
 }

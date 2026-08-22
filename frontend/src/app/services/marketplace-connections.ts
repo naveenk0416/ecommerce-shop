@@ -58,6 +58,21 @@ export class MarketplaceConnectionsService {
     });
   }
 
+  /** Pushes a Listing's saved price/quantity back to Amazon — only works for listings with
+   * source: 'amazon' (i.e. already synced from there). */
+  async publishAmazonListing(listingId: string): Promise<{ ok: true }> {
+    return apiFetch(`/marketplace-connections/amazon/publish/${encodeURIComponent(listingId)}`, {
+      method: 'POST',
+    });
+  }
+
+  /** Same as publishAmazonListing, for Flipkart. */
+  async publishFlipkartListing(listingId: string): Promise<{ ok: true }> {
+    return apiFetch(`/marketplace-connections/flipkart/publish/${encodeURIComponent(listingId)}`, {
+      method: 'POST',
+    });
+  }
+
   /** Returns Flipkart's authorization URL — same navigation pattern as getAmazonAuthorizeUrl(). */
   async getFlipkartAuthorizeUrl(): Promise<string> {
     const { authorizeUrl } = await apiFetch<{ authorizeUrl: string }>('/marketplace-connections/flipkart/connect', {

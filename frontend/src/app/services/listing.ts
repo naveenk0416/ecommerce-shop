@@ -14,6 +14,9 @@ export interface Listing extends ProductDetails {
   /** Set when this listing was imported from a marketplace sync rather than added manually. */
   source?: 'amazon' | 'flipkart';
   sku?: string;
+  mrp?: number;
+  flipkartProductId?: string;
+  flipkartLocationId?: string;
 }
 
 export interface Sale {

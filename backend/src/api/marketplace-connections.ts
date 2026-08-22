@@ -5,8 +5,8 @@ import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from
 import { encryptToken } from '../utils/token-crypto.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
-import { fetchMerchantListingsReport, fetchCatalogItemImage } from '../utils/amazon-sp-api.js';
-import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku } from '../utils/flipkart-listings-api.js';
+import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity } from '../utils/amazon-sp-api.js';
+import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku, updateFlipkartListingPriceAndInventory } from '../utils/flipkart-listings-api.js';
 
 const router = express.Router();
 // Amazon redirects the seller's browser directly to these two paths, so they must exactly match
@@ -394,7 +394,7 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
   try {
     const items = await fetchAllFlipkartListings(uid);
     const skus = items.map((item) => item.sku).filter(Boolean);
-    const quantities = await fetchFlipkartInventoryBySku(uid, skus);
+    const inventoryDetails = await fetchFlipkartInventoryBySku(uid, skus);
 
     let imported = 0;
     let updated = 0;
@@ -403,7 +403,7 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
       if (!sku) continue;
 
       const price = item.product_description?.ssp || item.product_description?.mrp || 0;
-      const quantity = quantities.get(sku) ?? 0;
+      const detail = inventoryDetails.get(sku);
 
       const alreadyExists = await Listing.exists({ uid, sku });
       await Listing.findOneAndUpdate(
@@ -413,10 +413,12 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
             uid,
             sku,
             flipkartProductId: item.productId || undefined,
+            flipkartLocationId: detail?.locationId || undefined,
             source: 'flipkart',
             name: item.product_name || sku,
-            quantity,
+            quantity: detail?.quantity ?? 0,
             sellingPrice: price,
+            mrp: item.product_description?.mrp || price,
             priceINR: `₹${price}`,
             originalImage: item.product_image_url || '',
             listingStatus: item.status || undefined,
@@ -436,6 +438,93 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
     }
     console.error('Flipkart inventory sync error', err);
     res.status(500).json({ error: err?.message || 'Failed to sync Flipkart inventory.' });
+  }
+});
+
+// Pushes a Listing's currently-saved price/quantity back to whichever marketplace it was synced
+// from. Only meaningful for listings with source: 'amazon' (i.e. ones that already exist there
+// with a known sku) — creating a brand-new marketplace listing from scratch needs far more data
+// (category-specific attributes, GTIN, shipping info) than this app collects today.
+router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const uid = authUser._id.toString();
+
+  await ensureConnected();
+  try {
+    const listing = await Listing.findOne({ _id: req.params['listingId'], uid });
+    if (!listing || listing.source !== 'amazon' || !listing.sku) {
+      res.status(400).json({ error: 'This product was not synced from Amazon, so there is nothing to publish it to.' });
+      return;
+    }
+
+    const connection = await MarketplaceConnection.findOne({ uid, marketplace: 'amazon', status: 'connected' });
+    if (!connection?.sellingPartnerId) {
+      res.status(409).json({ error: 'Your Amazon Selling Partner ID is missing — please reconnect Amazon and try again.' });
+      return;
+    }
+
+    const result = await updateAmazonListingPriceAndQuantity(
+      uid,
+      connection.sellingPartnerId,
+      listing.sku,
+      listing.sellingPrice || 0,
+      listing.quantity || 0,
+    );
+
+    if (!result.ok) {
+      const detail = (result.issues || []).map((i) => i.message).filter(Boolean).join('; ');
+      res.status(422).json({ error: detail ? `Amazon rejected the update: ${detail}` : 'Amazon rejected the update.' });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err: any) {
+    if (err instanceof AmazonReauthorizationRequiredError) {
+      res.status(409).json({ error: 'Your Amazon authorization is no longer valid. Please reconnect Amazon and try again.' });
+      return;
+    }
+    console.error('Amazon publish error', err);
+    res.status(500).json({ error: err?.message || 'Failed to publish to Amazon.' });
+  }
+});
+
+// Same idea for Flipkart — needs flipkartProductId + flipkartLocationId, both captured during a
+// prior "Sync from Flipkart" run.
+router.post('/flipkart/publish/:listingId', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const uid = authUser._id.toString();
+
+  await ensureConnected();
+  try {
+    const listing = await Listing.findOne({ _id: req.params['listingId'], uid });
+    if (!listing || listing.source !== 'flipkart' || !listing.sku || !listing.flipkartProductId || !listing.flipkartLocationId) {
+      res.status(400).json({ error: 'This product is missing Flipkart details needed to publish — try running "Sync from Flipkart" again first.' });
+      return;
+    }
+
+    const sellingPrice = listing.sellingPrice || 0;
+    const result = await updateFlipkartListingPriceAndInventory(
+      uid,
+      listing.sku,
+      listing.flipkartProductId,
+      listing.mrp || sellingPrice,
+      sellingPrice,
+      listing.flipkartLocationId,
+      listing.quantity || 0,
+    );
+
+    if (!result.ok) {
+      const detail = (result.issues || []).map((i) => i.description).filter(Boolean).join('; ');
+      res.status(422).json({ error: detail ? `Flipkart rejected the update: ${detail}` : 'Flipkart rejected the update.' });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err: any) {
+    if (err instanceof FlipkartReauthorizationRequiredError) {
+      res.status(409).json({ error: 'Your Flipkart authorization is no longer valid. Please reconnect Flipkart and try again.' });
+      return;
+    }
+    console.error('Flipkart publish error', err);
+    res.status(500).json({ error: err?.message || 'Failed to publish to Flipkart.' });
   }
 });
 

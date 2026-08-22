@@ -99,6 +99,17 @@
                   <td>₹{{ listing.sellingPrice || 0 | number: '1.0-0' }}</td>
                   <td [class.profit--positive]="getProfit(listing) > 0">₹{{ getProfit(listing) | number: '1.0-0' }}</td>
                   <td class="actions-cell">
+                    @if (listing.source) {
+                      <button
+                        mat-icon-button
+                        (click)="publish(listing)"
+                        [disabled]="publishingListingId() === listing.id"
+                        [matTooltip]="'Publish price/stock to ' + (listing.source === 'amazon' ? 'Amazon' : 'Flipkart')"
+                        [attr.aria-label]="'Publish ' + listing.name + ' to ' + (listing.source === 'amazon' ? 'Amazon' : 'Flipkart')"
+                      >
+                        <mat-icon>publish</mat-icon>
+                      </button>
+                    }
                     <button mat-icon-button (click)="openSaleDialog(listing)" matTooltip="Log sale" aria-label="Log sale for {{ listing.name }}">
                       <mat-icon>point_of_sale</mat-icon>
                     </button>

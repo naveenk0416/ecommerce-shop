@@ -45,6 +45,9 @@ export class OptimizeInventory {
   searchQuery = signal('');
   syncingAmazon = signal(false);
   syncingFlipkart = signal(false);
+  /** Id of the listing currently being published, if any — drives the per-row loading state on
+   * the Publish button (only one publish in flight at a time, simplest to reason about). */
+  publishingListingId = signal<string | null>(null);
 
   filteredListings = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
@@ -130,6 +133,27 @@ export class OptimizeInventory {
           .then(() => this.snackBar.open('Product added successfully.', 'Dismiss', { duration: 3000 }))
           .catch(() => this.snackBar.open('Failed to add product. Please try again.', 'Dismiss', { duration: 4000 }));
       });
+  }
+
+  /** Pushes a listing's currently-saved price/quantity back to whichever marketplace it was
+   * synced from. Only shown in the template for listings with a source, so `listing.id` and the
+   * source-specific ids (sku, flipkartProductId, etc.) are expected to already be present. */
+  async publish(listing: Listing): Promise<void> {
+    if (!listing.id || !listing.source) return;
+    this.publishingListingId.set(listing.id);
+    try {
+      if (listing.source === 'amazon') {
+        await this.marketplaceConnections.publishAmazonListing(listing.id);
+      } else {
+        await this.marketplaceConnections.publishFlipkartListing(listing.id);
+      }
+      const marketplaceName = listing.source === 'amazon' ? 'Amazon' : 'Flipkart';
+      this.snackBar.open(`Published to ${marketplaceName}: ₹${listing.sellingPrice || 0}, ${listing.quantity ?? 0} units.`, 'Dismiss', { duration: 4000 });
+    } catch (error) {
+      this.snackBar.open((error instanceof Error && error.message) || 'Failed to publish. Please try again.', 'Dismiss', { duration: 6000 });
+    } finally {
+      this.publishingListingId.set(null);
+    }
   }
 
   openEditDialog(listing: Listing): void {
