@@ -5,7 +5,7 @@ import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from
 import { encryptToken } from '../utils/token-crypto.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
-import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity } from '../utils/amazon-sp-api.js';
+import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema } from '../utils/amazon-sp-api.js';
 import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku, updateFlipkartListingPriceAndInventory } from '../utils/flipkart-listings-api.js';
 
 const router = express.Router();
@@ -438,6 +438,56 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
     }
     console.error('Flipkart inventory sync error', err);
     res.status(500).json({ error: err?.message || 'Failed to sync Flipkart inventory.' });
+  }
+});
+
+// TEMPORARY: inspection endpoints for scoping the "create a new Amazon listing" feature —
+// let us see a real product type's actual required attributes instead of guessing from
+// documentation. Remove once that feature's payload shape is settled.
+router.get('/amazon/product-types', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const uid = authUser._id.toString();
+  const keywords = String(req.query['keywords'] || '');
+  if (!keywords) {
+    res.status(400).json({ error: 'Missing keywords query param.' });
+    return;
+  }
+  try {
+    const productTypes = await searchAmazonProductTypes(uid, keywords);
+    res.json({ productTypes });
+  } catch (err: any) {
+    console.error('Amazon product type search error', err);
+    res.status(500).json({ error: err?.message || 'Failed to search product types.' });
+  }
+});
+
+router.get('/amazon/product-type-schema', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const uid = authUser._id.toString();
+  const productType = String(req.query['productType'] || '');
+  if (!productType) {
+    res.status(400).json({ error: 'Missing productType query param.' });
+    return;
+  }
+  try {
+    const schema = await getAmazonProductTypeSchema(uid, productType) as any;
+    // Summarized, not the raw schema — these are often huge and deeply nested (oneOf/allOf),
+    // impractical to read directly. Shows just the top-level required attributes.
+    const properties = schema?.properties || {};
+    const required: string[] = schema?.required || [];
+    const requiredAttributes = required.map((key) => {
+      const prop = properties[key] || {};
+      return {
+        name: key,
+        type: prop.type,
+        description: prop.description,
+        enum: prop.items?.enum || prop.enum,
+      };
+    });
+    res.json({ productType, requiredAttributes, totalProperties: Object.keys(properties).length });
+  } catch (err: any) {
+    console.error('Amazon product type schema error', err);
+    res.status(500).json({ error: err?.message || 'Failed to fetch product type schema.' });
   }
 });
 

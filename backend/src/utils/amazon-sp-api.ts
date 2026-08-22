@@ -182,6 +182,49 @@ export async function updateAmazonListingPriceAndQuantity(
   return { ok: true, issues: body.issues };
 }
 
+export interface ProductTypeSummary { name: string; displayName: string }
+
+/** Searches Amazon's product type catalog by keyword — the first step in figuring out which
+ * category-specific schema a new listing needs to conform to. */
+export async function searchAmazonProductTypes(uid: string, keywords: string): Promise<ProductTypeSummary[]> {
+  const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID, keywords });
+  const response = await spApiFetch(uid, `/definitions/2020-09-01/productTypes?${params.toString()}`);
+  if (!response.ok) {
+    console.error('Amazon product type search failed', response.status, await response.text());
+    throw new Error('Failed to search Amazon product types.');
+  }
+  const body = await response.json() as { productTypes?: Array<{ name: string; displayName: string }> };
+  return body.productTypes || [];
+}
+
+/** Fetches the full JSON Schema for a given product type — this defines exactly which
+ * attributes are required/optional to create a listing of that type. The definition endpoint
+ * itself only returns a link to the actual schema document, which is downloaded separately
+ * (same two-step pattern as the Reports API's document download). */
+export async function getAmazonProductTypeSchema(uid: string, productType: string): Promise<any> {
+  const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID, requirements: 'LISTING' });
+  const response = await spApiFetch(uid, `/definitions/2020-09-01/productTypes/${encodeURIComponent(productType)}?${params.toString()}`);
+  if (!response.ok) {
+    console.error('Amazon get product type definition failed', productType, response.status, await response.text());
+    throw new Error('Failed to fetch the Amazon product type definition.');
+  }
+  const body = await response.json() as { schema?: { link?: { resource?: string } } };
+  const schemaUrl = body.schema?.link?.resource;
+  if (!schemaUrl) throw new Error('Amazon product type definition response had no schema link.');
+
+  // Try unauthenticated first (Reports API's document links are presigned S3 URLs needing no
+  // Amazon auth) — fall back to an authenticated fetch if that's rejected, since it's unconfirmed
+  // whether this particular link works the same way.
+  let schemaResponse = await fetch(schemaUrl);
+  if (!schemaResponse.ok) {
+    schemaResponse = await spApiFetch(uid, schemaUrl.replace(SP_API_HOST, ''));
+  }
+  if (!schemaResponse.ok) {
+    throw new Error('Failed to download the Amazon product type schema document.');
+  }
+  return schemaResponse.json();
+}
+
 interface CatalogItemImagesResponse {
   images?: Array<{ marketplaceId: string; images: Array<{ variant: string; link: string }> }>;
 }
