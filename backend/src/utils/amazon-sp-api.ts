@@ -115,21 +115,30 @@ export async function fetchMerchantListingsReport(uid: string, reportType: strin
   if (lines.length === 0) return [];
 
   const headers = lines[0].split('\t');
-  // TEMPORARY: logs the actual column names this report came back with, so a field-mapping
-  // mismatch (e.g. name/image showing up wrong) can be diagnosed from Render logs precisely
-  // instead of guessed at — remove once the mapping in the sync route is confirmed correct.
-  console.error('Amazon report headers:', JSON.stringify(headers));
-
-  const rows = lines.slice(1).map((line) => {
+  return lines.slice(1).map((line) => {
     const cells = line.split('\t');
     const row: Record<string, string> = {};
     headers.forEach((header, i) => { row[header] = cells[i] ?? ''; });
     return row;
   });
+}
 
-  // TEMPORARY: confirms whether Amazon actually populates image-url in this report, or leaves
-  // it blank (a known limitation of GET_MERCHANT_LISTINGS_ALL_DATA) — remove once resolved.
-  console.error('Amazon report sample image-url values:', JSON.stringify(rows.slice(0, 5).map((r) => ({ sku: r['seller-sku'], imageUrl: r['image-url'] }))));
+interface CatalogItemImagesResponse {
+  images?: Array<{ marketplaceId: string; images: Array<{ variant: string; link: string }> }>;
+}
 
-  return rows;
+/** Looks up a single ASIN's main product image via the Catalog Items API — the merchant
+ * listings report itself doesn't reliably carry images, so this is a separate lookup.
+ * Rate limited by Amazon to 2 requests/second (burst 2); callers must space calls accordingly. */
+export async function fetchCatalogItemImage(uid: string, asin: string): Promise<string | null> {
+  const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID, includedData: 'images' });
+  const response = await spApiFetch(uid, `/catalog/2022-04-01/items/${encodeURIComponent(asin)}?${params.toString()}`);
+  if (!response.ok) {
+    console.error('Amazon get catalog item failed', asin, response.status, await response.text());
+    return null;
+  }
+  const body = await response.json() as CatalogItemImagesResponse;
+  const marketplaceImages = body.images?.find((m) => m.marketplaceId === INDIA_MARKETPLACE_ID)?.images ?? body.images?.[0]?.images;
+  const main = marketplaceImages?.find((img) => img.variant === 'MAIN') ?? marketplaceImages?.[0];
+  return main?.link ?? null;
 }

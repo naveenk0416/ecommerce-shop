@@ -45,7 +45,7 @@ export class MarketplaceConnectionsService {
 
   /** Pulls the seller's full Amazon catalog into Inventory (upserted by SKU). Can take up to
    * ~90s — Amazon's report generation is asynchronous and this awaits the whole poll loop. */
-  async syncAmazonInventory(): Promise<{ imported: number; updated: number; total: number; debugImageSample?: { sku: string; imageUrl: string }[] }> {
+  async syncAmazonInventory(): Promise<{ imported: number; updated: number; total: number; imagesFetched: number }> {
     return apiFetch('/marketplace-connections/amazon/sync-inventory', {
       method: 'POST',
     });

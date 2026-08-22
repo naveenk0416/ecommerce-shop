@@ -5,7 +5,7 @@ import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from
 import { encryptToken } from '../utils/token-crypto.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
-import { fetchMerchantListingsReport } from '../utils/amazon-sp-api.js';
+import { fetchMerchantListingsReport, fetchCatalogItemImage } from '../utils/amazon-sp-api.js';
 import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku } from '../utils/flipkart-listings-api.js';
 
 const router = express.Router();
@@ -321,35 +321,59 @@ router.post('/amazon/sync-inventory', authMiddleware, async (req, res) => {
       // $set, not a plain replacement object — a bare update doc replaces the entire document in
       // MongoDB, which would wipe out costPrice/hsnCode/gstRate/etc. the seller edited by hand
       // after a previous sync.
-      await Listing.findOneAndUpdate(
-        { uid, sku },
-        {
-          $set: {
-            uid,
-            sku,
-            asin: row['asin1'] || undefined,
-            source: 'amazon',
-            name: row['item-name'] || sku,
-            description: row['item-description'] || '',
-            quantity,
-            sellingPrice: price,
-            priceINR: `₹${price}`,
-            originalImage: row['image-url'] || '',
-            listingStatus: row['status'] || undefined,
-          },
-        },
-        { upsert: true },
-      );
+      const setFields: Record<string, unknown> = {
+        uid,
+        sku,
+        asin: row['asin1'] || undefined,
+        source: 'amazon',
+        name: row['item-name'] || sku,
+        description: row['item-description'] || '',
+        quantity,
+        sellingPrice: price,
+        priceINR: `₹${price}`,
+        listingStatus: row['status'] || undefined,
+      };
+      // The report's own image-url column is reliably empty in practice — omitted (rather than
+      // set to '') so it never overwrites an image the catalog-image backfill below already
+      // filled in on a previous sync.
+      if (row['image-url']) setFields['originalImage'] = row['image-url'];
+
+      await Listing.findOneAndUpdate({ uid, sku }, { $set: setFields }, { upsert: true });
       if (alreadyExists) updated += 1;
       else imported += 1;
     }
 
-    // TEMPORARY: surfaces a few raw image-url values in the API response itself (visible in the
-    // browser's Network tab / console), since reading Render's server logs has been the actual
-    // blocker so far, not the underlying bug. Remove once the image mapping is confirmed correct.
-    const debugImageSample = rows.slice(0, 5).map((r) => ({ sku: r['seller-sku'], imageUrl: r['image-url'] }));
+    // Best-effort image backfill via the Catalog Items API, since the report above essentially
+    // never carries images. Amazon rate-limits this endpoint to 2 req/s (burst 2), and a large
+    // catalog could otherwise blow the request past typical reverse-proxy timeouts — so this is
+    // capped both by count and by a time budget, and skips ASINs whose listing already has an
+    // image (from a previous sync's backfill) so repeat syncs don't burn calls re-fetching them.
+    const IMAGE_FETCH_LIMIT = 30;
+    const IMAGE_FETCH_TIME_BUDGET_MS = 25 * 1000;
+    const IMAGE_FETCH_SPACING_MS = 600; // safely under 2 req/s
 
-    res.json({ imported, updated, total: rows.length, debugImageSample });
+    const asinsInBatch = Array.from(new Set(rows.map((r) => r['asin1']).filter(Boolean)));
+    const listingsNeedingImage = await Listing.find({
+      uid,
+      source: 'amazon',
+      asin: { $in: asinsInBatch },
+      $or: [{ originalImage: { $exists: false } }, { originalImage: '' }],
+    }).select('asin').lean() as any[];
+    const asinsNeedingImage: string[] = Array.from(new Set<string>(listingsNeedingImage.map((l: any) => l.asin as string).filter(Boolean))).slice(0, IMAGE_FETCH_LIMIT);
+
+    let imagesFetched = 0;
+    const imageDeadline = Date.now() + IMAGE_FETCH_TIME_BUDGET_MS;
+    for (const asin of asinsNeedingImage) {
+      if (Date.now() > imageDeadline) break;
+      const imageUrl = await fetchCatalogItemImage(uid, asin);
+      if (imageUrl) {
+        await Listing.updateMany({ uid, asin }, { $set: { originalImage: imageUrl } });
+        imagesFetched += 1;
+      }
+      await new Promise((resolve) => setTimeout(resolve, IMAGE_FETCH_SPACING_MS));
+    }
+
+    res.json({ imported, updated, total: rows.length, imagesFetched });
   } catch (err: any) {
     if (err instanceof AmazonReauthorizationRequiredError) {
       res.status(409).json({ error: 'Your Amazon authorization is no longer valid. Please reconnect Amazon and try again.' });
