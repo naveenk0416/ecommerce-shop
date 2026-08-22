@@ -120,10 +120,16 @@ export async function fetchMerchantListingsReport(uid: string, reportType: strin
   // instead of guessed at — remove once the mapping in the sync route is confirmed correct.
   console.error('Amazon report headers:', JSON.stringify(headers));
 
-  return lines.slice(1).map((line) => {
+  const rows = lines.slice(1).map((line) => {
     const cells = line.split('\t');
     const row: Record<string, string> = {};
     headers.forEach((header, i) => { row[header] = cells[i] ?? ''; });
     return row;
   });
+
+  // TEMPORARY: confirms whether Amazon actually populates image-url in this report, or leaves
+  // it blank (a known limitation of GET_MERCHANT_LISTINGS_ALL_DATA) — remove once resolved.
+  console.error('Amazon report sample image-url values:', JSON.stringify(rows.slice(0, 5).map((r) => ({ sku: r['seller-sku'], imageUrl: r['image-url'] }))));
+
+  return rows;
 }
