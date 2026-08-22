@@ -471,20 +471,39 @@ router.get('/amazon/product-type-schema', authMiddleware, async (req, res) => {
   }
   try {
     const schema = await getAmazonProductTypeSchema(uid, productType) as any;
-    // Summarized, not the raw schema — these are often huge and deeply nested (oneOf/allOf),
-    // impractical to read directly. Shows just the top-level required attributes.
     const properties = schema?.properties || {};
     const required: string[] = schema?.required || [];
-    const requiredAttributes = required.map((key) => {
-      const prop = properties[key] || {};
+
+    // One level deeper than before: each attribute's value is an array of objects (e.g.
+    // item_name -> [{ value, language_tag }]) — this pulls out that object's own sub-fields,
+    // falling back to the first oneOf variant if the schema expresses it that way instead of a
+    // flat properties object (Amazon's schemas mix both styles across attributes).
+    const summarizeAttribute = (key: string) => {
+      const prop = properties[key];
+      if (!prop) return { name: key, missing: true };
+      const itemSchema = prop.items?.properties ? prop.items : prop.items?.oneOf?.[0];
+      const itemProps = itemSchema?.properties || {};
       return {
         name: key,
         type: prop.type,
         description: prop.description,
-        enum: prop.items?.enum || prop.enum,
+        oneOfVariantCount: prop.items?.oneOf?.length,
+        itemRequired: itemSchema?.required,
+        fields: Object.keys(itemProps).map((k) => ({
+          name: k,
+          type: itemProps[k]?.type,
+          enum: itemProps[k]?.enum,
+          description: itemProps[k]?.description,
+        })),
       };
-    });
-    res.json({ productType, requiredAttributes, totalProperties: Object.keys(properties).length });
+    };
+
+    // Always include purchasable_offer/fulfillment_availability even though the schema doesn't
+    // mark them "required" — a listing needs a price and stock to actually be sellable.
+    const attributeNames = Array.from(new Set([...required, 'purchasable_offer', 'fulfillment_availability']));
+    const attributes = attributeNames.map(summarizeAttribute);
+
+    res.json({ productType, required, attributes, totalProperties: Object.keys(properties).length });
   } catch (err: any) {
     console.error('Amazon product type schema error', err);
     res.status(500).json({ error: err?.message || 'Failed to fetch product type schema.' });
