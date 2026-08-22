@@ -109,6 +109,15 @@
                       >
                         <mat-icon>publish</mat-icon>
                       </button>
+                    } @else {
+                      <button
+                        mat-icon-button
+                        (click)="openCreateAmazonListingDialog(listing)"
+                        matTooltip="Publish as a new Amazon listing"
+                        aria-label="Publish {{ listing.name }} as a new Amazon listing"
+                      >
+                        <mat-icon>publish</mat-icon>
+                      </button>
                     }
                     <button mat-icon-button (click)="openSaleDialog(listing)" matTooltip="Log sale" aria-label="Log sale for {{ listing.name }}">
                       <mat-icon>point_of_sale</mat-icon>

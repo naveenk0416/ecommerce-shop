@@ -1,0 +1,118 @@
+<h2 mat-dialog-title>Publish "{{ listing.name }}" to Amazon</h2>
+
+<mat-dialog-content class="create-listing-dialog">
+  <div class="step">
+    <span class="step__label">1. Find the Amazon product type</span>
+    <div class="field-row search-row">
+      <label class="field">
+        <span class="field__label">Search keywords</span>
+        <input class="field__input" [ngModel]="keywords()" (ngModelChange)="keywords.set($event)" placeholder="e.g. earrings" (keydown.enter)="search()" />
+      </label>
+      <button mat-stroked-button class="search-btn" [disabled]="searching() || !keywords().trim()" (click)="search()">
+        @if (searching()) {
+          <mat-spinner diameter="18"></mat-spinner>
+        } @else {
+          <mat-icon>search</mat-icon>
+        }
+        Search
+      </button>
+    </div>
+
+    @if (searchError()) {
+      <p class="hint hint--error">{{ searchError() }}</p>
+    }
+
+    @if (productTypes().length > 0) {
+      <div class="product-type-list">
+        @for (pt of productTypes(); track pt.name) {
+          <button
+            type="button"
+            class="product-type-chip"
+            [class.product-type-chip--selected]="selectedProductType() === pt.name"
+            (click)="selectProductType(pt.name)"
+          >
+            {{ pt.displayName }} <span class="product-type-chip__code">{{ pt.name }}</span>
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  @if (selectedProductType()) {
+    <div class="step">
+      <span class="step__label">2. Required details for {{ selectedProductType() }}</span>
+
+      @if (loadingSchema()) {
+        <div class="loading-row">
+          <mat-spinner diameter="20"></mat-spinner>
+          <span>Loading requirements…</span>
+        </div>
+      } @else if (schemaError()) {
+        <p class="hint hint--error">{{ schemaError() }}</p>
+      } @else {
+        @if (unsupportedAttributes().length > 0) {
+          <p class="hint hint--error">
+            This product type also requires "{{ unsupportedAttributes().join('", "') }}", which this form doesn't support yet.
+            Try a different, simpler product type instead.
+          </p>
+        }
+
+        @for (field of requiredFields(); track field.name) {
+          <label class="field">
+            <span class="field__label">{{ field.label }}</span>
+
+            @switch (field.kind) {
+              @case ('select') {
+                <select class="field__input" [ngModel]="fieldValues()[field.name]" (ngModelChange)="setFieldValue(field.name, $event)">
+                  @for (option of field.options; track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              }
+              @case ('textarea') {
+                <textarea
+                  class="field__input field__input--textarea"
+                  rows="3"
+                  [ngModel]="fieldValues()[field.name]"
+                  (ngModelChange)="setFieldValue(field.name, $event)"
+                ></textarea>
+              }
+              @case ('bullets') {
+                <textarea
+                  class="field__input field__input--textarea"
+                  rows="4"
+                  placeholder="One bullet point per line, up to 5"
+                  [ngModel]="fieldValues()[field.name]"
+                  (ngModelChange)="setFieldValue(field.name, $event)"
+                ></textarea>
+              }
+              @default {
+                <input class="field__input" [ngModel]="fieldValues()[field.name]" (ngModelChange)="setFieldValue(field.name, $event)" />
+              }
+            }
+          </label>
+        }
+
+        @if (requiredFields().length > 0) {
+          <p class="hint">Price (₹{{ listing.sellingPrice || 0 }}) and stock ({{ listing.quantity ?? 0 }} units) come from this product's saved values.</p>
+        }
+      }
+    </div>
+  }
+
+  @if (submitError()) {
+    <p class="hint hint--error">{{ submitError() }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="cancel()">Cancel</button>
+  <button mat-flat-button color="primary" [disabled]="!isValid() || submitting()" (click)="submit()">
+    @if (submitting()) {
+      <mat-spinner diameter="18"></mat-spinner>
+    } @else {
+      <mat-icon>publish</mat-icon>
+    }
+    {{ submitting() ? 'Publishing…' : 'Publish to Amazon' }}
+  </button>
+</mat-dialog-actions>

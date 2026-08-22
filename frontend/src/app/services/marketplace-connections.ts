@@ -16,6 +16,44 @@ export interface MarketplaceConnectionsResponse {
   flipkart: MarketplaceConnectionStatus;
 }
 
+export interface AmazonProductType {
+  name: string;
+  displayName: string;
+}
+
+export interface AmazonAttributeField {
+  name: string;
+  type?: string;
+  enum?: (string | number | boolean)[];
+  description?: string;
+}
+
+export interface AmazonAttributeSummary {
+  name: string;
+  missing?: boolean;
+  type?: string;
+  description?: string;
+  oneOfVariantCount?: number;
+  itemRequired?: string[];
+  fields?: AmazonAttributeField[];
+}
+
+export interface AmazonProductTypeSchema {
+  productType: string;
+  required: string[];
+  attributes: AmazonAttributeSummary[];
+  totalProperties: number;
+}
+
+export interface CreateAmazonListingPayload {
+  productType: string;
+  /** Attribute name -> its already-shaped value array (e.g. item_name: [{ value, language_tag }],
+   * country_of_origin: [{ value }]) — shaped by the caller using the same product type schema
+   * from getAmazonProductTypeSchema(), so this stays generic across whatever product type was
+   * picked rather than the backend hardcoding a fixed set of attribute names. */
+  attributes: Record<string, Array<Record<string, unknown>>>;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -70,6 +108,30 @@ export class MarketplaceConnectionsService {
   async publishFlipkartListing(listingId: string): Promise<{ ok: true }> {
     return apiFetch(`/marketplace-connections/flipkart/publish/${encodeURIComponent(listingId)}`, {
       method: 'POST',
+    });
+  }
+
+  /** Searches Amazon's product type catalog by keyword — first step in creating a brand-new
+   * listing for a manually-added product. */
+  async searchAmazonProductTypes(keywords: string): Promise<AmazonProductType[]> {
+    const { productTypes } = await apiFetch<{ productTypes: AmazonProductType[] }>(
+      `/marketplace-connections/amazon/product-types?keywords=${encodeURIComponent(keywords)}`,
+    );
+    return productTypes;
+  }
+
+  /** Fetches the required-attribute summary for a product type, once one's been picked from
+   * search results. */
+  async getAmazonProductTypeSchema(productType: string): Promise<AmazonProductTypeSchema> {
+    return apiFetch(`/marketplace-connections/amazon/product-type-schema?productType=${encodeURIComponent(productType)}`);
+  }
+
+  /** Creates a brand-new Amazon listing for a manually-added product, using its saved
+   * price/quantity plus the category-specific attributes the seller filled in. */
+  async createAmazonListing(listingId: string, payload: CreateAmazonListingPayload): Promise<{ ok: true; sku: string }> {
+    return apiFetch(`/marketplace-connections/amazon/create-listing/${encodeURIComponent(listingId)}`, {
+      method: 'POST',
+      body: payload,
     });
   }
 

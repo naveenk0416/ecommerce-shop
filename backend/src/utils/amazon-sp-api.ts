@@ -140,6 +140,23 @@ export interface PublishResult {
  * require the listing's real category-specific product type the way creating a new listing
  * would. Amazon validates the patch and returns `issues` describing anything it rejected, which
  * is surfaced to the caller rather than assumed to have succeeded. */
+/** Builds the purchasable_offer/fulfillment_availability attribute values from a price/quantity
+ * pair — shape confirmed against a real product type schema (EARRING), not just Amazon's docs.
+ * Shared between the price/quantity patch (existing listings) and full listing creation. */
+function buildOfferAndFulfillmentAttributes(price: number, quantity: number) {
+  return {
+    purchasable_offer: [
+      {
+        marketplace_id: INDIA_MARKETPLACE_ID,
+        currency: 'INR',
+        audience: 'ALL',
+        our_price: [{ schedule: [{ value_with_tax: price }] }],
+      },
+    ],
+    fulfillment_availability: [{ fulfillment_channel_code: 'DEFAULT', quantity }],
+  };
+}
+
 export async function updateAmazonListingPriceAndQuantity(
   uid: string,
   sellerId: string,
@@ -147,29 +164,15 @@ export async function updateAmazonListingPriceAndQuantity(
   price: number,
   quantity: number,
 ): Promise<PublishResult> {
+  const { purchasable_offer, fulfillment_availability } = buildOfferAndFulfillmentAttributes(price, quantity);
   const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID });
   const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`, {
     method: 'PATCH',
     body: JSON.stringify({
       productType: 'PRODUCT',
       patches: [
-        {
-          op: 'replace',
-          path: '/attributes/purchasable_offer',
-          value: [
-            {
-              marketplace_id: INDIA_MARKETPLACE_ID,
-              currency: 'INR',
-              audience: 'ALL',
-              our_price: [{ schedule: [{ value_with_tax: price }] }],
-            },
-          ],
-        },
-        {
-          op: 'replace',
-          path: '/attributes/fulfillment_availability',
-          value: [{ fulfillment_channel_code: 'DEFAULT', quantity }],
-        },
+        { op: 'replace', path: '/attributes/purchasable_offer', value: purchasable_offer },
+        { op: 'replace', path: '/attributes/fulfillment_availability', value: fulfillment_availability },
       ],
     }),
   });
@@ -177,6 +180,37 @@ export async function updateAmazonListingPriceAndQuantity(
   const body = await response.json() as ListingsPatchResponse;
   if (!response.ok || body.status === 'INVALID') {
     console.error('Amazon listing update failed', sku, response.status, JSON.stringify(body.issues));
+    return { ok: false, issues: body.issues };
+  }
+  return { ok: true, issues: body.issues };
+}
+
+/** Creates a brand-new Amazon listing via putListingsItem. `attributes` should already contain
+ * the product-type-specific required fields (item_name, brand, bullet_point, etc.) — this adds
+ * purchasable_offer/fulfillment_availability from price/quantity so callers don't repeat that
+ * shape, matching what the price/quantity patch above uses. */
+export async function createAmazonListing(
+  uid: string,
+  sellerId: string,
+  sku: string,
+  productType: string,
+  price: number,
+  quantity: number,
+  attributes: Record<string, unknown>,
+): Promise<PublishResult> {
+  const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID });
+  const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      productType,
+      requirements: 'LISTING',
+      attributes: { ...attributes, ...buildOfferAndFulfillmentAttributes(price, quantity) },
+    }),
+  });
+
+  const body = await response.json() as ListingsPatchResponse;
+  if (!response.ok || body.status === 'INVALID') {
+    console.error('Amazon listing creation failed', sku, response.status, JSON.stringify(body.issues));
     return { ok: false, issues: body.issues };
   }
   return { ok: true, issues: body.issues };

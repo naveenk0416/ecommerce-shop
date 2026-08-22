@@ -13,6 +13,7 @@ import { MarketplaceConnectionsService } from '../../../services/marketplace-con
 import { parsePrice } from '../../../utils/price';
 import { ProductFormDialog, ProductFormResult } from './product-form-dialog';
 import { LogSaleDialog, LogSaleResult } from './log-sale-dialog';
+import { CreateAmazonListingDialog } from './create-amazon-listing-dialog';
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -154,6 +155,18 @@ export class OptimizeInventory {
     } finally {
       this.publishingListingId.set(null);
     }
+  }
+
+  /** Opens the multi-step "find product type -> fill required attributes" flow for creating a
+   * brand-new Amazon listing from a manually-added product (one with no `source` yet). */
+  openCreateAmazonListingDialog(listing: Listing): void {
+    this.dialog
+      .open<CreateAmazonListingDialog, Listing, boolean>(CreateAmazonListingDialog, { data: listing, width: '560px' })
+      .afterClosed()
+      .subscribe((created) => {
+        if (!created) return;
+        this.snackBar.open('Amazon listing created successfully.', 'Dismiss', { duration: 4000 });
+      });
   }
 
   openEditDialog(listing: Listing): void {

@@ -5,7 +5,7 @@ import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from
 import { encryptToken } from '../utils/token-crypto.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
-import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema } from '../utils/amazon-sp-api.js';
+import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema, createAmazonListing } from '../utils/amazon-sp-api.js';
 import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku, updateFlipkartListingPriceAndInventory } from '../utils/flipkart-listings-api.js';
 
 const router = express.Router();
@@ -507,6 +507,70 @@ router.get('/amazon/product-type-schema', authMiddleware, async (req, res) => {
   } catch (err: any) {
     console.error('Amazon product type schema error', err);
     res.status(500).json({ error: err?.message || 'Failed to fetch product type schema.' });
+  }
+});
+
+// Creates a brand-new Amazon listing for a manually-added product that doesn't exist there yet
+// (as opposed to the publish route below, which only updates price/quantity on a listing that
+// already exists). The seller supplies the category-specific required attributes via the
+// product-type-schema endpoint above; this fills in price/quantity from the Listing itself and
+// submits via putListingsItem. On success, the Listing is tagged source: 'amazon' with the new
+// sku, so it behaves like a synced listing for future price/stock publishes.
+router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const uid = authUser._id.toString();
+  const { productType, attributes } = req.body || {};
+
+  // Deliberately no per-attribute-name validation here — the frontend already shaped each
+  // attribute's value array (including whether it needs language_tag) using the same product
+  // type schema this route's sibling /amazon/product-type-schema exposes, so this stays generic
+  // across whatever product type the seller picked rather than hardcoding a handful of names.
+  if (!productType || !attributes || typeof attributes !== 'object' || Array.isArray(attributes)) {
+    res.status(400).json({ error: 'Missing productType or attributes for the Amazon listing.' });
+    return;
+  }
+
+  await ensureConnected();
+  try {
+    const listing = await Listing.findOne({ _id: req.params['listingId'], uid });
+    if (!listing) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    const connection = await MarketplaceConnection.findOne({ uid, marketplace: 'amazon', status: 'connected' });
+    if (!connection?.sellingPartnerId) {
+      res.status(409).json({ error: 'Your Amazon Selling Partner ID is missing — please reconnect Amazon and try again.' });
+      return;
+    }
+
+    const sku: string = listing.sku || `sa-${listing._id.toString()}`;
+
+    const result = await createAmazonListing(
+      uid,
+      connection.sellingPartnerId,
+      sku,
+      String(productType),
+      listing.sellingPrice || 0,
+      listing.quantity || 0,
+      attributes,
+    );
+
+    if (!result.ok) {
+      const detail = (result.issues || []).map((i) => i.message).filter(Boolean).join('; ');
+      res.status(422).json({ error: detail ? `Amazon rejected the listing: ${detail}` : 'Amazon rejected the listing.' });
+      return;
+    }
+
+    await Listing.findOneAndUpdate({ _id: listing._id }, { $set: { sku, source: 'amazon', listingStatus: 'ACTIVE' } });
+    res.json({ ok: true, sku });
+  } catch (err: any) {
+    if (err instanceof AmazonReauthorizationRequiredError) {
+      res.status(409).json({ error: 'Your Amazon authorization is no longer valid. Please reconnect Amazon and try again.' });
+      return;
+    }
+    console.error('Amazon create listing error', err);
+    res.status(500).json({ error: err?.message || 'Failed to create the Amazon listing.' });
   }
 });
 
