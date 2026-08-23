@@ -69,6 +69,9 @@
                   }
                 </select>
               }
+              @case ('number') {
+                <input class="field__input" type="number" min="1" [ngModel]="fieldValues()[field.name]" (ngModelChange)="setFieldValue(field.name, $event)" />
+              }
               @case ('textarea') {
                 <textarea
                   class="field__input field__input--textarea"
@@ -91,6 +94,52 @@
               }
             }
           </label>
+        }
+
+        @if (hasWeight()) {
+          <div class="field-row">
+            <label class="field">
+              <span class="field__label">Item weight</span>
+              <input class="field__input" type="number" min="0" step="any" [ngModel]="weightValue()" (ngModelChange)="weightValue.set($event)" />
+            </label>
+            <label class="field">
+              <span class="field__label">Weight unit</span>
+              <select class="field__input" [ngModel]="weightUnit()" (ngModelChange)="weightUnit.set($event)">
+                @for (unit of weightUnits(); track unit) {
+                  <option [value]="unit">{{ unit }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        }
+
+        @if (hasDimensions()) {
+          <div class="field">
+            <span class="field__label">Item dimensions</span>
+            <div class="field-row field-row--three">
+              <input class="field__input" type="number" min="0" step="any" placeholder="Length" [ngModel]="length().value" (ngModelChange)="setLength({ value: $event })" />
+              <input class="field__input" type="number" min="0" step="any" placeholder="Width" [ngModel]="width().value" (ngModelChange)="setWidth({ value: $event })" />
+              <input class="field__input" type="number" min="0" step="any" placeholder="Height" [ngModel]="height().value" (ngModelChange)="setHeight({ value: $event })" />
+            </div>
+            <select class="field__input" [ngModel]="length().unit" (ngModelChange)="setLength({ unit: $event }); setWidth({ unit: $event }); setHeight({ unit: $event })">
+              @for (unit of dimensionUnits(); track unit) {
+                <option [value]="unit">{{ unit }}</option>
+              }
+            </select>
+          </div>
+        }
+
+        @if (hasHsn()) {
+          <label class="field">
+            <span class="field__label">HSN code</span>
+            <input class="field__input" [ngModel]="hsnCode()" (ngModelChange)="hsnCode.set($event)" placeholder="e.g. 7117" />
+          </label>
+        }
+
+        @if (hasGtinExemptionOption()) {
+          <mat-checkbox [ngModel]="hasGtinExemption()" (ngModelChange)="hasGtinExemption.set($event)">
+            I don't have a GTIN/UPC/EAN barcode for this product (request self-declared exemption)
+          </mat-checkbox>
         }
 
         @if (requiredFields().length > 0) {

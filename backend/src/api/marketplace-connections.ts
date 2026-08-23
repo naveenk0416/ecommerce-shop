@@ -579,7 +579,14 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
     );
 
     if (!result.ok) {
-      const detail = (result.issues || []).map((i) => i.message).filter(Boolean).join('; ');
+      // Amazon's issue objects name the exact offending attribute(s) in `attributeNames` — surfaced
+      // alongside the human-readable message so a rejection points at a real attribute name instead
+      // of forcing a guess from the (often ambiguous) label, e.g. "'Lifestyle' is required" alone
+      // doesn't say whether that's `lifestyle_image_locator` or something else.
+      const detail = (result.issues || [])
+        .map((i) => (i.attributeNames?.length ? `${i.message} [${i.attributeNames.join(', ')}]` : i.message))
+        .filter(Boolean)
+        .join('; ');
       res.status(422).json({ error: detail ? `Amazon rejected the listing: ${detail}` : 'Amazon rejected the listing.' });
       return;
     }
@@ -627,7 +634,10 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
     );
 
     if (!result.ok) {
-      const detail = (result.issues || []).map((i) => i.message).filter(Boolean).join('; ');
+      const detail = (result.issues || [])
+        .map((i) => (i.attributeNames?.length ? `${i.message} [${i.attributeNames.join(', ')}]` : i.message))
+        .filter(Boolean)
+        .join('; ');
       res.status(422).json({ error: detail ? `Amazon rejected the update: ${detail}` : 'Amazon rejected the update.' });
       return;
     }

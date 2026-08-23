@@ -126,12 +126,12 @@ export async function fetchMerchantListingsReport(uid: string, reportType: strin
 interface ListingsPatchResponse {
   sku?: string;
   status?: 'ACCEPTED' | 'VALID' | 'INVALID';
-  issues?: Array<{ code?: string; message?: string; severity?: string }>;
+  issues?: Array<{ code?: string; message?: string; severity?: string; attributeNames?: string[] }>;
 }
 
 export interface PublishResult {
   ok: boolean;
-  issues?: Array<{ code?: string; message?: string; severity?: string }>;
+  issues?: Array<{ code?: string; message?: string; severity?: string; attributeNames?: string[] }>;
 }
 
 /** Pushes price and quantity to an existing Amazon listing via the Listings Items API's partial

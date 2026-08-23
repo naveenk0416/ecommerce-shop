@@ -26,6 +26,9 @@ export interface AmazonAttributeField {
   type?: string;
   enum?: (string | number | boolean)[];
   description?: string;
+  /** Present when this field is itself an object with its own sub-fields (e.g.
+   * item_dimensions.length -> { value, unit }) — one level deeper than `fields`. */
+  nestedFields?: AmazonAttributeField[];
 }
 
 export interface AmazonAttributeSummary {
@@ -121,9 +124,13 @@ export class MarketplaceConnectionsService {
   }
 
   /** Fetches the required-attribute summary for a product type, once one's been picked from
-   * search results. */
-  async getAmazonProductTypeSchema(productType: string): Promise<AmazonProductTypeSchema> {
-    return apiFetch(`/marketplace-connections/amazon/product-type-schema?productType=${encodeURIComponent(productType)}`);
+   * search results. `extraAttributeNames` adds attributes beyond what Amazon's schema itself
+   * declares "required" — its real submission-time validation enforces more than the static
+   * schema lists (confirmed by trial), so the create-listing dialog asks about a known set of
+   * commonly-needed extras up front rather than discovering them one rejected submission at a time. */
+  async getAmazonProductTypeSchema(productType: string, extraAttributeNames: string[] = []): Promise<AmazonProductTypeSchema> {
+    const extra = extraAttributeNames.length ? `&attributes=${encodeURIComponent(extraAttributeNames.join(','))}` : '';
+    return apiFetch(`/marketplace-connections/amazon/product-type-schema?productType=${encodeURIComponent(productType)}${extra}`);
   }
 
   /** Creates a brand-new Amazon listing for a manually-added product, using its saved
