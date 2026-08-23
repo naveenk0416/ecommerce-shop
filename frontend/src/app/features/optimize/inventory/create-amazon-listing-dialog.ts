@@ -36,6 +36,10 @@ interface DimensionValue {
 const KNOWN_EXTRA_TEXT_ATTRIBUTES = [
   'color', 'manufacturer', 'part_number', 'target_audience_keyword', 'generic_keyword',
   'item_type_name', 'packer_contact_information', 'rtip_manufacturer_contact_information',
+  // Confirmed via a live rejection's `attributeNames` (not guessed from the label) — HAIR_CARE
+  // rejected with "'Hair Type' is required but missing. [hair_type]" and "'Lifestyle' is required
+  // but missing. [lifestyle]", neither in that product type's own schema.required.
+  'hair_type', 'lifestyle',
 ];
 // Genuinely optional per its own schema description ("If a value is not provided, the system
 // will attempt a match based on the External Product ID") — rendered, but not required to be

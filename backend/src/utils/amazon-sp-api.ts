@@ -151,6 +151,12 @@ function buildOfferAndFulfillmentAttributes(price: number, quantity: number) {
         currency: 'INR',
         audience: 'ALL',
         our_price: [{ schedule: [{ value_with_tax: price }] }],
+        // Some product types (confirmed: HAIR_CARE) reject the whole purchasable_offer attribute
+        // without this, even though it's absent from the schema's own `required` array — the
+        // rejection ("Maximum Seller Allowed Price Schedule Start At does not have the expected
+        // value(s)") named `purchasable_offer` itself, not a separate top-level attribute. Mirrors
+        // our_price so it's rebuilt alongside every price change and can never trail behind it.
+        maximum_seller_allowed_price: [{ schedule: [{ value_with_tax: price, start_at: new Date().toISOString() }] }],
       },
     ],
     fulfillment_availability: [{ fulfillment_channel_code: 'DEFAULT', quantity }],
