@@ -151,13 +151,13 @@ function buildOfferAndFulfillmentAttributes(price: number, quantity: number) {
         currency: 'INR',
         audience: 'ALL',
         our_price: [{ schedule: [{ value_with_tax: price }] }],
-        // Some product types (confirmed: HAIR_CLIP) reject the whole purchasable_offer attribute
-        // without this, even though it's absent from the schema's own `required` array. Confirmed
-        // against the live schema (not guessed): schedule's start_at wants a plain "YYYY-MM-DD"
-        // string, same convention as the sibling top-level start_at/end_at attributes on
-        // purchasable_offer itself — a full ISO datetime was rejected as "not the expected
-        // value(s)". Mirrors our_price so it's rebuilt alongside every price change.
-        maximum_seller_allowed_price: [{ schedule: [{ value_with_tax: price, start_at: new Date().toISOString().slice(0, 10) }] }],
+        // maximum_seller_allowed_price is intentionally omitted: it's absent from the schema's
+        // own `required` array, and every start_at format tried so far (full ISO datetime, plain
+        // "YYYY-MM-DD") has been rejected by Amazon as "does not have the expected value(s)" —
+        // most recently on a live submission, contradicting the previous "confirmed" assumption.
+        // If a specific product type turns out to require the whole purchasable_offer attribute
+        // to include this field, that needs to be handled per-product-type once Amazon's actual
+        // expected shape for it is confirmed, not guessed again here.
       },
     ],
     fulfillment_availability: [{ fulfillment_channel_code: 'DEFAULT', quantity }],
