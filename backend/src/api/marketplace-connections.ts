@@ -482,16 +482,26 @@ router.get('/amazon/product-type-schema', authMiddleware, async (req, res) => {
       return;
     }
 
-    const summarizeFields = (itemProps: Record<string, any>) => Object.keys(itemProps).map((k) => {
+    const summarizeFields = (itemProps: Record<string, any>): any[] => Object.keys(itemProps).map((k) => {
       const field = itemProps[k] || {};
-      const nested = field.type === 'object' && field.properties ? field.properties : null;
+      // Object-typed sub-fields (e.g. item_dimensions.length is itself an object with its own
+      // value/unit) expand via their own `properties`. Array-typed sub-fields (e.g.
+      // purchasable_offer.maximum_seller_allowed_price is itself a Money-with-Schedule array, same
+      // shape as top-level our_price) need the same items.properties/items.oneOf[0] unwrapping
+      // summarizeAttribute already does for top-level attributes — without this, nested array
+      // fields like maximum_seller_allowed_price's real schedule/start_at shape stayed invisible.
+      let nested: Record<string, any> | null = null;
+      if (field.type === 'object' && field.properties) {
+        nested = field.properties;
+      } else if (field.type === 'array') {
+        const arrItemSchema = field.items?.properties ? field.items : field.items?.oneOf?.[0];
+        nested = arrItemSchema?.properties || null;
+      }
       return {
         name: k,
         type: field.type,
         enum: field.enum,
         description: field.description,
-        // One more level for object-typed sub-fields (e.g. item_dimensions.length is itself an
-        // object with its own value/unit) — avoids yet another round trip for those.
         nestedFields: nested ? summarizeFields(nested) : undefined,
       };
     });
