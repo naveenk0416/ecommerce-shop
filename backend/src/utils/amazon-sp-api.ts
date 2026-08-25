@@ -151,13 +151,17 @@ function buildOfferAndFulfillmentAttributes(price: number, quantity: number) {
         currency: 'INR',
         audience: 'ALL',
         our_price: [{ schedule: [{ value_with_tax: price }] }],
-        // maximum_seller_allowed_price is intentionally omitted: it's absent from the schema's
-        // own `required` array, and every start_at format tried so far (full ISO datetime, plain
-        // "YYYY-MM-DD") has been rejected by Amazon as "does not have the expected value(s)" —
-        // most recently on a live submission, contradicting the previous "confirmed" assumption.
-        // If a specific product type turns out to require the whole purchasable_offer attribute
-        // to include this field, that needs to be handled per-product-type once Amazon's actual
-        // expected shape for it is confirmed, not guessed again here.
+        // The live product-type schema (fetched via /amazon/product-type-schema, expanded to
+        // recurse into array-typed nested fields) confirms minimum/maximum_seller_allowed_price's
+        // schedule only accepts value_with_tax — no start_at/end_at exists in the schema at all,
+        // despite Amazon's error previously naming that exact (schema-nonexistent) path as
+        // invalid. That only happens when the account has an active Automate Pricing rule
+        // (confirmed present in Seller Central) generating its own maximum_seller_allowed_price
+        // behind the scenes when the listing doesn't supply one. Supplying real, schema-valid
+        // bounds here — pinned to the listing's own price — pre-empts that auto-generation rather
+        // than requiring every seller account to have Automate Pricing rules turned off.
+        minimum_seller_allowed_price: [{ schedule: [{ value_with_tax: price }] }],
+        maximum_seller_allowed_price: [{ schedule: [{ value_with_tax: price }] }],
       },
     ],
     fulfillment_availability: [{ fulfillment_channel_code: 'DEFAULT', quantity }],
