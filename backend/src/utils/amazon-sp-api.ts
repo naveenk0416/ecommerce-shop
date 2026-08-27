@@ -143,7 +143,7 @@ export interface PublishResult {
 /** Builds the purchasable_offer/fulfillment_availability attribute values from a price/quantity
  * pair — shape confirmed against a real product type schema (EARRING), not just Amazon's docs.
  * Shared between the price/quantity patch (existing listings) and full listing creation. */
-function buildOfferAndFulfillmentAttributes(price: number, quantity: number) {
+function buildOfferAndFulfillmentAttributes(price: number, quantity: number, mrp?: number) {
   return {
     purchasable_offer: [
       {
@@ -162,6 +162,13 @@ function buildOfferAndFulfillmentAttributes(price: number, quantity: number) {
         our_price: [{ schedule: [{ value_with_tax: price }] }],
         minimum_seller_allowed_price: [{ schedule: [{ value_with_tax: price }] }],
         maximum_seller_allowed_price: [{ schedule: [{ value_with_tax: price }] }],
+        // maximum_retail_price is what Amazon Seller Support calls "list_price" in their own
+        // troubleshooting language for this exact class of purchasable_offer validation error
+        // (per a seller forum thread confirmed by an Amazon rep) — recurring "does not have the
+        // expected value(s)" complaints on purchasable_offer sub-attributes that turned out to
+        // actually be about a missing list_price, not the named attribute itself. Never
+        // previously sent. Falls back to price when the listing has no separate MRP.
+        ...(mrp ? { maximum_retail_price: [{ schedule: [{ value_with_tax: mrp }] }] } : {}),
       },
     ],
     fulfillment_availability: [{ fulfillment_channel_code: 'DEFAULT', quantity }],
@@ -174,8 +181,9 @@ export async function updateAmazonListingPriceAndQuantity(
   sku: string,
   price: number,
   quantity: number,
+  mrp?: number,
 ): Promise<PublishResult> {
-  const { purchasable_offer, fulfillment_availability } = buildOfferAndFulfillmentAttributes(price, quantity);
+  const { purchasable_offer, fulfillment_availability } = buildOfferAndFulfillmentAttributes(price, quantity, mrp);
   const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID });
   const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`, {
     method: 'PATCH',
@@ -208,6 +216,7 @@ export async function createAmazonListing(
   price: number,
   quantity: number,
   attributes: Record<string, unknown>,
+  mrp?: number,
 ): Promise<PublishResult> {
   const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID });
   const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`, {
@@ -215,7 +224,7 @@ export async function createAmazonListing(
     body: JSON.stringify({
       productType,
       requirements: 'LISTING',
-      attributes: { ...attributes, ...buildOfferAndFulfillmentAttributes(price, quantity) },
+      attributes: { ...attributes, ...buildOfferAndFulfillmentAttributes(price, quantity, mrp) },
     }),
   });
 

@@ -586,6 +586,7 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
       listing.sellingPrice || 0,
       listing.quantity || 0,
       attributes,
+      listing.mrp || undefined,
     );
 
     if (!result.ok) {
@@ -641,6 +642,7 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
       listing.sku,
       listing.sellingPrice || 0,
       listing.quantity || 0,
+      listing.mrp || undefined,
     );
 
     if (!result.ok) {
