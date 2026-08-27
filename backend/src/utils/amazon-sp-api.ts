@@ -150,16 +150,16 @@ function buildOfferAndFulfillmentAttributes(price: number, quantity: number) {
         marketplace_id: INDIA_MARKETPLACE_ID,
         currency: 'INR',
         audience: 'ALL',
+        // purchasable_offer's own start_at/end_at (object-shaped: { value: "YYYY-MM-DD" }) are
+        // distinct from and never tried before this — every earlier attempt only touched the
+        // *nested* schedule.start_at inside maximum_seller_allowed_price, which the schema (per
+        // /amazon/product-type-schema) confirms doesn't even have a start_at field. This top-level
+        // one marks when the whole offer/pricing schedule takes effect; leaving it unset is the
+        // one remaining unexplained difference from manual Seller Central submission (which
+        // succeeds), so it's the next concrete thing to test before assuming Amazon auto-generates
+        // a broken maximum_seller_allowed_price internally regardless of payload.
+        start_at: { value: new Date().toISOString().slice(0, 10) },
         our_price: [{ schedule: [{ value_with_tax: price }] }],
-        // The live product-type schema (fetched via /amazon/product-type-schema, expanded to
-        // recurse into array-typed nested fields) confirms minimum/maximum_seller_allowed_price's
-        // schedule only accepts value_with_tax — no start_at/end_at exists in the schema at all,
-        // despite Amazon's error previously naming that exact (schema-nonexistent) path as
-        // invalid. That only happens when the account has an active Automate Pricing rule
-        // (confirmed present in Seller Central) generating its own maximum_seller_allowed_price
-        // behind the scenes when the listing doesn't supply one. Supplying real, schema-valid
-        // bounds here — pinned to the listing's own price — pre-empts that auto-generation rather
-        // than requiring every seller account to have Automate Pricing rules turned off.
         minimum_seller_allowed_price: [{ schedule: [{ value_with_tax: price }] }],
         maximum_seller_allowed_price: [{ schedule: [{ value_with_tax: price }] }],
       },
