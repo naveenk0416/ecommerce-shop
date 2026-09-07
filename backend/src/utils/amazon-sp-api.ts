@@ -141,42 +141,31 @@ export interface PublishResult {
  * would. Amazon validates the patch and returns `issues` describing anything it rejected, which
  * is surfaced to the caller rather than assumed to have succeeded. */
 /** Builds the purchasable_offer/fulfillment_availability attribute values from a price/quantity
- * pair — shape confirmed against a real product type schema (EARRING), not just Amazon's docs.
+ * pair. Shape confirmed against Amazon's own "Manage purchasable offer" doc examples:
+ *   our_price:                    [{"schedule": [{"value_with_tax": 7.0}]}]
+ *   minimum_seller_allowed_price: [{"schedule": [{"value_with_tax": 3.0}]}]
+ *   maximum_seller_allowed_price: [{"schedule": [{"value_with_tax": 50.0}]}]
+ *   discounted_price:             [{"schedule": [{"start_at": "...", "end_at": "...", "value_with_tax": 5.0}]}]
+ * `start_at`/`end_at` belong ONLY to discounted_price's schedule (a time-boxed sale price) —
+ * they don't exist on our_price/min/max's schedule at all, which is exactly why adding one there
+ * (a prior attempt, since reverted) kept failing with "does not have the expected value(s)":
+ * that's Amazon's generic message for an unrecognized field, not just a missing one.
+ * min/max_seller_allowed_price are themselves price *guardrails* for Amazon's opt-in automated
+ * pricing rules feature (per "Manage automated pricing rules with SP-API") — irrelevant to a
+ * plain listing, and actively risky here since this app set both equal to our_price, a zero-width
+ * range with no automated-pricing rule ever configured to use it. Dropped entirely.
  * Shared between the price/quantity patch (existing listings) and full listing creation. */
 function buildOfferAndFulfillmentAttributes(price: number, quantity: number, mrp?: number) {
-  // Confirmed by a live rejection: "Purchasable Offer Maximum Seller Allowed Price Schedule
-  // Start At does not have the expected value(s)" — despite the top-level purchasable_offer
-  // start_at above, each individual price's *nested* schedule entry also needs its own start_at
-  // (a full ISO 8601 date-time, distinct from the top-level one's plain-date { value } shape).
-  // Applied to every schedule below, not just maximum_seller_allowed_price, since Amazon's real
-  // validation has repeatedly turned out to enforce more per-attribute than a single rejection
-  // message reveals at once (see the schema-required gaps documented elsewhere in this file).
-  const scheduleStartAt = new Date().toISOString();
   return {
     purchasable_offer: [
       {
         marketplace_id: INDIA_MARKETPLACE_ID,
         currency: 'INR',
         audience: 'ALL',
-        // purchasable_offer's own start_at/end_at (object-shaped: { value: "YYYY-MM-DD" }) are
-        // distinct from and never tried before this — every earlier attempt only touched the
-        // *nested* schedule.start_at inside maximum_seller_allowed_price, which the schema (per
-        // /amazon/product-type-schema) confirms doesn't even have a start_at field. This top-level
-        // one marks when the whole offer/pricing schedule takes effect; leaving it unset is the
-        // one remaining unexplained difference from manual Seller Central submission (which
-        // succeeds), so it's the next concrete thing to test before assuming Amazon auto-generates
-        // a broken maximum_seller_allowed_price internally regardless of payload.
-        start_at: { value: new Date().toISOString().slice(0, 10) },
-        our_price: [{ schedule: [{ start_at: scheduleStartAt, value_with_tax: price }] }],
-        minimum_seller_allowed_price: [{ schedule: [{ start_at: scheduleStartAt, value_with_tax: price }] }],
-        maximum_seller_allowed_price: [{ schedule: [{ start_at: scheduleStartAt, value_with_tax: price }] }],
-        // maximum_retail_price is what Amazon Seller Support calls "list_price" in their own
-        // troubleshooting language for this exact class of purchasable_offer validation error
-        // (per a seller forum thread confirmed by an Amazon rep) — recurring "does not have the
-        // expected value(s)" complaints on purchasable_offer sub-attributes that turned out to
-        // actually be about a missing list_price, not the named attribute itself. Never
-        // previously sent. Falls back to price when the listing has no separate MRP.
-        ...(mrp ? { maximum_retail_price: [{ schedule: [{ start_at: scheduleStartAt, value_with_tax: mrp }] }] } : {}),
+        our_price: [{ schedule: [{ value_with_tax: price }] }],
+        // maximum_retail_price is what Amazon Seller Support calls "list_price" — falls back to
+        // price when the listing has no separate MRP.
+        ...(mrp ? { maximum_retail_price: [{ schedule: [{ value_with_tax: mrp }] }] } : {}),
       },
     ],
     fulfillment_availability: [{ fulfillment_channel_code: 'DEFAULT', quantity }],
