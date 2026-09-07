@@ -5,7 +5,7 @@ import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from
 import { encryptToken } from '../utils/token-crypto.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
-import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema, createAmazonListing } from '../utils/amazon-sp-api.js';
+import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema, createAmazonListing, getAmazonListingItem } from '../utils/amazon-sp-api.js';
 import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku, updateFlipkartListingPriceAndInventory } from '../utils/flipkart-listings-api.js';
 
 const router = express.Router();
@@ -618,6 +618,42 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
     }
     console.error('Amazon create listing error', err);
     res.status(500).json({ error: err?.message || 'Failed to create the Amazon listing.' });
+  }
+});
+
+// Diagnostic-only: reads back whatever Amazon currently has stored for this listing's SKU,
+// straight from the Listings Items API — used to tell apart "our payload is wrong" from "Amazon
+// is auto-generating/retaining an attribute server-side regardless of what we send", which looks
+// identical from the create-listing error alone when the same rejection persists across payloads
+// that no longer even include the named attribute.
+router.get('/amazon/listing-item/:listingId', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const uid = authUser._id.toString();
+
+  await ensureConnected();
+  try {
+    const listing = await Listing.findOne({ _id: req.params['listingId'], uid });
+    if (!listing) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+
+    const connection = await MarketplaceConnection.findOne({ uid, marketplace: 'amazon', status: 'connected' });
+    if (!connection?.sellingPartnerId) {
+      res.status(409).json({ error: 'Your Amazon Selling Partner ID is missing — please reconnect Amazon and try again.' });
+      return;
+    }
+
+    const sku: string = listing.sku || `sa-${listing._id.toString()}`;
+    const item = await getAmazonListingItem(uid, connection.sellingPartnerId, sku);
+    res.json(item);
+  } catch (err: any) {
+    if (err instanceof AmazonReauthorizationRequiredError) {
+      res.status(409).json({ error: 'Your Amazon authorization is no longer valid. Please reconnect Amazon and try again.' });
+      return;
+    }
+    console.error('Amazon get listing item error', err);
+    res.status(500).json({ error: err?.message || 'Failed to fetch the Amazon listing item.' });
   }
 });
 

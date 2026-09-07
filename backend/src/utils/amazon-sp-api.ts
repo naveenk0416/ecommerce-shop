@@ -233,6 +233,23 @@ export async function createAmazonListing(
   return { ok: true, issues: body.issues };
 }
 
+/** Reads back whatever Amazon currently has stored for a SKU — attributes plus any standing
+ * issues — straight from the Listings Items API. Diagnostic tool for cases where a rejection
+ * keeps naming an attribute that the outgoing payload no longer even includes (e.g.
+ * purchasable_offer.maximum_seller_allowed_price after it was removed from createAmazonListing):
+ * this shows whether Amazon is auto-generating/retaining that attribute server-side regardless
+ * of what's submitted, versus the payload actually being the problem. */
+export async function getAmazonListingItem(uid: string, sellerId: string, sku: string): Promise<any> {
+  const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID, includedData: 'attributes,issues,summaries' });
+  const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`);
+  const body = await response.json();
+  if (!response.ok) {
+    console.error('Amazon get listing item failed', sku, response.status, JSON.stringify(body));
+    throw new Error('Failed to fetch the Amazon listing item.');
+  }
+  return body;
+}
+
 export interface ProductTypeSummary { name: string; displayName: string }
 
 /** Searches Amazon's product type catalog by keyword — the first step in figuring out which
