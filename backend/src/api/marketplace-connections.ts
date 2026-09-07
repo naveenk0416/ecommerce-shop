@@ -593,9 +593,16 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
       // Amazon's issue objects name the exact offending attribute(s) in `attributeNames` — surfaced
       // alongside the human-readable message so a rejection points at a real attribute name instead
       // of forcing a guess from the (often ambiguous) label, e.g. "'Lifestyle' is required" alone
-      // doesn't say whether that's `lifestyle_image_locator` or something else.
+      // doesn't say whether that's `lifestyle_image_locator` or something else. `code` is included
+      // too (e.g. INVALID_ATTRIBUTE_VALUE vs MISSING_ATTRIBUTE) since the message text alone can't
+      // distinguish "this value is malformed" from "this attribute isn't accepted here at all" —
+      // a real distinction Amazon's wording glosses over ("does not have the expected value(s)"
+      // means different fixes depending on which one it actually is.
       const detail = (result.issues || [])
-        .map((i) => (i.attributeNames?.length ? `${i.message} [${i.attributeNames.join(', ')}]` : i.message))
+        .map((i) => {
+          const parts = [i.message, i.code ? `code: ${i.code}` : null, i.attributeNames?.length ? `attrs: ${i.attributeNames.join(', ')}` : null];
+          return parts.filter(Boolean).join(' | ');
+        })
         .filter(Boolean)
         .join('; ');
       res.status(422).json({ error: detail ? `Amazon rejected the listing: ${detail}` : 'Amazon rejected the listing.' });

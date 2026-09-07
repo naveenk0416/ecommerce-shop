@@ -237,7 +237,10 @@ export class CreateAmazonListingDialog {
   }
 
   setFieldValue(name: string, value: string): void {
-    this.fieldValues.update((v) => ({ ...v, [name]: value }));
+    // NumberValueAccessor hands back a real JS number for type="number" inputs (e.g. Number Of
+    // Items), not a string — despite $event being typed `any` here so TS doesn't catch it. Coerce
+    // at the source so every reader below can safely call .trim() on fieldValues() entries.
+    this.fieldValues.update((v) => ({ ...v, [name]: String(value ?? '') }));
   }
 
   setLength(patch: Partial<DimensionValue>): void {
@@ -252,15 +255,27 @@ export class CreateAmazonListingDialog {
     this.height.update((v) => ({ ...v, ...patch }));
   }
 
+  /** Human-readable reasons Publish is disabled — surfaced in the template so a field missed
+   * further up the (often long) form doesn't look like an unexplained stuck button. */
+  missingFields(): string[] {
+    if (!this.selectedProductType() || this.requiredFields().length === 0) return [];
+    if (this.unsupportedAttributes().length > 0) return ['Unsupported attributes: ' + this.unsupportedAttributes().join(', ')];
+
+    const values = this.fieldValues();
+    const missing = this.requiredFields()
+      .filter((field) => !field.optional && (values[field.name] || '').trim().length === 0)
+      .map((field) => field.label);
+
+    if (this.hasWeight() && !(this.weightValue() > 0)) missing.push('Item weight');
+    if (this.hasDimensions() && !(this.length().value > 0 && this.width().value > 0 && this.height().value > 0)) missing.push('Item dimensions');
+    if (this.hasHsn() && this.hsnCode().trim().length === 0) missing.push('HSN code');
+    if (this.hasGtinExemptionOption() && !this.hasGtinExemption()) missing.push('GTIN/UPC/EAN exemption checkbox');
+    return missing;
+  }
+
   isValid(): boolean {
     if (!this.selectedProductType() || this.requiredFields().length === 0 || this.unsupportedAttributes().length > 0) return false;
-    const values = this.fieldValues();
-    const simpleFieldsOk = this.requiredFields().every((field) => field.optional || (values[field.name] || '').trim().length > 0);
-    const weightOk = !this.hasWeight() || this.weightValue() > 0;
-    const dimensionsOk = !this.hasDimensions() || (this.length().value > 0 && this.width().value > 0 && this.height().value > 0);
-    const hsnOk = !this.hasHsn() || this.hsnCode().trim().length > 0;
-    const gtinOk = this.hasGtinExemption() || !this.hasGtinExemptionOption();
-    return simpleFieldsOk && weightOk && dimensionsOk && hsnOk && gtinOk;
+    return this.missingFields().length === 0;
   }
 
   cancel(): void {

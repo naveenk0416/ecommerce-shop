@@ -152,6 +152,10 @@
   @if (submitError()) {
     <p class="hint hint--error">{{ submitError() }}</p>
   }
+
+  @if (selectedProductType() && !isValid() && !submitting() && missingFields().length > 0) {
+    <p class="hint hint--error">Still needed: {{ missingFields().join(', ') }}</p>
+  }
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
