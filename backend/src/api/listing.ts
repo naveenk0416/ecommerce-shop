@@ -61,13 +61,15 @@ router.get('/:id', authMiddleware, async (req, res) => {
 // stored data URI back into real image bytes on the fly. A synced-from-Amazon listing's image is
 // already a real URL (from the merchant report/catalog lookup), so that case just redirects.
 //
-// The path ends in a literal ".jpg" (matched here as :ext and ignored — the response's real
-// Content-Type always reflects the actual stored image, regardless of what extension is in the
-// URL) because a URL with no recognizable image extension was confirmed, via live Seller Central
-// listings, to leave Amazon showing "No image available" days after publish despite this route
-// serving a verified-valid image — Amazon's own image crawler appears to sniff the URL path for
-// an extension rather than trusting the Content-Type header alone.
-router.get('/:id/image.:ext', async (req, res) => {
+// The path ends in a literal ".jpg" — not a dynamic :ext param, which under Express 5's newer
+// path-to-regexp parsing (two params split only by a literal dot) was mis-parsing :id and 500ing
+// on every request. A fixed literal suffix sidesteps that entirely; the response's real
+// Content-Type always reflects the actual stored image regardless of the URL's extension. The
+// suffix itself exists because a URL with no recognizable image extension was confirmed, via live
+// Seller Central listings, to leave Amazon showing "No image available" days after publish
+// despite this route serving a verified-valid image — Amazon's own image crawler appears to sniff
+// the URL path for an extension rather than trusting the Content-Type header alone.
+router.get('/:id/image.jpg', async (req, res) => {
   await ensureConnected();
   try {
     const listing = await Listing.findById(req.params['id']).lean();

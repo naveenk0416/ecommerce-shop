@@ -515,7 +515,7 @@ export class CreateAmazonListingDialog {
       const imageMatch = /^data:([^;]+);base64,(.+)$/.exec(source);
 
       const result = imageMatch
-        ? await this.gemini.generateStructuredFromImage<Record<string, string | number>>(prompt, imageMatch[2], imageMatch[1], { type: 'object', properties, required })
+        ? await this.gemini.generateStructuredFromImage<Record<string, string | number>>(prompt, imageMatch[2], this.normalizeImageMimeType(imageMatch[1]), { type: 'object', properties, required })
         : await this.gemini.generateStructured<Record<string, string | number>>(prompt, { type: 'object', properties, required });
 
       this.applyAiSuggestions(result);
@@ -559,6 +559,19 @@ export class CreateAmazonListingDialog {
     }
 
     return { properties, required };
+  }
+
+  /** Gemini's inlineData only accepts a specific set of image MIME types and rejects anything
+   * else with a bare "Request contains an invalid argument." — including "image/jpg", a common
+   * non-standard variant some tools emit instead of the correct "image/jpeg". Normalizes to a
+   * type Gemini actually accepts, defaulting to image/jpeg for anything unrecognized rather than
+   * passing an arbitrary stored mime type straight through. */
+  private normalizeImageMimeType(mimeType: string): string {
+    const supported = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif']);
+    const lower = mimeType.toLowerCase();
+    if (supported.has(lower)) return lower;
+    if (lower === 'image/jpg') return 'image/jpeg';
+    return 'image/jpeg';
   }
 
   private buildAiPrompt(): string {
