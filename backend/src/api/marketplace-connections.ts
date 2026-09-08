@@ -616,7 +616,15 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
         })
         .filter(Boolean)
         .join('; ');
-      res.status(422).json({ error: detail ? `Amazon rejected the listing: ${detail}` : 'Amazon rejected the listing.' });
+      // `issues` (raw, structured) rides alongside the flattened `error` string so the dialog can
+      // programmatically pull out attributeNames for "required but missing" rejections and offer
+      // to fill exactly those in, rather than only being able to display text to the user — every
+      // product type Amazon has enforces a different, undeclared set of these, so a fixed
+      // hardcoded field list can never keep up across categories.
+      res.status(422).json({
+        error: detail ? `Amazon rejected the listing: ${detail}` : 'Amazon rejected the listing.',
+        issues: result.issues || [],
+      });
       return;
     }
 

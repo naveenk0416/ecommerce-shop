@@ -30,6 +30,9 @@ export interface ApiOptions extends Omit<RequestInit, 'body'> {
 
 export interface ApiError extends Error {
   status?: number;
+  /** The full parsed JSON error body, when there is one — lets a caller read structured fields
+   * (e.g. Amazon's raw `issues` array) beyond just the flattened `message` string. */
+  data?: unknown;
 }
 
 export async function apiFetch<T = unknown>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -63,6 +66,7 @@ export async function apiFetch<T = unknown>(path: string, options: ApiOptions = 
     const message = data?.error || data?.message || response.statusText || 'API request failed';
     const error: ApiError = new Error(message);
     error.status = response.status;
+    error.data = data;
     throw error;
   }
 

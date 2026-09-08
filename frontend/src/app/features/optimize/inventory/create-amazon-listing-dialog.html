@@ -96,37 +96,30 @@
           </label>
         }
 
-        @if (hasWeight()) {
-          <div class="field-row">
-            <label class="field">
-              <span class="field__label">Item weight</span>
-              <input class="field__input" type="number" min="0" step="any" [ngModel]="weightValue()" (ngModelChange)="weightValue.set($event)" />
-            </label>
-            <label class="field">
-              <span class="field__label">Weight unit</span>
-              <select class="field__input" [ngModel]="weightUnit()" (ngModelChange)="weightUnit.set($event)">
-                @for (unit of weightUnits(); track unit) {
-                  <option [value]="unit">{{ unit }}</option>
-                }
-              </select>
-            </label>
-          </div>
-        }
-
-        @if (hasDimensions()) {
-          <div class="field">
-            <span class="field__label">Item dimensions</span>
-            <div class="field-row field-row--three">
-              <input class="field__input" type="number" min="0" step="any" placeholder="Length" [ngModel]="length().value" (ngModelChange)="setLength({ value: $event })" />
-              <input class="field__input" type="number" min="0" step="any" placeholder="Width" [ngModel]="width().value" (ngModelChange)="setWidth({ value: $event })" />
-              <input class="field__input" type="number" min="0" step="any" placeholder="Height" [ngModel]="height().value" (ngModelChange)="setHeight({ value: $event })" />
+        @for (qa of quantityAttributes(); track qa.name) {
+          @for (axis of qa.axes; track axis.key) {
+            <div class="field-row">
+              <label class="field">
+                <span class="field__label">{{ qa.axes.length > 1 ? qa.label + ' ' + axis.label : qa.label }}</span>
+                <input
+                  class="field__input"
+                  type="number"
+                  min="0"
+                  step="any"
+                  [ngModel]="axis.value"
+                  (ngModelChange)="setQuantityAxisValue(qa.name, axis.key, $event)"
+                />
+              </label>
+              <label class="field">
+                <span class="field__label">{{ qa.axes.length > 1 ? qa.label + ' ' + axis.label : qa.label }} Unit</span>
+                <select class="field__input" [ngModel]="axis.unit" (ngModelChange)="setQuantityAxisUnit(qa.name, axis.key, $event)">
+                  @for (unit of axis.unitOptions; track unit) {
+                    <option [value]="unit">{{ unit }}</option>
+                  }
+                </select>
+              </label>
             </div>
-            <select class="field__input" [ngModel]="length().unit" (ngModelChange)="setLength({ unit: $event }); setWidth({ unit: $event }); setHeight({ unit: $event })">
-              @for (unit of dimensionUnits(); track unit) {
-                <option [value]="unit">{{ unit }}</option>
-              }
-            </select>
-          </div>
+          }
         }
 
         @if (hasHsn()) {
@@ -147,6 +140,10 @@
         }
       }
     </div>
+  }
+
+  @if (retryNotice()) {
+    <p class="hint hint--info">{{ retryNotice() }}</p>
   }
 
   @if (submitError()) {

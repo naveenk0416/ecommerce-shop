@@ -48,6 +48,16 @@ export interface AmazonProductTypeSchema {
   totalProperties: number;
 }
 
+/** Amazon's raw per-attribute rejection reason, surfaced (via ApiError.data.issues) alongside the
+ * flattened error message so a "required but missing" rejection's attributeNames can drive adding
+ * fields dynamically rather than only being displayable as text. */
+export interface AmazonListingIssue {
+  code?: string;
+  message?: string;
+  severity?: string;
+  attributeNames?: string[];
+}
+
 export interface CreateAmazonListingPayload {
   productType: string;
   /** Attribute name -> its already-shaped value array (e.g. item_name: [{ value, language_tag }],
