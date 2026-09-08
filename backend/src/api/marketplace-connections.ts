@@ -578,6 +578,13 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
 
     const sku: string = listing.sku || `sa-${listing._id.toString()}`;
 
+    // Amazon fetches the main image from a URL it can reach itself — it can't accept the base64
+    // data URI this app actually stores the image as, so this points at the public (unauthenticated)
+    // image-serving route on this same backend, which decodes the data URI into real image bytes.
+    if ((listing.processedImage || listing.originalImage) && !attributes['main_product_image_locator']) {
+      attributes['main_product_image_locator'] = [{ media_location: `${backendUrl()}/api/listings/${listing._id.toString()}/image` }];
+    }
+
     const result = await createAmazonListing(
       uid,
       connection.sellingPartnerId,

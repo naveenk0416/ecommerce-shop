@@ -54,6 +54,42 @@ router.get('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Deliberately unauthenticated — Amazon's own servers fetch this URL directly (via
+// main_product_image_locator) to pull the product image when creating a listing, and can't carry
+// our auth header. Images are stored as base64 data URIs (this app has no image host/CDN), which
+// Amazon's Listings API can't accept inline — it only takes a fetchable URL, so this decodes the
+// stored data URI back into real image bytes on the fly. A synced-from-Amazon listing's image is
+// already a real URL (from the merchant report/catalog lookup), so that case just redirects.
+router.get('/:id/image', async (req, res) => {
+  await ensureConnected();
+  try {
+    const listing = await Listing.findById(req.params['id']).lean();
+    const source = (listing as any)?.processedImage || (listing as any)?.originalImage;
+    if (!source) {
+      res.status(404).end();
+      return;
+    }
+
+    if (/^https?:\/\//i.test(source)) {
+      res.redirect(source);
+      return;
+    }
+
+    const match = /^data:([^;]+);base64,(.+)$/.exec(source);
+    if (!match) {
+      res.status(404).end();
+      return;
+    }
+    const [, contentType, base64Data] = match;
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(Buffer.from(base64Data, 'base64'));
+  } catch (err: any) {
+    console.error('Serve listing image error', err);
+    res.status(500).end();
+  }
+});
+
 router.post('/', authMiddleware, async (req, res) => {
   await ensureConnected();
   const authUser = (req as any).authUser;
