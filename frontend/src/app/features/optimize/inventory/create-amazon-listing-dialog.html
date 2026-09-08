@@ -57,6 +57,20 @@
           </p>
         }
 
+        @if (hasFillableFields()) {
+          <button type="button" mat-stroked-button class="ai-fill-btn" [disabled]="aiFilling()" (click)="fillWithAi()">
+            @if (aiFilling()) {
+              <mat-spinner diameter="16"></mat-spinner>
+            } @else {
+              <mat-icon>auto_awesome</mat-icon>
+            }
+            {{ aiFilling() ? 'Filling with AI…' : 'Fill empty fields with AI' }}
+          </button>
+          @if (aiFillError()) {
+            <p class="hint hint--error">{{ aiFillError() }}</p>
+          }
+        }
+
         @for (field of requiredFields(); track field.name) {
           <label class="field">
             <span class="field__label">{{ field.label }}</span>
@@ -122,6 +136,33 @@
           }
         }
 
+        @for (ca of compositeAttributes(); track ca.name) {
+          <div class="field">
+            <span class="field__label">{{ ca.label }}</span>
+            <div class="field-row">
+              @for (sf of ca.subFields; track sf.key) {
+                <label class="field">
+                  <span class="field__label">{{ sf.label }}</span>
+                  @if (sf.kind === 'select') {
+                    <select class="field__input" [ngModel]="sf.value" (ngModelChange)="setCompositeSubFieldValue(ca.name, sf.key, $event)">
+                      @for (option of sf.options; track option) {
+                        <option [value]="option">{{ option }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <input
+                      class="field__input"
+                      [type]="sf.kind === 'number' ? 'number' : 'text'"
+                      [ngModel]="sf.value"
+                      (ngModelChange)="setCompositeSubFieldValue(ca.name, sf.key, $event)"
+                    />
+                  }
+                </label>
+              }
+            </div>
+          </div>
+        }
+
         @if (hasHsn()) {
           <label class="field">
             <span class="field__label">HSN code</span>
@@ -135,7 +176,7 @@
           </mat-checkbox>
         }
 
-        @if (requiredFields().length > 0) {
+        @if (requiredFields().length > 0 || quantityAttributes().length > 0 || compositeAttributes().length > 0) {
           <p class="hint">Price (₹{{ listing.sellingPrice || 0 }}) and stock ({{ listing.quantity ?? 0 }} units) come from this product's saved values.</p>
         }
       }

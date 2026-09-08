@@ -581,8 +581,11 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
     // Amazon fetches the main image from a URL it can reach itself — it can't accept the base64
     // data URI this app actually stores the image as, so this points at the public (unauthenticated)
     // image-serving route on this same backend, which decodes the data URI into real image bytes.
+    // The trailing ".jpg" matters: a URL with no image extension left Amazon showing "No image
+    // available" even though the route itself serves a verified-valid image — its crawler appears
+    // to check the URL path for a recognizable extension, not just the Content-Type header.
     if ((listing.processedImage || listing.originalImage) && !attributes['main_product_image_locator']) {
-      attributes['main_product_image_locator'] = [{ media_location: `${backendUrl()}/api/listings/${listing._id.toString()}/image` }];
+      attributes['main_product_image_locator'] = [{ media_location: `${backendUrl()}/api/listings/${listing._id.toString()}/image.jpg` }];
     }
 
     const result = await createAmazonListing(

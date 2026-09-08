@@ -84,6 +84,15 @@
   }
 }
 
+.ai-fill-btn {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ea580c;
+  border-color: #fdba74;
+}
+
 .loading-row {
   display: flex;
   align-items: center;

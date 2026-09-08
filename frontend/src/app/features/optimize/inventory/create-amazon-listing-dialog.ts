@@ -15,6 +15,7 @@ import {
   MarketplaceConnectionsService,
 } from '../../../services/marketplace-connections';
 import { ApiError } from '../../../services/api';
+import { formatGeminiError, GeminiService } from '../../../services/gemini';
 
 type FieldKind = 'text' | 'textarea' | 'select' | 'bullets' | 'number';
 
@@ -47,14 +48,37 @@ interface QuantityAttribute {
   axes: QuantityAxis[];
 }
 
+/** One input within a "composite object" attribute — a required sub-field that's either a bare
+ * leaf (number/string) or a text value wrapped as { value, language_tag } (Amazon's common shape
+ * for localized text sub-fields, e.g. stones[].type). */
+interface CompositeSubField {
+  key: string;
+  label: string;
+  kind: 'text' | 'number' | 'select';
+  options?: string[];
+  value: string;
+  needsLanguageTag: boolean;
+}
+
+/** An attribute whose value is an array of objects with several named required sub-fields — e.g.
+ * jewelry's `stones` (id, type, creation_method, treatment_method per stone). Rendered as one
+ * instance (one object in the array) with an input per required sub-field, detected from the
+ * schema's own itemRequired + fields shape rather than hardcoded per attribute name. */
+interface CompositeAttribute {
+  name: string;
+  label: string;
+  subFields: CompositeSubField[];
+}
+
 // Amazon's own declared schema.required for a product type is known to be incomplete — its real
 // submission-time validation enforces more, and which extra attributes are required varies by
 // category (confirmed empirically: EARRING/HAIR_CARE needed color/hair_type/lifestyle/etc.;
 // HAIR_CLIP needed nothing extra once purchasable_offer was fixed; BOTTLE needed
-// model_number/material/capacity/etc.; jewelry needed gem_type/clasp_type/etc. — a different set
-// every time). These are the ones found so far that render as simple text/number inputs — kept as
-// a head start fetched proactively so the common cases don't need a failed submit first; anything
-// else Amazon names in a rejection gets added on the fly by addMissingAttributes() below.
+// model_number/material/capacity/etc.; jewelry needed gem_type/clasp_type/stones/etc. — a
+// different set every time). These are the ones found so far that render as simple text/number
+// inputs — kept as a head start fetched proactively so the common cases don't need a failed
+// submit first; anything else Amazon names in a rejection gets added on the fly by
+// addMissingAttributes() below.
 const KNOWN_EXTRA_TEXT_ATTRIBUTES = [
   'color', 'manufacturer', 'part_number', 'target_audience_keyword', 'generic_keyword',
   'item_type_name', 'packer_contact_information', 'rtip_manufacturer_contact_information',
@@ -70,8 +94,7 @@ const KNOWN_EXTRA_NUMBER_ATTRIBUTES = ['number_of_items'];
 // item_width_height, ...) gets the same treatment once named in a rejection.
 const QUANTITY_LIKE_ATTRIBUTES = ['item_weight', 'item_dimensions'];
 // Composite attributes with a fixed, hand-built shape this dialog knows how to submit —
-// distinct from generic quantity/text attributes, so kept as dedicated fields rather than
-// generalized.
+// distinct from the generic quantity/composite-object detection, so kept as dedicated fields.
 const COMPOSITE_SPECIAL_ATTRIBUTES = [
   'unit_count', 'external_product_information', 'supplier_declared_has_product_identifier_exemption',
   'externally_assigned_product_identifier',
@@ -79,6 +102,10 @@ const COMPOSITE_SPECIAL_ATTRIBUTES = [
 // Never form-fillable — fully backend-computed from price/quantity, so a rejection naming these
 // can't be resolved by adding an input field.
 const BACKEND_MANAGED_ATTRIBUTES = ['purchasable_offer', 'fulfillment_availability'];
+// Structural keys that can show up in itemRequired but aren't meant to be individually rendered
+// (marketplace_id is auto-filled server-side context, language_tag is folded into whichever
+// sub-field needs it rather than being its own input).
+const NON_RENDERABLE_REQUIRED_KEYS = new Set(['marketplace_id', 'language_tag']);
 
 @Component({
   selector: 'app-create-amazon-listing-dialog',
@@ -91,6 +118,7 @@ const BACKEND_MANAGED_ATTRIBUTES = ['purchasable_offer', 'fulfillment_availabili
 export class CreateAmazonListingDialog {
   private readonly dialogRef = inject(MatDialogRef<CreateAmazonListingDialog, boolean>);
   private readonly marketplaceConnections = inject(MarketplaceConnectionsService);
+  private readonly gemini = inject(GeminiService);
   protected readonly listing = inject<Listing>(MAT_DIALOG_DATA as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
   keywords = signal(this.listing.category || this.listing.name || '');
@@ -103,6 +131,7 @@ export class CreateAmazonListingDialog {
   schemaError = signal<string | null>(null);
   requiredFields = signal<RenderableField[]>([]);
   quantityAttributes = signal<QuantityAttribute[]>([]);
+  compositeAttributes = signal<CompositeAttribute[]>([]);
   unsupportedAttributes = signal<string[]>([]);
   fieldValues = signal<Record<string, string>>({});
 
@@ -111,6 +140,9 @@ export class CreateAmazonListingDialog {
   hsnCode = signal(this.listing.hsnCode || '');
   hasGtinExemptionOption = signal(false);
   hasGtinExemption = signal(true); // defaults to "I don't have a barcode" — the common case here
+
+  aiFilling = signal(false);
+  aiFillError = signal<string | null>(null);
 
   submitting = signal(false);
   submitError = signal<string | null>(null);
@@ -148,6 +180,7 @@ export class CreateAmazonListingDialog {
     this.schemaError.set(null);
     this.requiredFields.set([]);
     this.quantityAttributes.set([]);
+    this.compositeAttributes.set([]);
     this.unsupportedAttributes.set([]);
     this.attributeSchemas.clear();
     this.retryNotice.set(null);
@@ -171,7 +204,7 @@ export class CreateAmazonListingDialog {
         ...QUANTITY_LIKE_ATTRIBUTES,
       ])).filter((name) => !BACKEND_MANAGED_ATTRIBUTES.includes(name));
 
-      const { fields, quantities, unsupported } = this.processNames(candidateNames, schema, byName);
+      const { fields, quantities, composites, unsupported } = this.processNames(candidateNames, schema, byName);
 
       this.hasUnitCount.set(!!byName.get('unit_count'));
       this.hasHsn.set(!!byName.get('external_product_information'));
@@ -179,6 +212,7 @@ export class CreateAmazonListingDialog {
 
       this.requiredFields.set(fields);
       this.quantityAttributes.set(quantities);
+      this.compositeAttributes.set(composites);
       this.unsupportedAttributes.set(unsupported);
       this.prefillValues(fields);
     } catch (error) {
@@ -210,16 +244,63 @@ export class CreateAmazonListingDialog {
     return axes;
   }
 
-  /** Shared attribute-name -> renderable-field/quantity/unsupported resolution, used both for the
-   * proactive fetch on product type selection and for dynamically adding fields Amazon names in a
-   * rejection (addMissingAttributes). */
+  /** Detects whether an attribute is an array of objects with several named required sub-fields
+   * (e.g. stones[]: { id, type: { value, language_tag }, creation_method: {...}, ... }) — one
+   * input per itemRequired key, typed from that key's own field shape. Returns null (defer to
+   * "unsupported") if any required sub-field has a shape this dialog doesn't know how to render
+   * (e.g. a nested array of its own), so it never silently submits something wrong. */
+  private detectCompositeSubFields(attr: AmazonAttributeSummary): CompositeSubField[] | null {
+    const requiredKeys = (attr.itemRequired || []).filter((key) => !NON_RENDERABLE_REQUIRED_KEYS.has(key));
+    if (requiredKeys.length === 0) return null;
+
+    const fields = attr.fields || [];
+    const subFields: CompositeSubField[] = [];
+    for (const key of requiredKeys) {
+      const field = fields.find((f) => f.name === key);
+      if (!field) return null;
+
+      if (field.nestedFields?.length) {
+        const valueField = field.nestedFields.find((n) => n.name === 'value');
+        if (!valueField) return null;
+        const options = valueField.enum?.map(String);
+        subFields.push({
+          key,
+          label: this.labelFor(key),
+          kind: options?.length ? 'select' : 'text',
+          options,
+          value: options?.length ? options[0] : '',
+          needsLanguageTag: field.nestedFields.some((n) => n.name === 'language_tag'),
+        });
+      } else if (field.type === 'integer' || field.type === 'number') {
+        subFields.push({ key, label: this.labelFor(key), kind: 'number', value: '', needsLanguageTag: false });
+      } else if (field.type === 'string') {
+        const options = field.enum?.map(String);
+        subFields.push({
+          key,
+          label: this.labelFor(key),
+          kind: options?.length ? 'select' : 'text',
+          options,
+          value: options?.length ? options[0] : '',
+          needsLanguageTag: false,
+        });
+      } else {
+        return null;
+      }
+    }
+    return subFields;
+  }
+
+  /** Shared attribute-name -> renderable-field/quantity/composite/unsupported resolution, used
+   * both for the proactive fetch on product type selection and for dynamically adding fields
+   * Amazon names in a rejection (addMissingAttributes). */
   private processNames(
     names: string[],
     schema: AmazonProductTypeSchema,
     byName: Map<string, AmazonAttributeSummary>,
-  ): { fields: RenderableField[]; quantities: QuantityAttribute[]; unsupported: string[] } {
+  ): { fields: RenderableField[]; quantities: QuantityAttribute[]; composites: CompositeAttribute[]; unsupported: string[] } {
     const fields: RenderableField[] = [];
     const quantities: QuantityAttribute[] = [];
+    const composites: CompositeAttribute[] = [];
     const unsupported: string[] = [];
     const isNumberAttr = (name: string) => KNOWN_EXTRA_NUMBER_ATTRIBUTES.includes(name);
     const isOptionalAttr = (name: string) => OPTIONAL_TEXT_ATTRIBUTES.includes(name);
@@ -252,6 +333,12 @@ export class CreateAmazonListingDialog {
 
       const valueField = attr.fields?.find((f) => f.name === 'value');
       if (!valueField) {
+        const compositeSubFields = this.detectCompositeSubFields(attr);
+        if (compositeSubFields) {
+          this.attributeSchemas.set(name, attr);
+          composites.push({ name, label: this.labelFor(name), subFields: compositeSubFields });
+          continue;
+        }
         if (schema.required.includes(name)) unsupported.push(name);
         continue;
       }
@@ -273,24 +360,30 @@ export class CreateAmazonListingDialog {
       }
     }
 
-    return { fields, quantities, unsupported };
+    return { fields, quantities, composites, unsupported };
   }
 
   /** Called when Amazon rejects a submission naming attributes not currently rendered — fetches
-   * their schema and adds whatever can be rendered (fields/quantities) to the live form, so the
-   * seller can fill them in and retry without losing anything already entered. Anything that
-   * still can't be rendered is folded into unsupportedAttributes regardless of what the generic
-   * schema.required says, since a live rejection is stronger evidence than that list. */
+   * their schema and adds whatever can be rendered (fields/quantities/composites) to the live
+   * form, so the seller can fill them in and retry without losing anything already entered.
+   * Anything that still can't be rendered is folded into unsupportedAttributes regardless of what
+   * the generic schema.required says, since a live rejection is stronger evidence than that list.
+   * Re-processes fresh each time, so a name previously marked unsupported gets a clean second
+   * chance rather than staying stuck. */
   private async addMissingAttributes(names: string[]): Promise<void> {
     const productType = this.selectedProductType();
     if (!productType || names.length === 0) return;
 
+    this.unsupportedAttributes.update((existing) => existing.filter((name) => !names.includes(name)));
+
     try {
       const schema = await this.marketplaceConnections.getAmazonProductTypeSchema(productType, names);
       const byName = new Map(schema.attributes.map((a) => [a.name, a]));
-      const { fields, quantities, unsupported } = this.processNames(names, schema, byName);
+      const { fields, quantities, composites, unsupported } = this.processNames(names, schema, byName);
 
-      const handled = new Set([...fields.map((f) => f.name), ...quantities.map((q) => q.name), ...unsupported]);
+      const handled = new Set([
+        ...fields.map((f) => f.name), ...quantities.map((q) => q.name), ...composites.map((c) => c.name), ...unsupported,
+      ]);
       const reallyUnsupported = [...unsupported, ...names.filter((name) => !handled.has(name))];
 
       if (fields.length) {
@@ -303,6 +396,9 @@ export class CreateAmazonListingDialog {
       }
       if (quantities.length) {
         this.quantityAttributes.update((existing) => [...existing, ...quantities]);
+      }
+      if (composites.length) {
+        this.compositeAttributes.update((existing) => [...existing, ...composites]);
       }
       if (reallyUnsupported.length) {
         this.unsupportedAttributes.update((existing) => Array.from(new Set([...existing, ...reallyUnsupported])));
@@ -353,10 +449,19 @@ export class CreateAmazonListingDialog {
     )));
   }
 
+  setCompositeSubFieldValue(attrName: string, key: string, value: string): void {
+    // Same NumberValueAccessor caveat as setFieldValue — a 'number' kind sub-field can hand back
+    // a real number here despite $event being typed `any`, so coerce to string at the source.
+    this.compositeAttributes.update((list) => list.map((ca) => (
+      ca.name !== attrName ? ca : { ...ca, subFields: ca.subFields.map((sf) => (sf.key !== key ? sf : { ...sf, value: String(value ?? '') })) }
+    )));
+  }
+
   /** Human-readable reasons Publish is disabled — surfaced in the template so a field missed
    * further up the (often long) form doesn't look like an unexplained stuck button. */
   missingFields(): string[] {
-    if (!this.selectedProductType() || (this.requiredFields().length === 0 && this.quantityAttributes().length === 0)) return [];
+    const nothingLoaded = this.requiredFields().length === 0 && this.quantityAttributes().length === 0 && this.compositeAttributes().length === 0;
+    if (!this.selectedProductType() || nothingLoaded) return [];
     if (this.unsupportedAttributes().length > 0) return ['Unsupported attributes: ' + this.unsupportedAttributes().join(', ')];
 
     const values = this.fieldValues();
@@ -370,6 +475,12 @@ export class CreateAmazonListingDialog {
       }
     }
 
+    for (const ca of this.compositeAttributes()) {
+      for (const sf of ca.subFields) {
+        if (!sf.value.trim()) missing.push(`${ca.label} ${sf.label}`);
+      }
+    }
+
     if (this.hasHsn() && this.hsnCode().trim().length === 0) missing.push('HSN code');
     if (this.hasGtinExemptionOption() && !this.hasGtinExemption()) missing.push('GTIN/UPC/EAN exemption checkbox');
     return missing;
@@ -377,9 +488,149 @@ export class CreateAmazonListingDialog {
 
   isValid(): boolean {
     if (!this.selectedProductType()) return false;
-    if (this.requiredFields().length === 0 && this.quantityAttributes().length === 0) return false;
+    if (this.requiredFields().length === 0 && this.quantityAttributes().length === 0 && this.compositeAttributes().length === 0) return false;
     if (this.unsupportedAttributes().length > 0) return false;
     return this.missingFields().length === 0;
+  }
+
+  hasFillableFields(): boolean {
+    return this.requiredFields().length > 0 || this.quantityAttributes().length > 0 || this.compositeAttributes().length > 0;
+  }
+
+  /** Asks Gemini to suggest values for every currently-rendered field, grounded in the product's
+   * own saved photo where one exists — so the seller reviews/edits AI guesses instead of typing
+   * every Amazon-specific attribute (material, gem type, department, ...) from scratch. Only fills
+   * fields still empty; it never overwrites something already typed in. */
+  async fillWithAi(): Promise<void> {
+    if (this.aiFilling() || !this.hasFillableFields()) return;
+    this.aiFilling.set(true);
+    this.aiFillError.set(null);
+
+    try {
+      const { properties, required } = this.buildAiSchema();
+      if (required.length === 0) return;
+
+      const prompt = this.buildAiPrompt();
+      const source = this.listing.processedImage || this.listing.originalImage || '';
+      const imageMatch = /^data:([^;]+);base64,(.+)$/.exec(source);
+
+      const result = imageMatch
+        ? await this.gemini.generateStructuredFromImage<Record<string, string | number>>(prompt, imageMatch[2], imageMatch[1], { type: 'object', properties, required })
+        : await this.gemini.generateStructured<Record<string, string | number>>(prompt, { type: 'object', properties, required });
+
+      this.applyAiSuggestions(result);
+    } catch (error) {
+      this.aiFillError.set(formatGeminiError(error));
+    } finally {
+      this.aiFilling.set(false);
+    }
+  }
+
+  /** Builds the JSON schema Gemini must answer against — one property per currently-rendered
+   * input, keyed to line back up with fieldValues/quantityAttributes/compositeAttributes in
+   * applyAiSuggestions. Select-kind fields get a JSON-schema enum so Gemini can only pick one of
+   * Amazon's own allowed values rather than inventing something invalid. */
+  private buildAiSchema(): { properties: Record<string, unknown>; required: string[] } {
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+
+    for (const field of this.requiredFields()) {
+      properties[field.name] = field.options?.length ? { type: 'string', enum: field.options } : { type: 'string' };
+      required.push(field.name);
+    }
+    for (const qa of this.quantityAttributes()) {
+      for (const axis of qa.axes) {
+        const valueKey = `${qa.name}__${axis.key}`;
+        properties[valueKey] = { type: 'number' };
+        required.push(valueKey);
+        if (axis.unitOptions.length > 1) {
+          const unitKey = `${valueKey}__unit`;
+          properties[unitKey] = { type: 'string', enum: axis.unitOptions };
+          required.push(unitKey);
+        }
+      }
+    }
+    for (const ca of this.compositeAttributes()) {
+      for (const sf of ca.subFields) {
+        const key = `${ca.name}__${sf.key}`;
+        properties[key] = sf.options?.length ? { type: 'string', enum: sf.options } : { type: sf.kind === 'number' ? 'number' : 'string' };
+        required.push(key);
+      }
+    }
+
+    return { properties, required };
+  }
+
+  private buildAiPrompt(): string {
+    const lines: string[] = [
+      'You are filling in Amazon India marketplace listing attributes for this product.',
+      `Product name: ${this.listing.name || 'Unknown'}`,
+      `Description: ${this.listing.description || 'Not provided'}`,
+      `Category: ${this.listing.category || 'Not provided'}`,
+      `Brand: ${this.listing.brand || 'Not provided'}`,
+      '',
+      'For each attribute below, give the single most plausible value for THIS product. When a',
+      'list of allowed options is given, you must pick exactly one of them verbatim — never invent',
+      'a value outside that list.',
+      '',
+    ];
+
+    for (const field of this.requiredFields()) {
+      const opts = field.options?.length ? ` — choose one of: ${field.options.join(', ')}` : '';
+      lines.push(`- ${field.name}: ${field.label}${opts}`);
+    }
+    for (const qa of this.quantityAttributes()) {
+      for (const axis of qa.axes) {
+        const label = qa.axes.length > 1 ? `${qa.label} ${axis.label}` : qa.label;
+        lines.push(`- ${qa.name}__${axis.key}: a realistic numeric ${label} for this product`);
+        if (axis.unitOptions.length > 1) {
+          lines.push(`- ${qa.name}__${axis.key}__unit: unit for the above — choose one of: ${axis.unitOptions.join(', ')}`);
+        }
+      }
+    }
+    for (const ca of this.compositeAttributes()) {
+      for (const sf of ca.subFields) {
+        const opts = sf.options?.length ? ` — choose one of: ${sf.options.join(', ')}` : '';
+        lines.push(`- ${ca.name}__${sf.key}: ${ca.label} ${sf.label}${opts}`);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  private applyAiSuggestions(result: Record<string, string | number>): void {
+    this.fieldValues.update((values) => {
+      const next = { ...values };
+      for (const field of this.requiredFields()) {
+        if ((next[field.name] || '').trim()) continue; // don't clobber what's already filled in
+        const suggestion = result[field.name];
+        if (suggestion !== undefined) next[field.name] = String(suggestion);
+      }
+      return next;
+    });
+
+    this.quantityAttributes.update((list) => list.map((qa) => ({
+      ...qa,
+      axes: qa.axes.map((axis) => {
+        const valueKey = `${qa.name}__${axis.key}`;
+        const suggestedValue = result[valueKey];
+        const suggestedUnit = result[`${valueKey}__unit`];
+        return {
+          ...axis,
+          value: axis.value > 0 ? axis.value : (typeof suggestedValue === 'number' ? suggestedValue : axis.value),
+          unit: axis.unit || (typeof suggestedUnit === 'string' ? suggestedUnit : axis.unit),
+        };
+      }),
+    })));
+
+    this.compositeAttributes.update((list) => list.map((ca) => ({
+      ...ca,
+      subFields: ca.subFields.map((sf) => {
+        if (sf.value.trim()) return sf; // don't clobber what's already filled in
+        const suggestion = result[`${ca.name}__${sf.key}`];
+        return suggestion !== undefined ? { ...sf, value: String(suggestion) } : sf;
+      }),
+    })));
   }
 
   cancel(): void {
@@ -421,6 +672,15 @@ export class CreateAmazonListingDialog {
         for (const axis of qa.axes) shaped[axis.key] = { value: axis.value, unit: axis.unit };
         attributes[qa.name] = [shaped];
       }
+    }
+
+    for (const ca of this.compositeAttributes()) {
+      const shaped: Record<string, unknown> = {};
+      for (const sf of ca.subFields) {
+        const raw = sf.value.trim();
+        shaped[sf.key] = sf.kind === 'number' ? (Number(raw) || 0) : (sf.needsLanguageTag ? { value: raw, language_tag: 'en_IN' } : raw);
+      }
+      attributes[ca.name] = [shaped];
     }
 
     if (this.hasUnitCount()) {
@@ -466,6 +726,7 @@ export class CreateAmazonListingDialog {
     const knownNames = new Set([
       ...this.requiredFields().map((f) => f.name),
       ...this.quantityAttributes().map((q) => q.name),
+      ...this.compositeAttributes().map((c) => c.name),
       ...COMPOSITE_SPECIAL_ATTRIBUTES,
     ]);
 

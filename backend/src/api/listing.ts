@@ -60,7 +60,14 @@ router.get('/:id', authMiddleware, async (req, res) => {
 // Amazon's Listings API can't accept inline — it only takes a fetchable URL, so this decodes the
 // stored data URI back into real image bytes on the fly. A synced-from-Amazon listing's image is
 // already a real URL (from the merchant report/catalog lookup), so that case just redirects.
-router.get('/:id/image', async (req, res) => {
+//
+// The path ends in a literal ".jpg" (matched here as :ext and ignored — the response's real
+// Content-Type always reflects the actual stored image, regardless of what extension is in the
+// URL) because a URL with no recognizable image extension was confirmed, via live Seller Central
+// listings, to leave Amazon showing "No image available" days after publish despite this route
+// serving a verified-valid image — Amazon's own image crawler appears to sniff the URL path for
+// an extension rather than trusting the Content-Type header alone.
+router.get('/:id/image.:ext', async (req, res) => {
   await ensureConnected();
   try {
     const listing = await Listing.findById(req.params['id']).lean();

@@ -209,6 +209,26 @@ export class GeminiService {
     return JSON.parse(response.text) as T;
   }
 
+  /** Same as generateStructured, but grounds the answer in the product's own photo — used where
+   * the requested values (material, color, gem type, ...) are best read off the actual image
+   * rather than guessed from name/description text alone. */
+  async generateStructuredFromImage<T>(prompt: string, base64Image: string, mimeType: string, responseSchema: Record<string, unknown>): Promise<T> {
+    const response = await this.ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ parts: [{ text: prompt }, { inlineData: { data: base64Image, mimeType } }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema,
+        temperature: 0,
+      }
+    });
+
+    if (!response.text) {
+      throw new Error("Failed to generate structured content: Empty response");
+    }
+    return JSON.parse(response.text) as T;
+  }
+
   async generateWhiteBackground(base64Image: string, mimeType: string): Promise<string> {
     // Using gemini-2.5-flash-image to "edit" the image
     const model = "gemini-2.5-flash-image";
