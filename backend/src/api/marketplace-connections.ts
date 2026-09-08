@@ -586,7 +586,11 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
       listing.sellingPrice || 0,
       listing.quantity || 0,
       attributes,
-      listing.mrp || undefined,
+      // maximum_retail_price is India-marketplace-only per the Legal Metrology Act (per its own
+      // schema description) — always send it rather than only when a separate MRP is saved, since
+      // omitting it left Amazon's own price computation to auto-derive bounds that then failed
+      // validation on maximum_seller_allowed_price even though this app never sends that attribute.
+      listing.mrp || listing.sellingPrice || 0,
     );
 
     if (!result.ok) {
