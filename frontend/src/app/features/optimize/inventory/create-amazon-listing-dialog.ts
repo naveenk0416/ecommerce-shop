@@ -83,6 +83,11 @@ const KNOWN_EXTRA_TEXT_ATTRIBUTES = [
   'color', 'manufacturer', 'part_number', 'target_audience_keyword', 'generic_keyword',
   'item_type_name', 'packer_contact_information', 'rtip_manufacturer_contact_information',
   'hair_type', 'lifestyle',
+  // Not always in a product type's declared schema.required, but Seller Central still shows the
+  // listing as incomplete ("Item Condition" flagged mandatory on the Offer page) without it, since
+  // it's needed to actually make the offer sellable rather than just to satisfy schema validation
+  // — so this is fetched proactively rather than waiting for a live rejection to name it.
+  'condition_type',
 ];
 // Genuinely optional per its own schema description ("If a value is not provided, the system
 // will attempt a match based on the External Product ID") — rendered, but not required to be
@@ -418,6 +423,7 @@ export class CreateAmazonListingDialog {
     if (field.name === 'brand' || field.name === 'manufacturer') return this.listing.brand || '';
     if (field.name === 'product_description') return this.listing.description || '';
     if (field.options?.includes('IN') && field.name === 'country_of_origin') return 'IN';
+    if (field.name === 'condition_type' && field.options?.includes('new_new')) return 'new_new';
     if (field.options?.includes('not_applicable')) return 'not_applicable';
     if (field.kind === 'select' && field.options?.length) return field.options[0];
     if (field.kind === 'number') return '1';

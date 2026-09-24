@@ -76,16 +76,24 @@ export class ListingService {
     }
   }
 
-  private startPolling<T>(path: string, callback: (items: T) => void) {
+  private startPolling<T>(path: string, callback: (items: T) => void, onError?: (error: unknown) => void) {
     let active = true;
+    // Only surface a failure once per outage (not every 5s) — cleared as soon as a poll succeeds
+    // again, so a fresh failure after a recovery is reported too.
+    let hasNotifiedError = false;
 
     const poll = async () => {
       if (!active) return;
       try {
         const payload = await apiFetch<T>(path);
+        hasNotifiedError = false;
         callback(payload);
       } catch (error) {
         console.error('Polling failed for', path, error);
+        if (!hasNotifiedError) {
+          hasNotifiedError = true;
+          onError?.(error);
+        }
       }
     };
 
@@ -106,7 +114,7 @@ export class ListingService {
    * Subscribe to listings. By default this polls every POLL_INTERVAL_MS.
    * Set `poll` to false to perform a single fetch and receive a one-time callback.
    */
-  getListings(userId: string, callback: (listings: Listing[]) => void, poll = true) {
+  getListings(userId: string, callback: (listings: Listing[]) => void, poll = true, onError?: (error: unknown) => void) {
     if (!poll) {
       // one-time fetch
       (async () => {
@@ -115,14 +123,15 @@ export class ListingService {
           callback(data || []);
         } catch (err) {
           console.error('Failed to fetch listings (one-time):', err);
+          onError?.(err);
         }
       })();
       return () => undefined;
     }
-    return this.startPolling<Listing[]>(`/listings?mine=true`, callback);
+    return this.startPolling<Listing[]>(`/listings?mine=true`, callback, onError);
   }
 
-  getAllListings(callback: (listings: Listing[]) => void, poll = true) {
+  getAllListings(callback: (listings: Listing[]) => void, poll = true, onError?: (error: unknown) => void) {
     if (!poll) {
       (async () => {
         try {
@@ -130,11 +139,12 @@ export class ListingService {
           callback(data || []);
         } catch (err) {
           console.error('Failed to fetch all listings (one-time):', err);
+          onError?.(err);
         }
       })();
       return () => undefined;
     }
-    return this.startPolling<Listing[]>(`/listings?all=true`, callback);
+    return this.startPolling<Listing[]>(`/listings?all=true`, callback, onError);
   }
 
   async getListing(id: string): Promise<Listing> {

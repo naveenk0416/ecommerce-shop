@@ -24,7 +24,7 @@ import { GstCalculator } from './gst-calculator';
 import { ImageEditor } from './image-editor';
 import { resizeImage } from './utils/image';
 import { parsePrice } from './utils/price';
-import { apiFetch } from './services/api';
+import { apiFetch, ApiError } from './services/api';
 import { PasswordField } from './ui/password-field/password-field';
 import { PasswordStrength } from './ui/password-strength/password-strength';
 
@@ -493,9 +493,9 @@ export class App {
           // /api/listings every 5s for the whole session; saveListing/updateListing/
           // deleteListing call refreshListings() directly to keep the list in sync.
           if (isAdmin) {
-            this.listingService.getAllListings((listings) => this.myListings.set(listings), false);
+            this.listingService.getAllListings((listings) => this.myListings.set(listings), false, (error) => this.notifyListingsFetchError(error));
           } else {
-            this.listingService.getListings(user.uid, (listings) => this.myListings.set(listings), false);
+            this.listingService.getListings(user.uid, (listings) => this.myListings.set(listings), false, (error) => this.notifyListingsFetchError(error));
           }
         } else {
           this.myListings.set([]);
@@ -831,10 +831,30 @@ export class App {
     const user = this.auth.user();
     if (!user) return;
     if (this.auth.isAdmin()) {
-      this.listingService.getAllListings((listings) => this.myListings.set(listings), false);
+      this.listingService.getAllListings((listings) => this.myListings.set(listings), false, (error) => this.notifyListingsFetchError(error));
     } else {
-      this.listingService.getListings(user.uid, (listings) => this.myListings.set(listings), false);
+      this.listingService.getListings(user.uid, (listings) => this.myListings.set(listings), false, (error) => this.notifyListingsFetchError(error));
     }
+  }
+
+  /** Surfaces a failed listings fetch that would otherwise only land in the console — a 401
+   * (expired session), a CORS/network failure, and a real server error all previously looked
+   * identical to the user as "my products just aren't there." */
+  private async notifyListingsFetchError(error: unknown): Promise<void> {
+    console.error('Failed to fetch listings:', error);
+    const status = (error as ApiError | null)?.status;
+    const message = status === 401
+      ? 'Your session has expired. Please log in again to see your products.'
+      : status
+        ? `Failed to load your products (server error ${status}). Please try again.`
+        : 'Failed to load your products — check your internet connection and try again.';
+    const toast = await this.toastController?.create?.({
+      message,
+      duration: 5000,
+      color: 'danger',
+      position: 'bottom',
+    });
+    if (toast) await toast.present();
   }
 
   reset() {

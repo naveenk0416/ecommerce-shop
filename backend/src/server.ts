@@ -77,11 +77,18 @@ app.use((req: Request, res: Response) => {
   res.status(404).json({ error: `Not found: ${req.method} ${req.url}` });
 });
 
-const port = process.env['SERVER_PORT'] || process.env['PORT'] || 4000;
-// Bind to 0.0.0.0, not 'localhost' — in a container/cloud deployment the platform's routing
-// layer connects from outside this process's network namespace, so a loopback-only bind
-// (127.0.0.1) accepts local connections but is unreachable from the outside, even though the
-// process starts and logs successfully.
-app.listen(Number(port), '0.0.0.0', () => {
-  console.log(`[SERVER] Node Express server listening on 0.0.0.0:${port}`);
-});
+// Vercel runs this file as a serverless function and invokes the exported app directly for each
+// request — it never needs (or wants) a bound listening socket, and calling app.listen() there is
+// wasted work at best. Only bind a real port for a traditional long-running host (Render, local).
+if (!process.env['VERCEL']) {
+  const port = process.env['SERVER_PORT'] || process.env['PORT'] || 4000;
+  // Bind to 0.0.0.0, not 'localhost' — in a container/cloud deployment the platform's routing
+  // layer connects from outside this process's network namespace, so a loopback-only bind
+  // (127.0.0.1) accepts local connections but is unreachable from the outside, even though the
+  // process starts and logs successfully.
+  app.listen(Number(port), '0.0.0.0', () => {
+    console.log(`[SERVER] Node Express server listening on 0.0.0.0:${port}`);
+  });
+}
+
+export default app;

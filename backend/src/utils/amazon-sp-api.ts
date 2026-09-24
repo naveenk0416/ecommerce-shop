@@ -179,17 +179,25 @@ export async function updateAmazonListingPriceAndQuantity(
   price: number,
   quantity: number,
   mrp?: number,
+  // Re-sent on every price/quantity publish (not just listing creation) so a listing whose image
+  // never actually attached on Amazon's side — e.g. one created while the image-serving route was
+  // still 500ing (fixed in the Express 5 path regex change) — gets a chance to self-heal the next
+  // time the seller hits Publish, instead of staying permanently stuck with no image until the
+  // listing is deleted and recreated from scratch.
+  imageUrl?: string,
 ): Promise<PublishResult> {
   const { purchasable_offer, fulfillment_availability } = buildOfferAndFulfillmentAttributes(price, quantity, mrp);
   const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID });
+  const patches = [
+    { op: 'replace', path: '/attributes/purchasable_offer', value: purchasable_offer },
+    { op: 'replace', path: '/attributes/fulfillment_availability', value: fulfillment_availability },
+    ...(imageUrl ? [{ op: 'replace', path: '/attributes/main_product_image_locator', value: [{ media_location: imageUrl }] }] : []),
+  ];
   const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`, {
     method: 'PATCH',
     body: JSON.stringify({
       productType: 'PRODUCT',
-      patches: [
-        { op: 'replace', path: '/attributes/purchasable_offer', value: purchasable_offer },
-        { op: 'replace', path: '/attributes/fulfillment_availability', value: fulfillment_availability },
-      ],
+      patches,
     }),
   });
 

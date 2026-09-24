@@ -11,6 +11,7 @@ export interface ProductFormResult {
   quantity: number;
   costPrice: number;
   sellingPrice: number;
+  mrp: number;
   description: string;
   gstRate: string;
   hsnCode: string;
@@ -35,6 +36,7 @@ export class ProductFormDialog {
   quantity = signal(this.data?.quantity ?? 1);
   costPrice = signal(this.data?.costPrice ?? 0);
   sellingPrice = signal(this.data?.sellingPrice ?? 0);
+  mrp = signal(this.data?.mrp ?? 0);
   description = signal(this.data?.description ?? '');
   gstRate = signal(this.data?.gstRate ?? '18%');
   hsnCode = signal(this.data?.hsnCode ?? '');
@@ -55,6 +57,7 @@ export class ProductFormDialog {
       quantity: Number(this.quantity()) || 0,
       costPrice: Number(this.costPrice()) || 0,
       sellingPrice: Number(this.sellingPrice()) || 0,
+      mrp: Number(this.mrp()) || 0,
       description: this.description().trim(),
       gstRate: this.gstRate().trim() || '18%',
       hsnCode: this.hsnCode().trim(),

@@ -30,6 +30,13 @@
 
   <div class="field-row">
     <label class="field">
+      <span class="field__label">Maximum Retail Price (MRP)</span>
+      <input class="field__input" type="number" min="0" [ngModel]="mrp()" (ngModelChange)="mrp.set($event)" placeholder="Defaults to selling price if left blank" />
+    </label>
+  </div>
+
+  <div class="field-row">
+    <label class="field">
       <span class="field__label">GST rate</span>
       <input class="field__input" [ngModel]="gstRate()" (ngModelChange)="gstRate.set($event)" placeholder="18%" />
     </label>

@@ -177,7 +177,7 @@
         }
 
         @if (requiredFields().length > 0 || quantityAttributes().length > 0 || compositeAttributes().length > 0) {
-          <p class="hint">Price (₹{{ listing.sellingPrice || 0 }}) and stock ({{ listing.quantity ?? 0 }} units) come from this product's saved values.</p>
+          <p class="hint">Price (₹{{ listing.sellingPrice || 0 }}), MRP (₹{{ listing.mrp || listing.sellingPrice || 0 }}) and stock ({{ listing.quantity ?? 0 }} units) come from this product's saved values — edit the product first if these need to change.</p>
         }
       }
     </div>

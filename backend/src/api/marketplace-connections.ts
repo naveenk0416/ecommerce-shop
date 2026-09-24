@@ -701,6 +701,13 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
       return;
     }
 
+    // Re-sending the image locator on every publish (not just creation) lets a listing whose image
+    // never actually attached on Amazon's side self-heal on the next Publish click — see the
+    // imageUrl param's comment in updateAmazonListingPriceAndQuantity for why that can happen.
+    const imageUrl = (listing.processedImage || listing.originalImage)
+      ? `${backendUrl()}/api/listings/${listing._id.toString()}/image.jpg`
+      : undefined;
+
     const result = await updateAmazonListingPriceAndQuantity(
       uid,
       connection.sellingPartnerId,
@@ -708,6 +715,7 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
       listing.sellingPrice || 0,
       listing.quantity || 0,
       listing.mrp || undefined,
+      imageUrl,
     );
 
     if (!result.ok) {

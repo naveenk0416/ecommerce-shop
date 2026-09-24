@@ -1,7 +1,7 @@
 const isBrowser = typeof window !== 'undefined' && typeof window.location !== 'undefined';
 // Always hit the deployed backend, in every environment (including local dev) — no local
 // backend proxying.
-const apiBase = 'https://ecommerce-shop-dins.onrender.com/api';
+const apiBase = 'https://api.sellassist.in/api';
 
 const AUTH_TOKEN_KEY = 'auth_token';
 

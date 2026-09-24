@@ -77,9 +77,16 @@ export class OptimizeInventory {
         this.listings.set([]);
         return;
       }
+      const onError = (error: unknown) => {
+        this.snackBar.open(
+          (error instanceof Error && error.message) || 'Failed to load your products. Please refresh.',
+          'Dismiss',
+          { duration: 5000 },
+        );
+      };
       const stop = this.auth.isAdmin()
-        ? this.listingService.getAllListings((listings) => this.listings.set(listings))
-        : this.listingService.getListings(user.uid, (listings) => this.listings.set(listings));
+        ? this.listingService.getAllListings((listings) => this.listings.set(listings), true, onError)
+        : this.listingService.getListings(user.uid, (listings) => this.listings.set(listings), true, onError);
       onCleanup(() => stop());
     });
   }
