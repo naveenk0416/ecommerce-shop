@@ -172,6 +172,13 @@ function buildOfferAndFulfillmentAttributes(price: number, quantity: number, mrp
   };
 }
 
+/** Image locators are marketplace-scoped like purchasable_offer — without marketplace_id Amazon
+ * accepts the submission but never attaches the image to the amazon.in listing, leaving Seller
+ * Central on "No image available" even though the URL itself serves a valid image. */
+export function buildMainImageLocator(imageUrl: string) {
+  return [{ marketplace_id: INDIA_MARKETPLACE_ID, media_location: imageUrl }];
+}
+
 export async function updateAmazonListingPriceAndQuantity(
   uid: string,
   sellerId: string,
@@ -191,7 +198,7 @@ export async function updateAmazonListingPriceAndQuantity(
   const patches = [
     { op: 'replace', path: '/attributes/purchasable_offer', value: purchasable_offer },
     { op: 'replace', path: '/attributes/fulfillment_availability', value: fulfillment_availability },
-    ...(imageUrl ? [{ op: 'replace', path: '/attributes/main_product_image_locator', value: [{ media_location: imageUrl }] }] : []),
+    ...(imageUrl ? [{ op: 'replace', path: '/attributes/main_product_image_locator', value: buildMainImageLocator(imageUrl) }] : []),
   ];
   const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`, {
     method: 'PATCH',

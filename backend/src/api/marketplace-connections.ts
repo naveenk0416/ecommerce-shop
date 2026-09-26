@@ -5,7 +5,7 @@ import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from
 import { encryptToken } from '../utils/token-crypto.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
-import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema, createAmazonListing, getAmazonListingItem } from '../utils/amazon-sp-api.js';
+import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema, createAmazonListing, getAmazonListingItem, buildMainImageLocator } from '../utils/amazon-sp-api.js';
 import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku, updateFlipkartListingPriceAndInventory } from '../utils/flipkart-listings-api.js';
 
 const router = express.Router();
@@ -584,8 +584,10 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
     // The trailing ".jpg" matters: a URL with no image extension left Amazon showing "No image
     // available" even though the route itself serves a verified-valid image — its crawler appears
     // to check the URL path for a recognizable extension, not just the Content-Type header.
-    if ((listing.processedImage || listing.originalImage) && !attributes['main_product_image_locator']) {
-      attributes['main_product_image_locator'] = [{ media_location: `${backendUrl()}/api/listings/${listing._id.toString()}/image.jpg` }];
+    // Always set by the backend (never taken from the dialog) so it can't be overridden by a
+    // malformed form value.
+    if (listing.processedImage || listing.originalImage) {
+      attributes['main_product_image_locator'] = buildMainImageLocator(`${backendUrl()}/api/listings/${listing._id.toString()}/image.jpg`);
     }
 
     const result = await createAmazonListing(

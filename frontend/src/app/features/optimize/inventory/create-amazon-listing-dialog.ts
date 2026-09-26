@@ -104,9 +104,9 @@ const COMPOSITE_SPECIAL_ATTRIBUTES = [
   'unit_count', 'external_product_information', 'supplier_declared_has_product_identifier_exemption',
   'externally_assigned_product_identifier',
 ];
-// Never form-fillable — fully backend-computed from price/quantity, so a rejection naming these
-// can't be resolved by adding an input field.
-const BACKEND_MANAGED_ATTRIBUTES = ['purchasable_offer', 'fulfillment_availability'];
+// Never form-fillable — fully backend-computed (price/quantity, and the image URL served by the
+// backend), so a rejection naming these can't be resolved by adding an input field.
+const BACKEND_MANAGED_ATTRIBUTES = ['purchasable_offer', 'fulfillment_availability', 'main_product_image_locator'];
 // Structural keys that can show up in itemRequired but aren't meant to be individually rendered
 // (marketplace_id is auto-filled server-side context, language_tag is folded into whichever
 // sub-field needs it rather than being its own input).
