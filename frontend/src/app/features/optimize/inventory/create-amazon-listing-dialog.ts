@@ -517,7 +517,7 @@ export class CreateAmazonListingDialog {
       if (required.length === 0) return;
 
       const prompt = this.buildAiPrompt();
-      const source = this.listing.processedImage || this.listing.originalImage || '';
+      const source = await this.toDataUri(this.listing.processedImage || this.listing.originalImage || '');
       const imageMatch = /^data:([^;]+);base64,(.+)$/.exec(source);
 
       const result = imageMatch
@@ -565,6 +565,25 @@ export class CreateAmazonListingDialog {
     }
 
     return { properties, required };
+  }
+
+  /** The listings list serves images as URLs (not inline base64) — downloads one back into a
+   * data URI so it can be sent to Gemini. Returns '' on failure so AI fill falls back to text-only. */
+  private async toDataUri(source: string): Promise<string> {
+    if (!/^https?:\/\//i.test(source)) return source;
+    try {
+      const response = await fetch(source);
+      if (!response.ok) return '';
+      const blob = await response.blob();
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return '';
+    }
   }
 
   /** Gemini's inlineData only accepts a specific set of image MIME types and rejects anything

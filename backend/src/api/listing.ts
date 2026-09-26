@@ -4,6 +4,36 @@ import { ensureConnected, Listing, Sale } from './common.js';
 
 const router = express.Router();
 
+function backendUrl() {
+  return (process.env['BACKEND_URL'] || 'http://localhost:4000').replace(/\/$/, '');
+}
+
+// Matches URLs produced by listImageUrl below — used to stop a client that echoes a listing
+// fetched from the list endpoint back in a PATCH from overwriting the stored base64 image with
+// a URL pointing at itself.
+const OWN_IMAGE_URL = /\/api\/listings\/[^/]+\/image\.jpg/;
+
+function listImageUrl(id: string, variant: 'original' | 'processed', version: number) {
+  return `${backendUrl()}/api/listings/${id}/image.jpg?variant=${variant}&v=${version}`;
+}
+
+// For a stored image field: base64 data URIs are swapped for a marker + length inside Mongo so
+// the (often multi-hundred-KB) image never leaves the database on a list query; external URLs
+// (Amazon-synced images) pass through unchanged.
+function imageProjection(field: string) {
+  return {
+    $cond: [
+      { $eq: [{ $substrCP: [{ $ifNull: [`$${field}`, ''] }, 0, 5] }, 'data:'] },
+      { __dataLen: { $strLenCP: `$${field}` } },
+      `$${field}`,
+    ],
+  };
+}
+
+// Returns every listing with image fields as fetchable URLs rather than inline base64. The list
+// is polled every few seconds by the frontend; shipping full base64 images on every poll made
+// responses tens of MB, overlapping polls piled up, and the server started timing out (504s) —
+// which also slowed the public image route Amazon's crawler fetches listing images from.
 router.get('/', authMiddleware, async (req, res) => {
   await ensureConnected();
   const authUser = (req as any).authUser;
@@ -17,8 +47,22 @@ router.get('/', authMiddleware, async (req, res) => {
   const filter = allRequested && isAdmin ? {} : { uid: authUser._id.toString() };
 
   try {
-    const listings = await Listing.find(filter).sort({ createdAt: -1 }).lean();
-    res.json(listings.map(listing => ({ ...listing, id: listing._id?.toString() })));
+    const listings = await Listing.aggregate([
+      { $match: filter },
+      { $sort: { createdAt: -1 } },
+      { $addFields: { originalImage: imageProjection('originalImage'), processedImage: imageProjection('processedImage') } },
+    ]);
+    const toUrl = (id: string, variant: 'original' | 'processed', value: any) =>
+      value && typeof value === 'object' && '__dataLen' in value ? listImageUrl(id, variant, value.__dataLen) : value;
+    res.json(listings.map((listing) => {
+      const id = listing._id?.toString();
+      return {
+        ...listing,
+        id,
+        originalImage: toUrl(id, 'original', listing.originalImage),
+        processedImage: toUrl(id, 'processed', listing.processedImage),
+      };
+    }));
   } catch (err: any) {
     console.error('List listings error', err);
     res.status(500).json({ error: err?.message || 'Failed to fetch listings' });
@@ -72,8 +116,14 @@ router.get('/:id', authMiddleware, async (req, res) => {
 router.get('/:id/image.jpg', async (req, res) => {
   await ensureConnected();
   try {
-    const listing = await Listing.findById(req.params['id']).lean();
-    const source = (listing as any)?.processedImage || (listing as any)?.originalImage;
+    // ?variant=original|processed is used by the list endpoint's image URLs; with no variant
+    // (Amazon's main_product_image_locator) it serves the processed image, falling back to original.
+    const variant = req.query['variant'];
+    const fields = variant === 'original' ? 'originalImage' : variant === 'processed' ? 'processedImage' : 'processedImage originalImage';
+    const listing = await Listing.findById(req.params['id']).select(fields).lean();
+    const source = variant === 'original'
+      ? (listing as any)?.originalImage
+      : (listing as any)?.processedImage || (variant ? '' : (listing as any)?.originalImage);
     if (!source) {
       res.status(404).end();
       return;
@@ -151,6 +201,11 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     delete (updates as any).uid;
     delete (updates as any)._id;
     delete (updates as any).id;
+    for (const field of ['originalImage', 'processedImage']) {
+      if (typeof (updates as any)[field] === 'string' && OWN_IMAGE_URL.test((updates as any)[field])) {
+        delete (updates as any)[field];
+      }
+    }
 
     Object.assign(listing, updates);
     await listing.save();

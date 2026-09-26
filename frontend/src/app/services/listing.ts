@@ -81,9 +81,13 @@ export class ListingService {
     // Only surface a failure once per outage (not every 5s) — cleared as soon as a poll succeeds
     // again, so a fresh failure after a recovery is reported too.
     let hasNotifiedError = false;
+    // Skip a tick while the previous request is still running — otherwise a slow server gets a
+    // new request stacked on top every interval, making it slower still.
+    let inFlight = false;
 
     const poll = async () => {
-      if (!active) return;
+      if (!active || inFlight) return;
+      inFlight = true;
       try {
         const payload = await apiFetch<T>(path);
         hasNotifiedError = false;
@@ -94,6 +98,8 @@ export class ListingService {
           hasNotifiedError = true;
           onError?.(error);
         }
+      } finally {
+        inFlight = false;
       }
     };
 
