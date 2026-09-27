@@ -1,0 +1,31 @@
+# Hostinger (Apache/LiteSpeed) rules for the Angular SPA.
+# Real files (robots.txt, sitemap.xml, /assets/*, JS/CSS bundles) are served as-is with the right
+# content type; only paths that don't exist on disk fall back to index.html for client-side routing.
+
+AddType text/plain .txt
+AddType application/xml .xml
+AddType application/manifest+json .webmanifest
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Serve existing files and directories directly.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Missing static assets should 404, not return the SPA's HTML.
+  RewriteRule ^assets/ - [R=404,L]
+  RewriteRule \.(png|jpe?g|gif|webp|svg|ico|js|css|map|txt|xml|json|woff2?)$ - [R=404,L]
+
+  # Everything else is an app route.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # index.html must never be cached, so a new deploy is picked up immediately.
+  <FilesMatch "^index\.html$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+</IfModule>

@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /optimize
+Disallow: /listings
+Disallow: /inventory
+Disallow: /admin
+Disallow: /settings
+Disallow: /workspace/
+Disallow: /reset-password
+Disallow: /forgot-password
+Disallow: /verify-email
+
+Sitemap: https://sellassist.in/sitemap.xml
