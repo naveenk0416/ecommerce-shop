@@ -91,62 +91,94 @@
           </div>
         </div>
 
-        <label class="field">
+        <label class="field" for="gd-title">
           <span class="field__label">Product title</span>
-          <input class="field__input" [ngModel]="productTitle()" (ngModelChange)="productTitle.set($event)" placeholder="e.g. Layered Coin Charm Necklace" />
+          <input id="gd-title" class="field__input" [ngModel]="value('productTitle')" (ngModelChange)="update('productTitle', $event)" placeholder="e.g. Layered Coin Charm Necklace" [attr.aria-invalid]="showError(titleError())" />
+          @if (showError(titleError())) { <span class="field__error">{{ titleError() }}</span> }
         </label>
 
         <div class="field-row">
-          <label class="field">
+          <label class="field" for="gd-category">
             <span class="field__label">Category</span>
-            <input class="field__input" [ngModel]="category()" (ngModelChange)="category.set($event)" placeholder="e.g. Jewellery > Necklaces" />
+            <input id="gd-category" class="field__input" [ngModel]="value('category')" (ngModelChange)="update('category', $event)" placeholder="e.g. Jewellery > Necklaces" />
           </label>
-          <label class="field">
+          <label class="field" for="gd-sku">
             <span class="field__label">SKU</span>
-            <input class="field__input" [ngModel]="sku()" (ngModelChange)="sku.set($event)" placeholder="e.g. NCK-RG-2041" />
+            <input id="gd-sku" class="field__input" [ngModel]="value('sku')" (ngModelChange)="update('sku', $event)" placeholder="e.g. NCK-RG-2041" />
           </label>
         </div>
 
         <div class="field-row">
-          <label class="field">
+          <label class="field" for="gd-brand">
             <span class="field__label">Brand</span>
-            <input class="field__input" [ngModel]="brand()" (ngModelChange)="brand.set($event)" placeholder="e.g. Sellassist Basics" />
+            <input id="gd-brand" class="field__input" [ngModel]="value('brand')" (ngModelChange)="update('brand', $event)" placeholder="e.g. Sellassist Basics" />
           </label>
-          <label class="field">
-            <span class="field__label">HSN Code</span>
-            <input class="field__input" [ngModel]="hsnCode()" (ngModelChange)="hsnCode.set($event)" placeholder="e.g. 9615" />
-          </label>
+          <div class="field">
+            <label class="field__label" for="gd-hsn">HSN Code</label>
+            <input id="gd-hsn" class="field__input" [ngModel]="value('hsnCode')" (ngModelChange)="update('hsnCode', $event)" placeholder="e.g. 6204" aria-describedby="gd-gst" />
+            <!-- GST is calculated by the backend from HSN + selling price (GST 2.0 table), never by the AI. -->
+            <span id="gd-gst" class="gst-line" [class.gst-line--review]="gst()?.needsReview" aria-live="polite">
+              @if (gstLoading() && !gst()) {
+                Calculating GST…
+              } @else if (gst(); as g) {
+                <mat-icon aria-hidden="true">{{ g.needsReview ? 'warning' : 'receipt_long' }}</mat-icon>
+                <span><strong>GST {{ g.rate !== null ? g.rate + '%' : '—' }}</strong> · {{ g.rate !== null ? g.reason.replace(g.rate + '% — ', '') : g.reason.replace('Needs review — ', '') }}</span>
+              } @else {
+                GST is calculated from the HSN code and selling price.
+              }
+            </span>
+          </div>
         </div>
 
-        <label class="field">
+        <label class="field" for="gd-description">
           <span class="field__label">Description</span>
           <textarea
+            id="gd-description"
             class="field__input field__input--textarea"
             rows="4"
-            [ngModel]="description()"
-            (ngModelChange)="description.set($event)"
+            [ngModel]="value('description')"
+            (ngModelChange)="update('description', $event)"
             placeholder="Describe the product…"
           ></textarea>
         </label>
 
+        <div class="business-note">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <span>Prices and stock are yours to set — Sellassist never fills them in.
+            @if (suggestedPriceRange(); as range) {
+              <strong>Suggested price range: {{ range }}</strong>
+            }
+          </span>
+        </div>
+
         <div class="field-row field-row--four">
-          <label class="field">
-            <span class="field__label">Cost price</span>
-            <input class="field__input" [ngModel]="costPrice()" (ngModelChange)="costPrice.set($event)" placeholder="₹0" />
+          <label class="field" for="gd-cost">
+            <span class="field__label">Cost price (₹) *</span>
+            <input id="gd-cost" class="field__input" inputmode="decimal" [ngModel]="value('costPrice')" (ngModelChange)="update('costPrice', $event)" placeholder="Your cost" [attr.aria-invalid]="showError(costPriceError())" />
+            @if (showError(costPriceError())) { <span class="field__error">{{ costPriceError() }}</span> }
           </label>
-          <label class="field">
-            <span class="field__label">Selling price</span>
-            <input class="field__input" [ngModel]="sellingPrice()" (ngModelChange)="sellingPrice.set($event)" placeholder="₹0" />
+          <label class="field" for="gd-selling">
+            <span class="field__label">Selling price (₹) *</span>
+            <input id="gd-selling" class="field__input" inputmode="decimal" [ngModel]="value('sellingPrice')" (ngModelChange)="update('sellingPrice', $event)" placeholder="Your price" [attr.aria-invalid]="showError(sellingPriceError())" />
+            @if (showError(sellingPriceError())) { <span class="field__error">{{ sellingPriceError() }}</span> }
           </label>
-          <label class="field">
-            <span class="field__label">MRP</span>
-            <input class="field__input" [ngModel]="mrp()" (ngModelChange)="mrp.set($event)" placeholder="₹0" />
+          <label class="field" for="gd-mrp">
+            <span class="field__label">MRP (₹)</span>
+            <input id="gd-mrp" class="field__input" inputmode="decimal" [ngModel]="value('mrp')" (ngModelChange)="update('mrp', $event)" placeholder="Same as price" [attr.aria-invalid]="!!mrpError()" />
+            @if (mrpError()) { <span class="field__error">{{ mrpError() }}</span> }
           </label>
-          <label class="field">
-            <span class="field__label">Stock</span>
-            <input class="field__input" [ngModel]="stock()" (ngModelChange)="stock.set($event)" placeholder="0 units" />
+          <label class="field" for="gd-stock">
+            <span class="field__label">Stock (units) *</span>
+            <input id="gd-stock" class="field__input" inputmode="numeric" [ngModel]="value('stock')" (ngModelChange)="update('stock', $event)" placeholder="0" [attr.aria-invalid]="showError(stockError())" />
+            @if (showError(stockError())) { <span class="field__error">{{ stockError() }}</span> }
           </label>
         </div>
+
+        <label class="field field--narrow" for="gd-threshold">
+          <span class="field__label">Low-stock alert at (units)</span>
+          <input id="gd-threshold" class="field__input" inputmode="numeric" [ngModel]="value('lowStockThreshold')" (ngModelChange)="update('lowStockThreshold', $event)" placeholder="5 (default)" [attr.aria-invalid]="!!thresholdError()" />
+          @if (thresholdError()) { <span class="field__error">{{ thresholdError() }}</span> }
+        </label>
 
         @if (searchTags().length) {
           <div class="field">
@@ -169,7 +201,7 @@
       } @else {
         <mat-icon>{{ savedToInventory() ? 'check_circle' : 'save' }}</mat-icon>
       }
-      {{ isSavingToInventory() ? 'Saving…' : savedToInventory() ? 'Saved to Inventory' : 'Save to Inventory' }}
+      {{ isSavingToInventory() ? 'Saving…' : savedToInventory() ? 'Update Inventory' : 'Save to Inventory' }}
     </button>
   </div>
 </div>

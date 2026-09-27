@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
-import { ensureConnected, User } from './common.js';
+import { AmazonAuthState, ensureConnected, Feedback, Listing, ListingDraft, MarketplaceConnection, Sale, TemplateConfig, User } from './common.js';
 import { MAIL_UNAVAILABLE_MESSAGE, MailDeliveryError, sendMail } from '../utils/mailer.js';
 import { GSTIN_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, phoneLookupValues, sanitizeAttribution, toIndianE164 } from '../utils/signup-fields.js';
 
@@ -52,6 +52,15 @@ const resendVerificationLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: loginRateKey,
   message: { error: 'Too many verification requests. Please wait 15 minutes and try again.' },
+});
+
+const accountChangeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip || ''),
+  message: { error: 'Too many attempts. Please wait 15 minutes and try again.' },
 });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -520,8 +529,72 @@ router.get('/me', authMiddleware, async (req, res) => {
       usageCount: user.usageCount,
       lastLogin: user.lastLogin,
       dailyStats: user.dailyStats,
+      state: user.state,
+      city: user.city,
+      whatsapp_opt_in: user.whatsapp_opt_in ?? false,
     },
   });
+});
+
+// Settings → Profile: change password (requires the current one).
+router.post('/change-password', authMiddleware, accountChangeLimiter, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ error: 'Enter your current password and a new password.' });
+    return;
+  }
+  const policyError = passwordPolicyError(String(newPassword));
+  if (policyError) {
+    res.status(400).json({ error: policyError });
+    return;
+  }
+  try {
+    const user = await User.findById(authUser._id);
+    if (!user || !(await bcrypt.compare(String(currentPassword), user.passwordHash))) {
+      res.status(401).json({ error: 'Your current password is incorrect.' });
+      return;
+    }
+    user.passwordHash = await bcrypt.hash(String(newPassword), 10);
+    await user.save();
+    res.json({ ok: true });
+  } catch (err: any) {
+    console.error('Change password error', err);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Settings → Profile: permanently delete the account and everything stored for it, including
+// marketplace connection tokens. Requires the password as confirmation.
+router.delete('/me', authMiddleware, accountChangeLimiter, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const { password } = req.body || {};
+  if (!password) {
+    res.status(400).json({ error: 'Enter your password to delete your account.' });
+    return;
+  }
+  try {
+    const user = await User.findById(authUser._id);
+    if (!user || !(await bcrypt.compare(String(password), user.passwordHash))) {
+      res.status(401).json({ error: 'Your password is incorrect.' });
+      return;
+    }
+    const uid = user._id.toString();
+    await Promise.all([
+      Listing.deleteMany({ uid }),
+      Sale.deleteMany({ uid }),
+      ListingDraft.deleteMany({ uid }),
+      Feedback.deleteMany({ uid }),
+      TemplateConfig.deleteMany({ uid }),
+      MarketplaceConnection.deleteMany({ uid }),
+      AmazonAuthState.deleteMany({ uid }),
+    ]);
+    await user.deleteOne();
+    res.json({ ok: true });
+  } catch (err: any) {
+    console.error('Delete account error', err);
+    res.status(500).json({ error: 'Failed to delete your account. Please contact support.' });
+  }
 });
 
 router.patch('/users/:id', authMiddleware, async (req, res) => {

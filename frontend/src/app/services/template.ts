@@ -21,6 +21,9 @@ export interface PlatformTemplate {
   fields: TemplateField[];
 }
 
+const LEGACY_INSTAGRAM_PROMPT = 'Engaging caption with emojis and relevant hashtags.';
+const INSTAGRAM_DEFAULT_PROMPT = 'Engaging caption with emojis and up to 20 relevant, unique hashtags (Instagram allows max 30).';
+
 const DEFAULT_TEMPLATES: PlatformTemplate[] = [
   {
     id: 'details',
@@ -33,7 +36,8 @@ const DEFAULT_TEMPLATES: PlatformTemplate[] = [
       { id: 'priceINR', label: 'Price (INR)', enabled: true, order: 2, type: 'string' },
       { id: 'sellingPrice', label: 'Selling Price (Raw Number)', enabled: true, order: 3, type: 'string' },
       { id: 'costPrice', label: 'Cost Price (Raw Number)', enabled: false, order: 4, type: 'string' },
-      { id: 'gstRate', label: 'GST Rate', enabled: true, order: 5, type: 'string', customPrompt: 'GST 2.0 rate (0%, 5%, 18% or 40%; 3% for jewellery) as a percentage like "5%"' },
+      // Not AI-generated: the backend calculates GST from the HSN code + selling price (GST 2.0).
+      { id: 'gstRate', label: 'GST Rate (auto-calculated from HSN + price)', enabled: true, order: 5, type: 'string' },
       { id: 'hsnCode', label: 'HSN Code', enabled: true, order: 6, type: 'string', customPrompt: 'Accurate 6 or 8 digit Indian HSN code based on product category' },
       { id: 'material', label: 'Material', enabled: true, order: 7, type: 'string' },
       { id: 'variations', label: 'Variations', enabled: true, order: 8, type: 'array' },
@@ -80,7 +84,7 @@ const DEFAULT_TEMPLATES: PlatformTemplate[] = [
     label: 'Instagram',
     enabled: true,
     order: 4,
-    customPrompt: 'Engaging caption with emojis and relevant hashtags.',
+    customPrompt: INSTAGRAM_DEFAULT_PROMPT,
     fields: [
       { id: 'caption', label: 'Caption', enabled: true, order: 0, type: 'string' },
       { id: 'hashtags', label: 'Hashtags', enabled: true, order: 1, type: 'array' },
@@ -131,9 +135,14 @@ export class TemplateService {
         return {
           ...def,
           ...userConf,
+          // Saved templates from before the hashtag limit get the new default prompt.
+          customPrompt: userConf.customPrompt === LEGACY_INSTAGRAM_PROMPT ? def.customPrompt : (userConf.customPrompt ?? def.customPrompt),
           fields: def.fields.map(defField => {
             const userField = userConf.fields.find(f => f.id === defField.id);
-            return userField ? { ...defField, ...userField } : defField;
+            if (!userField) return defField;
+            // GST is a system field: keep the default label and never carry an AI prompt for it.
+            if (defField.id === 'gstRate') return { ...defField, enabled: userField.enabled, order: userField.order };
+            return { ...defField, ...userField };
           }).sort((a, b) => a.order - b.order)
         };
       }).sort((a, b) => a.order - b.order);

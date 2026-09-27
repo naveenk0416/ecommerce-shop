@@ -31,9 +31,13 @@
   }
 
   &__value {
-    font-size: 24px;
+    font-size: clamp(18px, 5vw, 24px);
     font-weight: 800;
     color: #0f172a;
+    // Amounts are pre-compacted (₹5.25L) so they never need to wrap mid-number.
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 
     &--positive {
       color: #16a34a;
@@ -232,6 +236,38 @@
   }
 }
 
+.stat__hint {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.gst--review {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.gst__icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  color: #d97706;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .profit--positive {
   color: #16a34a;
   font-weight: 600;
@@ -240,4 +276,84 @@
 .actions-cell {
   white-space: nowrap;
   text-align: right;
+}
+
+
+// Phones: each table row becomes a card with labelled values, so nothing scrolls sideways.
+@media (max-width: 720px) {
+  .inventory-table-wrap {
+    overflow-x: visible;
+  }
+
+  .inventory-table {
+    min-width: 0;
+
+    thead {
+      display: none;
+    }
+
+    tbody,
+    tr,
+    td {
+      display: block;
+      width: 100%;
+    }
+
+    tr {
+      padding: 12px;
+      margin-bottom: 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+    }
+
+    tbody tr:hover {
+      background: transparent;
+    }
+
+    td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: none;
+
+      &[data-label]::before {
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      &[data-label="Product"] {
+        display: block;
+
+        &::before {
+          display: none;
+        }
+      }
+    }
+  }
+
+  .product-cell {
+    min-width: 0;
+  }
+
+  .actions-cell {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    border-top: 1px solid #f1f5f9;
+    margin-top: 6px;
+    padding-top: 8px !important;
+  }
+
+  .search-box {
+    max-width: none;
+  }
+
+  .inventory__toolbar > button {
+    flex: 1 1 auto;
+  }
 }

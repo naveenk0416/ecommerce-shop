@@ -1,3 +1,4 @@
+import { formatGstRate } from '../../../../utils/format';
 import * as XLSX from 'xlsx';
 
 /** How many leading rows of a sheet to scan when looking for a header row. Real marketplace
@@ -77,7 +78,7 @@ export interface ExportListingFields {
   description: string;
   priceINR: string;
   sellingPrice?: number;
-  gstRate: string;
+  gstRate?: number | string | null;
   hsnCode: string;
   material: string;
   variations: string[];
@@ -103,7 +104,7 @@ export function buildExportData(
     'Description': listing.description || '',
     'Category': category || '',
     'Price (INR)': listing.sellingPrice != null ? String(listing.sellingPrice) : (listing.priceINR || ''),
-    'GST Rate': listing.gstRate || '',
+    'GST Rate': formatGstRate(listing.gstRate).replace('—', ''),
     'HSN Code': listing.hsnCode || '',
     'Material': listing.material || '',
     'Quantity': listing.quantity != null ? String(listing.quantity) : '',

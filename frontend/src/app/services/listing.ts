@@ -17,6 +17,59 @@ export interface Listing extends ProductDetails {
   mrp?: number;
   flipkartProductId?: string;
   flipkartLocationId?: string;
+  /** Server-calculated from HSN + selling price (GST 2.0 table). */
+  gstNeedsReview?: boolean;
+  gstReason?: string;
+  /** Per-product low-stock level; DEFAULT_LOW_STOCK_THRESHOLD when unset. */
+  lowStockThreshold?: number | null;
+  /** The saved AI listing (My Listings) this inventory item was created from. */
+  draftId?: string;
+  searchTags?: string[];
+}
+
+/** Low stock = at or below the product's threshold (default 5 units). */
+export const DEFAULT_LOW_STOCK_THRESHOLD = 5;
+
+export function lowStockThresholdOf(listing: Pick<Listing, 'lowStockThreshold'>): number {
+  const t = listing.lowStockThreshold;
+  return typeof t === 'number' && t >= 0 ? t : DEFAULT_LOW_STOCK_THRESHOLD;
+}
+
+export function isLowStock(listing: Pick<Listing, 'quantity' | 'lowStockThreshold'>): boolean {
+  return Number(listing.quantity ?? 0) <= lowStockThresholdOf(listing);
+}
+
+/** POST /listings/:id/sales response — stock is decremented atomically on the server. */
+export interface LogSaleResponse {
+  sale: Sale;
+  previousStock: number;
+  stock: number;
+  listing: Listing | null;
+}
+
+export interface GstRateResult {
+  rate: number | null;
+  needsReview: boolean;
+  reason: string;
+  source: string | null;
+  tableVersion: string;
+}
+
+/** Tab-keyed AI content (+ the seller's edits) for one product. */
+export type DraftResults = Record<string, Record<string, { values: string[]; confidence: number | null; reason: string | null }>>;
+
+export interface ListingDraftSummary {
+  id: string;
+  title: string;
+  status: 'draft' | 'saved';
+  imageUrl: string | null;
+  inventoryListingId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ListingDraft extends ListingDraftSummary {
+  results: DraftResults;
 }
 
 export interface Sale {
@@ -173,9 +226,9 @@ export class ListingService {
     }
   }
 
-  async updateListing(id: string, updates: Partial<Listing>) {
+  async updateListing(id: string, updates: Partial<Listing>): Promise<Listing> {
     try {
-      return apiFetch(`/listings/${encodeURIComponent(id)}`, {
+      return await apiFetch<Listing>(`/listings/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         body: updates,
       });
@@ -185,9 +238,10 @@ export class ListingService {
     }
   }
 
-  async logSale(sale: Omit<Sale, 'id' | 'uid' | 'date'>) {
+  /** Logs a sale; the server reduces stock in the same atomic operation and returns the new stock. */
+  async logSale(sale: Omit<Sale, 'id' | 'uid' | 'date'>): Promise<LogSaleResponse> {
     try {
-      return apiFetch(`/listings/${encodeURIComponent(sale.listingId)}/sales`, {
+      return await apiFetch<LogSaleResponse>(`/listings/${encodeURIComponent(sale.listingId)}/sales`, {
         method: 'POST',
         body: {
           ...sale,
@@ -198,6 +252,40 @@ export class ListingService {
       handleApiError(error, OperationType.CREATE, `/listings/${sale.listingId}/sales`);
       throw error;
     }
+  }
+
+  /** GST rate for an HSN code + selling price from the backend's GST 2.0 table (display only;
+   * the server re-calculates on every save). */
+  getGstRate(hsn: string, price: number | null): Promise<GstRateResult> {
+    const params = new URLSearchParams({ hsn });
+    if (price !== null && Number.isFinite(price)) params.set('price', String(price));
+    return apiFetch<GstRateResult>(`/gst/rate?${params.toString()}`);
+  }
+
+  // ---- My Listings (auto-saved AI listing drafts) ----
+
+  listDrafts(): Promise<ListingDraftSummary[]> {
+    return apiFetch<ListingDraftSummary[]>('/drafts');
+  }
+
+  getDraft(id: string): Promise<ListingDraft> {
+    return apiFetch<ListingDraft>(`/drafts/${encodeURIComponent(id)}`);
+  }
+
+  createDraft(body: { results: DraftResults; image?: string }): Promise<ListingDraft> {
+    return apiFetch<ListingDraft>('/drafts', { method: 'POST', body });
+  }
+
+  updateDraft(id: string, body: Partial<{ results: DraftResults; image: string; status: 'draft' | 'saved'; inventoryListingId: string }>): Promise<ListingDraftSummary> {
+    return apiFetch<ListingDraftSummary>(`/drafts/${encodeURIComponent(id)}`, { method: 'PATCH', body });
+  }
+
+  duplicateDraft(id: string): Promise<ListingDraftSummary> {
+    return apiFetch<ListingDraftSummary>(`/drafts/${encodeURIComponent(id)}/duplicate`, { method: 'POST' });
+  }
+
+  deleteDraft(id: string): Promise<void> {
+    return apiFetch<void>(`/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
   getSales(listingId: string, callback: (sales: Sale[]) => void) {

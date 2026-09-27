@@ -12,9 +12,12 @@ export const LISTING_SUMMARY_FIELDS: readonly FieldConfig[] = [
   { key: 'brand', label: 'Brand', maxLength: 60 },
   { key: 'hsnCode', label: 'HSN Code', maxLength: 20 },
   { key: 'description', label: 'Description', maxLength: 1200, multiline: true },
-  { key: 'costPrice', label: 'Cost price', maxLength: 12 },
-  { key: 'sellingPrice', label: 'Selling price', maxLength: 12 },
-  { key: 'mrp', label: 'MRP', maxLength: 12 },
-  { key: 'stock', label: 'Stock', maxLength: 20 },
+  // Price is only a hint shown as "Suggested price range" — never auto-filled. Cost price and
+  // stock are business numbers the AI can't know from a photo, so it isn't asked for them at all.
+  { key: 'suggestedSellingPrice', label: 'Suggested selling price', maxLength: 12 },
+  { key: 'suggestedMrp', label: 'Suggested MRP', maxLength: 12 },
   { key: 'searchTags', label: 'Search tags', maxLength: 200 },
 ];
+
+/** Seller-entered values stored alongside the AI content in the draft's "general" tab. */
+export const SELLER_FIELD_KEYS = ['costPrice', 'sellingPrice', 'mrp', 'stock', 'lowStockThreshold'] as const;

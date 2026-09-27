@@ -14,3 +14,35 @@
     min-width: 0;
   }
 }
+
+.open-full {
+  align-self: flex-start;
+}
+
+.field__error {
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.gst-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  font-size: 12px;
+  color: #166534;
+
+  strong {
+    font-size: 14px;
+  }
+
+  &--review {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+  }
+}

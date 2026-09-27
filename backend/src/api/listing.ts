@@ -1,6 +1,7 @@
 import express from 'express';
 import { authMiddleware } from './auth.js';
-import { ensureConnected, Listing, Sale } from './common.js';
+import { ensureConnected, Listing, ListingDraft, Sale } from './common.js';
+import { gstFieldsFor, normalizeListingNumbers, parseAmount } from '../utils/listing-fields.js';
 
 const router = express.Router();
 
@@ -28,6 +29,18 @@ function imageProjection(field: string) {
       `$${field}`,
     ],
   };
+}
+
+/** GST fields are always computed server-side from HSN + selling price — never taken from the client or the AI. */
+const SERVER_GST_FIELDS = ['gstRate', 'gstNeedsReview', 'gstReason', 'gstTableVersion'];
+
+/** A single listing as the list endpoint returns it: images as URLs, never inline base64. */
+function toClientListing(doc: any) {
+  const obj = typeof doc?.toObject === 'function' ? doc.toObject({ virtuals: true }) : { ...doc };
+  const id = obj._id?.toString();
+  const asUrl = (variant: 'original' | 'processed', value: unknown) =>
+    typeof value === 'string' && value.startsWith('data:') ? listImageUrl(id, variant, value.length) : value;
+  return { ...obj, id, originalImage: asUrl('original', obj.originalImage), processedImage: asUrl('processed', obj.processedImage) };
 }
 
 // Returns every listing with image fields as fetchable URLs rather than inline base64. The list
@@ -157,18 +170,28 @@ router.post('/', authMiddleware, async (req, res) => {
     return;
   }
 
+  const body = { ...(req.body || {}) };
+  delete body.uid;
+  delete body._id;
+  delete body.id;
+  for (const field of SERVER_GST_FIELDS) delete body[field];
+
+  const { values, error } = normalizeListingNumbers(body);
+  if (error) {
+    res.status(400).json({ error });
+    return;
+  }
+
   try {
     const listing = new Listing({
-      ...req.body,
+      ...body,
+      ...values,
+      ...gstFieldsFor(body.hsnCode, values['sellingPrice'] ?? parseAmount(body.priceINR)),
       uid: authUser._id.toString(),
       createdAt: new Date().toISOString(),
     });
     await listing.save();
-    const result = {
-      ...listing.toObject({ virtuals: true }),
-      id: listing._id.toString(),
-    };
-    res.json(result);
+    res.json(toClientListing(listing));
   } catch (err: any) {
     console.error('Save listing error', err);
     res.status(500).json({ error: err?.message || 'Failed to save listing' });
@@ -207,13 +230,23 @@ router.patch('/:id', authMiddleware, async (req, res) => {
       }
     }
 
-    Object.assign(listing, updates);
+    for (const field of SERVER_GST_FIELDS) delete (updates as any)[field];
+    const { values, error } = normalizeListingNumbers(updates, listing.toObject());
+    if (error) {
+      res.status(400).json({ error });
+      return;
+    }
+
+    // doc.set(), not Object.assign: with strict:false, assigning a property that isn't declared in
+    // the schema (quantity, sellingPrice, mrp…) only changes the JS object and is never saved —
+    // that's why stock updates after a sale used to be silently lost.
+    listing.set({ ...updates, ...values });
+    // Recalculate whenever the inputs change, or the stored rate is a legacy string like "18%".
+    if ('hsnCode' in updates || 'sellingPrice' in values || typeof listing.get('gstRate') !== 'number') {
+      listing.set(gstFieldsFor(listing.get('hsnCode'), listing.get('sellingPrice') ?? parseAmount(listing.get('priceINR'))));
+    }
     await listing.save();
-    const result = {
-      ...listing.toObject({ virtuals: true }),
-      id: listing._id.toString(),
-    };
-    res.json(result);
+    res.json(toClientListing(listing));
   } catch (err: any) {
     console.error('Update listing error', err);
     res.status(500).json({ error: err?.message || 'Failed to update listing' });
@@ -243,6 +276,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 
     await listing.deleteOne();
+    // The full listing content stays in My Listings, back to draft status.
+    await ListingDraft.updateMany({ inventoryListingId: listing._id.toString() }, { $unset: { inventoryListingId: 1 }, $set: { status: 'draft' } });
     res.json({ ok: true });
   } catch (err: any) {
     console.error('Delete listing error', err);
@@ -261,6 +296,17 @@ router.post('/:id/sales', authMiddleware, async (req, res) => {
     return;
   }
 
+  const quantity = Number(saleData.quantity);
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    res.status(400).json({ error: 'Quantity sold must be a whole number of 1 or more.' });
+    return;
+  }
+  const salePrice = parseAmount(saleData.salePrice) ?? 0;
+  if (salePrice < 0) {
+    res.status(400).json({ error: "Sale price can't be negative." });
+    return;
+  }
+
   try {
     const listing = await Listing.findById(id);
     if (!listing) {
@@ -273,16 +319,49 @@ router.post('/:id/sales', authMiddleware, async (req, res) => {
       return;
     }
 
-    const sale = new Sale({
-      listingId: id,
-      uid: authUser._id.toString(),
-      platform: saleData.platform || 'Other',
-      quantity: saleData.quantity || 0,
-      salePrice: saleData.salePrice || 0,
-      date: saleData.date || new Date().toISOString(),
+    // Older listings may hold stock as text ("50 units") — store it as a number first so the
+    // conditional $inc below can compare against it.
+    const storedQty = listing.get('quantity');
+    if (typeof storedQty !== 'number') {
+      await Listing.updateOne({ _id: id, quantity: storedQty }, { $set: { quantity: Math.max(0, Math.trunc(parseAmount(storedQty) ?? 0)) } });
+    }
+
+    // Atomic: only decrements when enough stock remains, so two simultaneous sales can't oversell.
+    const before = await Listing.findOneAndUpdate(
+      { _id: id, quantity: { $gte: quantity } },
+      { $inc: { quantity: -quantity } },
+      { new: false, projection: { quantity: 1 } },
+    );
+    if (!before) {
+      const current = await Listing.findById(id, { quantity: 1 }).lean();
+      const inStock = Number((current as any)?.quantity ?? 0);
+      res.status(409).json({ error: `Only ${inStock} unit${inStock === 1 ? '' : 's'} in stock — you can't sell ${quantity}.`, stock: inStock });
+      return;
+    }
+
+    let sale;
+    try {
+      sale = await new Sale({
+        listingId: id,
+        uid: authUser._id.toString(),
+        platform: saleData.platform || 'Other',
+        quantity,
+        salePrice,
+        date: saleData.date || new Date().toISOString(),
+      }).save();
+    } catch (saveErr) {
+      // Put the stock back if the sale record couldn't be written.
+      await Listing.updateOne({ _id: id }, { $inc: { quantity } });
+      throw saveErr;
+    }
+
+    const updated = await Listing.findById(id);
+    res.json({
+      sale,
+      previousStock: Number(before.get('quantity')),
+      stock: Number(updated?.get('quantity') ?? 0),
+      listing: updated ? toClientListing(updated) : null,
     });
-    await sale.save();
-    res.json(sale);
   } catch (err: any) {
     console.error('Log sale error', err);
     res.status(500).json({ error: err?.message || 'Failed to log sale' });

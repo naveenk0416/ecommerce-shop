@@ -1,27 +1,29 @@
 <div class="inventory">
+  <!-- Cards are computed from the same de-duplicated list as the table, and update on every add, edit, delete or sale. -->
   <div class="inventory__stats">
     <app-ui-card [elevated]="true">
       <div class="stat">
         <span class="stat__label">Total Listings</span>
-        <span class="stat__value">{{ listings().length }}</span>
+        <span class="stat__value">{{ uniqueListings().length }}</span>
       </div>
     </app-ui-card>
     <app-ui-card [elevated]="true">
       <div class="stat">
         <span class="stat__label">Inventory Value</span>
-        <span class="stat__value">₹{{ totalValue() | number: '1.0-0' }}</span>
+        <span class="stat__value" [title]="'₹' + (totalValue() | number: '1.0-0')">{{ formatInr(totalValue()) }}</span>
       </div>
     </app-ui-card>
     <app-ui-card [elevated]="true">
       <div class="stat">
         <span class="stat__label">Potential Profit</span>
-        <span class="stat__value stat__value--positive">₹{{ totalProfit() | number: '1.0-0' }}</span>
+        <span class="stat__value stat__value--positive" [title]="'₹' + (totalProfit() | number: '1.0-0')">{{ formatInr(totalProfit()) }}</span>
       </div>
     </app-ui-card>
     <app-ui-card [elevated]="true">
       <div class="stat">
         <span class="stat__label">Low Stock Alerts</span>
         <span class="stat__value" [class.stat__value--warning]="lowStockCount() > 0">{{ lowStockCount() }}</span>
+        <span class="stat__hint">At or below each product's alert level (default {{ defaultThreshold }} units)</span>
       </div>
     </app-ui-card>
   </div>
@@ -29,58 +31,60 @@
   @if (!auth.user()) {
     <app-ui-card [elevated]="true">
       <div class="empty-state">
-        <mat-icon>lock</mat-icon>
+        <mat-icon aria-hidden="true">lock</mat-icon>
         <p>Sign in to view and manage your inventory.</p>
       </div>
     </app-ui-card>
   } @else {
     <app-ui-card [elevated]="true">
       <div class="inventory__toolbar">
-        <div class="search-box">
-          <mat-icon>search</mat-icon>
-          <input type="text" placeholder="Search by name, category, or HSN…" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
-        </div>
+        <label class="search-box">
+          <mat-icon aria-hidden="true">search</mat-icon>
+          <input type="search" aria-label="Search products" placeholder="Search by name, category, or HSN…" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" />
+        </label>
         <button mat-stroked-button (click)="syncAmazon()" [disabled]="syncingAmazon()">
-          <mat-icon>sync</mat-icon>
+          <mat-icon aria-hidden="true">sync</mat-icon>
           {{ syncingAmazon() ? 'Syncing…' : 'Sync from Amazon' }}
         </button>
         <button mat-stroked-button (click)="syncFlipkart()" [disabled]="syncingFlipkart()">
-          <mat-icon>sync</mat-icon>
+          <mat-icon aria-hidden="true">sync</mat-icon>
           {{ syncingFlipkart() ? 'Syncing…' : 'Sync from Flipkart' }}
         </button>
         <button mat-flat-button color="primary" (click)="openAddDialog()">
-          <mat-icon>add</mat-icon>
+          <mat-icon aria-hidden="true">add</mat-icon>
           Add Product
         </button>
       </div>
 
       @if (filteredListings().length === 0) {
         <div class="empty-state">
-          <mat-icon>inventory_2</mat-icon>
-          <p>{{ listings().length === 0 ? 'No products yet — add your first one to get started.' : 'No products match your search.' }}</p>
+          <mat-icon aria-hidden="true">inventory_2</mat-icon>
+          <p>{{ uniqueListings().length === 0 ? 'No products yet — add your first one to get started.' : 'No products match your search.' }}</p>
         </div>
       } @else {
+        <!-- A table on wide screens; each row becomes a card under 720px (see .inventory-table styles). -->
         <div class="inventory-table-wrap">
           <table class="inventory-table">
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Stock</th>
-                <th>Price</th>
-                <th>Profit</th>
-                <th aria-label="Actions"></th>
+                <th scope="col">Product</th>
+                <th scope="col">Category</th>
+                <th scope="col">Stock</th>
+                <th scope="col">Price</th>
+                <th scope="col">GST</th>
+                <th scope="col">Profit</th>
+                <th scope="col"><span class="visually-hidden">Actions</span></th>
               </tr>
             </thead>
             <tbody>
               @for (listing of filteredListings(); track listing.id) {
                 <tr>
-                  <td>
+                  <td data-label="Product">
                     <div class="product-cell">
                       @if (listing.processedImage || listing.originalImage) {
                         <img [src]="listing.processedImage || listing.originalImage" alt="" class="product-cell__image" referrerpolicy="no-referrer" />
                       } @else {
-                        <span class="product-cell__placeholder"><mat-icon>image</mat-icon></span>
+                        <span class="product-cell__placeholder"><mat-icon aria-hidden="true">image</mat-icon></span>
                       }
                       <div class="product-cell__info">
                         <span class="product-cell__name">{{ listing.name }}</span>
@@ -92,12 +96,20 @@
                       </div>
                     </div>
                   </td>
-                  <td>{{ listing.category || '—' }}</td>
-                  <td>
-                    <span class="stock-badge" [class.stock-badge--low]="isLowStock(listing)">{{ listing.quantity ?? 0 }} units</span>
+                  <td data-label="Category">{{ listing.category || '—' }}</td>
+                  <td data-label="Stock">
+                    <span class="stock-badge" [class.stock-badge--low]="isLowStock(listing)" [title]="'Low-stock alert at ' + thresholdOf(listing) + ' units'">{{ listing.quantity ?? 0 }} units</span>
                   </td>
-                  <td>₹{{ listing.sellingPrice || 0 | number: '1.0-0' }}</td>
-                  <td [class.profit--positive]="getProfit(listing) > 0">₹{{ getProfit(listing) | number: '1.0-0' }}</td>
+                  <td data-label="Price" class="nowrap">{{ formatInr(priceOf(listing)) }}</td>
+                  <td data-label="GST" class="nowrap">
+                    <span [class.gst--review]="listing.gstNeedsReview || typeof listing.gstRate !== 'number'" [title]="listing.gstReason || 'Add an HSN code to calculate GST'">
+                      {{ formatGst(listing.gstRate) }}
+                      @if (listing.gstNeedsReview || typeof listing.gstRate !== 'number') {
+                        <mat-icon class="gst__icon" aria-label="Needs review">warning</mat-icon>
+                      }
+                    </span>
+                  </td>
+                  <td data-label="Profit" class="nowrap" [class.profit--positive]="getProfit(listing) > 0">{{ formatInr(getProfit(listing)) }}</td>
                   <td class="actions-cell">
                     @if (listing.source) {
                       <button
@@ -114,18 +126,23 @@
                         mat-icon-button
                         (click)="openCreateAmazonListingDialog(listing)"
                         matTooltip="Publish as a new Amazon listing"
-                        aria-label="Publish {{ listing.name }} as a new Amazon listing"
+                        [attr.aria-label]="'Publish ' + listing.name + ' as a new Amazon listing'"
                       >
                         <mat-icon>publish</mat-icon>
                       </button>
                     }
-                    <button mat-icon-button (click)="openSaleDialog(listing)" matTooltip="Log sale" aria-label="Log sale for {{ listing.name }}">
+                    @if (listing.draftId) {
+                      <button mat-icon-button (click)="openFullListing(listing)" matTooltip="Open full listing" [attr.aria-label]="'Open full listing for ' + listing.name">
+                        <mat-icon>article</mat-icon>
+                      </button>
+                    }
+                    <button mat-icon-button (click)="openSaleDialog(listing)" matTooltip="Log sale" [attr.aria-label]="'Log sale for ' + listing.name">
                       <mat-icon>point_of_sale</mat-icon>
                     </button>
-                    <button mat-icon-button (click)="openEditDialog(listing)" matTooltip="Edit" aria-label="Edit {{ listing.name }}">
+                    <button mat-icon-button (click)="openEditDialog(listing)" matTooltip="Edit" [attr.aria-label]="'Edit ' + listing.name">
                       <mat-icon>edit</mat-icon>
                     </button>
-                    <button mat-icon-button (click)="deleteListing(listing)" matTooltip="Delete" aria-label="Delete {{ listing.name }}">
+                    <button mat-icon-button (click)="deleteListing(listing)" matTooltip="Delete" [attr.aria-label]="'Delete ' + listing.name">
                       <mat-icon>delete</mat-icon>
                     </button>
                   </td>

@@ -100,7 +100,7 @@
         (goDashboard)="navigateTo('home')">
       </app-landing>
     } @else {
-      <div class="max-w-7xl mx-auto space-y-8 pb-20 pt-12 px-6">
+      <div class="max-w-7xl mx-auto space-y-8 pb-20 pt-4 md:pt-12 md:px-6" [class.px-4]="mainView() !== 'workspace'">
         @if (showPaymentDemo && auth.isAuthReady()) {
           <!-- Developer-only Razorpay test box; showPaymentDemo is false in production builds. -->
           <section class="mb-8 rounded-[2rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-amber-50 p-6 shadow-sm">
@@ -793,7 +793,7 @@
                               <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 relative group">
                                 <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-3">GST Rate & HSN Code</span>
                                 <div class="flex items-center gap-2">
-                                  <span class="text-sm font-extrabold text-slate-700 bg-white px-3 py-1 rounded-lg shadow-sm border border-slate-100">{{details.gstRate}} GST</span>
+                                  <span class="text-sm font-extrabold text-slate-700 bg-white px-3 py-1 rounded-lg shadow-sm border border-slate-100" [title]="details.gstReason || 'GST is calculated from the HSN code and price'">{{ formatGstRate(details.gstRate) }} GST</span>
                                   <span class="text-[11px] font-mono font-bold text-white bg-slate-950 px-3 py-1 rounded-lg">{{details.hsnCode}}</span>
                                 </div>
                                 <button (click)="toggleEdit('gstHsn')" class="absolute top-4 right-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -940,6 +940,83 @@
               <app-admin (view)="viewListing($event)"></app-admin>
             } @else if (mainView() === 'settings') {
               <div class="space-y-10">
+                <!-- Profile: name, email (read-only), mobile, WhatsApp consent, password, delete account -->
+                <section class="space-y-4" aria-labelledby="profile-heading">
+                  <div>
+                    <h2 id="profile-heading" class="text-2xl font-bold text-slate-800">Profile</h2>
+                    <p class="text-sm text-slate-500 mt-1">Your account details and contact preferences.</p>
+                  </div>
+
+                  <div class="bg-white rounded-3xl border border-slate-100 p-6 space-y-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="profile-field">
+                        <label for="profile-name">Full name</label>
+                        <input id="profile-name" type="text" autocomplete="name" [value]="profileName()" (input)="profileName.set($any($event.target).value)" />
+                      </div>
+                      <div class="profile-field">
+                        <label for="profile-email">Email</label>
+                        <input id="profile-email" type="email" [value]="auth.profile()?.email || ''" readonly aria-describedby="profile-email-help" />
+                        <span id="profile-email-help" class="profile-field__help">To change your email, contact {{ business.supportEmail }} — we'll re-verify the new address.</span>
+                      </div>
+                      <div class="profile-field">
+                        <label for="profile-phone">Mobile number</label>
+                        <div class="flex items-center gap-2">
+                          <span class="profile-field__prefix">+91</span>
+                          <input id="profile-phone" type="tel" inputmode="numeric" autocomplete="tel-national" [value]="profilePhone()" (input)="profilePhone.set($any($event.target).value)" placeholder="10-digit mobile number" />
+                        </div>
+                      </div>
+                      <div class="profile-field justify-end">
+                        <label class="flex items-start gap-2 cursor-pointer text-sm font-semibold text-slate-600">
+                          <input type="checkbox" class="remember-me-checkbox mt-0.5" [checked]="profileWhatsappOptIn()" (change)="profileWhatsappOptIn.set($any($event.target).checked)" />
+                          Send me updates and stock alerts on WhatsApp
+                        </label>
+                      </div>
+                    </div>
+                    @if (profileMessage(); as msg) {
+                      <p class="text-sm font-semibold" [class.text-emerald-600]="msg.ok" [class.text-red-600]="!msg.ok" role="status">{{ msg.text }}</p>
+                    }
+                    <button (click)="saveProfile()" [disabled]="profileSaving()" class="btn-orange-premium">{{ profileSaving() ? 'Saving…' : 'Save profile' }}</button>
+                  </div>
+
+                  <div class="bg-white rounded-3xl border border-slate-100 p-6 space-y-4">
+                    <h3 class="text-base font-bold text-slate-800">Change password</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <app-password-field label="Current password" autocomplete="current-password" [value]="currentPasswordInput()" (valueChange)="currentPasswordInput.set($event)" />
+                      <div>
+                        <app-password-field label="New password" autocomplete="new-password" [value]="newPasswordInput()" (valueChange)="newPasswordInput.set($event)" (enter)="changePassword()" />
+                        <app-password-strength [password]="newPasswordInput()" />
+                      </div>
+                    </div>
+                    @if (passwordMessage(); as msg) {
+                      <p class="text-sm font-semibold" [class.text-emerald-600]="msg.ok" [class.text-red-600]="!msg.ok" role="status">{{ msg.text }}</p>
+                    }
+                    <button (click)="changePassword()" [disabled]="passwordSaving()" class="btn-secondary">{{ passwordSaving() ? 'Updating…' : 'Update password' }}</button>
+                  </div>
+
+                  <div class="bg-white rounded-3xl border border-red-100 p-6 space-y-3">
+                    <h3 class="text-base font-bold text-red-700">Delete account</h3>
+                    <p class="text-sm text-slate-500">Permanently deletes your account, inventory, sales, saved listings and marketplace connections. This can't be undone.</p>
+                    @if (!deleteConfirmOpen()) {
+                      <button (click)="deleteConfirmOpen.set(true)" class="btn-ghost !border-red-200 !text-red-600">Delete my account</button>
+                    } @else {
+                      <div class="space-y-3 max-w-md">
+                        <app-password-field label="Enter your password to confirm" autocomplete="current-password" [value]="deletePasswordInput()" (valueChange)="deletePasswordInput.set($event)" />
+                        <div class="profile-field">
+                          <label for="delete-confirm">Type DELETE to confirm</label>
+                          <input id="delete-confirm" type="text" autocomplete="off" [value]="deleteConfirmText()" (input)="deleteConfirmText.set($any($event.target).value)" />
+                        </div>
+                        @if (deleteMessage()) {
+                          <p class="text-sm font-semibold text-red-600" role="alert">{{ deleteMessage() }}</p>
+                        }
+                        <div class="flex flex-wrap gap-3">
+                          <button (click)="deleteAccount()" [disabled]="deleteConfirmText() !== 'DELETE' || !deletePasswordInput() || deletingAccount()" class="btn-primary !bg-none !bg-red-600 disabled:opacity-50">{{ deletingAccount() ? 'Deleting…' : 'Permanently delete account' }}</button>
+                          <button (click)="deleteConfirmOpen.set(false); deleteConfirmText.set(''); deletePasswordInput.set('')" class="btn-ghost">Cancel</button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </section>
+
                 <section class="space-y-4">
                   <div>
                     <h2 class="text-2xl font-bold text-slate-800">Marketplace Connections</h2>
@@ -1112,6 +1189,7 @@
                             [value]="platform.customPrompt || ''"
                             (blur)="updateTemplatePrompt(platform.id, $any($event.target).value)"
                             placeholder="e.g. Emphasize eco-friendly materials and premium quality."
+                            [attr.aria-label]="platform.label + ' AI instructions'"
                           ></textarea>
                         </div>
 

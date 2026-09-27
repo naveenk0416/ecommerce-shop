@@ -7,7 +7,6 @@ import {
 import { Listing, ListingService, Sale } from './services/listing';
 import { AuthService } from './services/auth';
 import { parsePrice } from './utils/price';
-import { ALL_GST_RATES } from './config/gst-rates';
 import { addIcons } from 'ionicons';
 import {
   cube, cubeOutline, search, refresh,
@@ -29,7 +28,6 @@ import {
   styleUrl: './products.css'
 })
 export class Products {
-  readonly gstRates = ALL_GST_RATES;
   public auth = inject(AuthService);
   private listingService = inject(ListingService);
   private toastController = inject(ToastController, { optional: true });
@@ -65,7 +63,7 @@ export class Products {
     sellingPrice: 0,
     description: '',
     priceINR: '0',
-    gstRate: '18%',
+    gstRate: null,
     hsnCode: '',
     material: '',
     variations: [],
@@ -132,15 +130,14 @@ export class Products {
     }
 
     try {
-      await this.listingService.logSale(submissionData);
-      
-      // Decrement inventory quantity
-      const currentQty = Number(listing.quantity ?? 0);
-      const newQty = Math.max(0, currentQty - submissionData.quantity);
-      await this.listingService.updateListing(data.listingId, { quantity: newQty });
+      // The server reduces stock atomically with the sale and returns the new stock level.
+      const response = await this.listingService.logSale(submissionData);
+      listing.quantity = response.stock;
+      // Re-fetch so the table, low-stock badge and totals reflect the new stock without a reload.
+      this.refresh.emit();
 
       const toast = await this.toastController?.create?.({
-        message: `Sale logged! Inventory updated to ${newQty} units.`,
+        message: `Sale logged. Stock: ${response.previousStock} → ${response.stock}`,
         duration: 2000,
         color: 'success'
       });
@@ -149,7 +146,7 @@ export class Products {
     } catch (error) {
       console.error('Failed to log sale:', error);
       const toast = await this.toastController?.create?.({
-        message: 'Could not log sale. Please check your permissions and data.',
+        message: (error instanceof Error && error.message) || 'Could not log sale. Please try again.',
         duration: 3000,
         color: 'danger'
       });
@@ -166,7 +163,7 @@ export class Products {
       sellingPrice: 0,
       description: '',
       priceINR: '0',
-      gstRate: '18%',
+      gstRate: null,
       hsnCode: '',
       material: '',
       variations: [],

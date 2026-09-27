@@ -75,6 +75,22 @@ const saleSchema = new mongoose.Schema({
 
 export const Sale = (mongoose.models as any).Sale || mongoose.model('Sale', saleSchema);
 
+// An AI-generated listing (every marketplace tab + the seller's edits), saved automatically so a
+// refresh or back/forward doesn't lose it. "My Listings" is the list of these. Saving to inventory
+// creates/updates a Listing (inventory item) linked both ways via inventoryListingId / draftId.
+const listingDraftSchema = new mongoose.Schema({
+  uid: { type: String, required: true, index: true },
+  title: { type: String, default: '' },
+  status: { type: String, enum: ['draft', 'saved'], default: 'draft' },
+  /** Primary product photo as a data URL (served at /api/drafts/:id/image.jpg). */
+  image: { type: String, default: '' },
+  /** Per-tab generated content keyed by tab (general, amazon, flipkart, meesho, instagram). */
+  results: { type: mongoose.Schema.Types.Mixed, default: {} },
+  inventoryListingId: { type: String },
+}, { timestamps: true, minimize: false });
+
+export const ListingDraft = (mongoose.models as any).ListingDraft || mongoose.model('ListingDraft', listingDraftSchema);
+
 const feedbackSchema = new mongoose.Schema({
   listingId: { type: String, required: true },
   uid: { type: String, required: true },

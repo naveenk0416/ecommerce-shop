@@ -19,7 +19,7 @@ export const INSTAGRAM_CONTENT_SECTIONS: readonly FieldSection[] = [
     icon: 'tag',
     description: 'Hashtag sets to maximize reach and discoverability.',
     fields: [
-      { key: 'hashtags', label: 'Hashtags (50)', maxLength: 1000, multiline: true },
+      { key: 'hashtags', label: 'Hashtags (max 20)', maxLength: 600, multiline: true },
       { key: 'trendingHashtags', label: 'Trending Hashtags', maxLength: 300, multiline: true },
     ],
   },
@@ -31,5 +31,6 @@ export const INSTAGRAM_SEO_CHECKS: readonly SeoCheck[] = [
   { label: 'Call to action included', test: (get) => get('cta').length > 0 },
   { label: 'Reel hook suggested', test: (get) => get('reelHook').length > 0 },
   { label: 'Posting time suggested', test: (get) => get('bestPostingTime').length > 0 },
-  { label: 'Close to 50 hashtags', test: (get) => get('hashtags').split(/\s+/).filter((h) => h.startsWith('#')).length >= 40 },
+  // Instagram allows at most 30 per post; 10–20 focused hashtags is the target.
+  { label: '10–20 unique hashtags', test: (get) => { const n = get('hashtags').split(/\s+/).filter((h) => h.startsWith('#')).length; return n >= 10 && n <= 20; } },
 ];

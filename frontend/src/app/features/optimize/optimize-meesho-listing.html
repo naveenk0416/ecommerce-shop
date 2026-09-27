@@ -26,7 +26,7 @@
                 [suggestions]="r[field.key]?.values ?? []"
                 [confidence]="r[field.key]?.confidence ?? null"
                 [reason]="r[field.key]?.reason ?? null"
-                [storageKey]="'optimize.meesho.' + field.key"
+                (valueChange)="session.updateField('meesho', field.key, $event)"
               />
             }
           </div>

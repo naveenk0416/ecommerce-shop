@@ -9,6 +9,8 @@ import feedbackRouter from './api/feedback.js';
 import razorpayRouter from './api/razorpay.js';
 import razorpayConfigRouter from './api/razorpay-config.js';
 import barcodeRouter from './api/barcode.js';
+import draftsRouter from './api/drafts.js';
+import gstRouter from './api/gst.js';
 import marketplaceConnectionsRouter, { amazonOAuthRouter, flipkartOAuthRouter } from './api/marketplace-connections.js';
 
 // Origins allowed to call this API in addition to localhost dev servers. Configure the deployed
@@ -56,6 +58,8 @@ app.get('/test', (req: Request, res: Response) => {
 app.use('/api', authRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/listings', listingRouter);
+app.use('/api/drafts', draftsRouter);
+app.use('/api/gst', gstRouter);
 app.use('/api/templates', templateRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api', razorpayConfigRouter);

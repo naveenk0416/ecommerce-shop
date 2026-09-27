@@ -197,6 +197,51 @@ ion-toolbar {
   cursor: pointer;
 }
 
+/* Settings → Profile fields. */
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-field label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #ea580c;
+}
+
+.profile-field input:not([type='checkbox']) {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 1rem;
+  border-radius: 1rem;
+  border: 1px solid #f1f5f9;
+  background: #f8fafc;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.profile-field input[readonly] {
+  color: #64748b;
+}
+
+.profile-field__prefix {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  background: #f1f5f9;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.profile-field__help {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
 /* Mobile header menu (below md). */
 .mobile-menu-item {
   display: flex;

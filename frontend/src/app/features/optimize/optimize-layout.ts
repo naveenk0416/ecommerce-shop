@@ -1,11 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, DestroyRef, Injector, computed, inject, runInInjectionContext } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
 import { MarketplaceIcon } from '../listing-workspace/ui/marketplace-icon/marketplace-icon';
 import { computeMarketplaceRows } from './optimize-readiness.util';
 import { OptimizeSessionService } from './optimize-session.service';
 import { AuthService } from '../../services/auth';
+import { ListingPreviewDialog } from './listing-preview-dialog';
 
 @Component({
   selector: 'app-optimize-layout',
@@ -19,6 +21,7 @@ export class OptimizeLayout {
   protected readonly session = inject(OptimizeSessionService);
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
 
   marketplaceRows = computed(() => computeMarketplaceRows(this.session.allResults()));
   readyCount = computed(() => this.marketplaceRows().filter((row) => row.ready).length);
@@ -26,6 +29,15 @@ export class OptimizeLayout {
   productTitle = computed(() => {
     const result = this.session.getResult('general');
     return result?.['productTitle']?.values?.[0]?.trim() || 'Untitled Product';
+  });
+
+  /** "Draft", "Saving…", "Saved", "Saved to inventory" or "Not saved" for the header pill. */
+  statusLabel = computed(() => {
+    const state = this.session.saveState();
+    if (state === 'saving') return 'Saving…';
+    if (state === 'error') return 'Not saved — retrying on next edit';
+    if (this.session.draftStatus() === 'saved') return 'In inventory';
+    return this.session.draftId() ? 'Draft saved' : 'Draft';
   });
 
   accountName = computed(() => {
@@ -48,15 +60,37 @@ export class OptimizeLayout {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   });
 
+  constructor() {
+    // ?id=<draft> is the source of truth: refresh, back/forward and "Open" from My Listings all
+    // land here. No id means a fresh, unsaved product.
+    const sub = inject(ActivatedRoute).queryParamMap.subscribe((params) => {
+      const id = params.get('id');
+      if (id) {
+        void this.session.loadDraft(id);
+      } else if (this.session.draftId()) {
+        this.session.reset();
+      }
+    });
+    inject(DestroyRef).onDestroy(() => sub.unsubscribe());
+  }
+
   scoreTier(score: number): 'high' | 'medium' | 'low' {
     if (score >= 80) return 'high';
     if (score >= 50) return 'medium';
     return 'low';
   }
 
-  /** Clears the current draft (photo + every generated tab) so a new product can be uploaded. */
+  openPreview(): void {
+    runInInjectionContext(this.injector, () => inject(MatDialog)).open(ListingPreviewDialog, {
+      data: this.session.allResults(),
+      width: '640px',
+      maxWidth: '95vw',
+    });
+  }
+
+  /** Starts a new product. The current listing is already saved in My Listings (if generated). */
   startNewProduct(): void {
-    if (this.session.hasImage() && !confirm('Start a new product? Your current unsaved draft will be discarded.')) {
+    if (this.session.hasImage() && !this.session.draftId() && !confirm('Start a new product? This photo hasn\'t been processed yet and will be discarded.')) {
       return;
     }
     this.session.reset();

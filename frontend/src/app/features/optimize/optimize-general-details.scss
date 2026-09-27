@@ -271,6 +271,68 @@
   }
 }
 
+.field__error {
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.field--narrow {
+  max-width: 220px;
+}
+
+// "GST 5% · apparel ≤ ₹2,500 per piece (GST 2.0)" under the HSN code.
+.gst-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #475569;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: #16a34a;
+  }
+
+  &--review {
+    color: #92400e;
+
+    mat-icon {
+      color: #d97706;
+    }
+  }
+}
+
+.business-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 12px;
+  color: #475569;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: #64748b;
+  }
+
+  strong {
+    display: block;
+    margin-top: 2px;
+    color: #0f172a;
+  }
+}
+
 .tag-list {
   display: flex;
   flex-wrap: wrap;

@@ -22,7 +22,7 @@
                 [suggestions]="r[field.key]?.values ?? []"
                 [confidence]="r[field.key]?.confidence ?? null"
                 [reason]="r[field.key]?.reason ?? null"
-                [storageKey]="'optimize.instagram.' + field.key"
+                (valueChange)="session.updateField('instagram', field.key, $event)"
               />
             }
           </div>

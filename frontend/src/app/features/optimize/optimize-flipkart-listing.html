@@ -26,7 +26,7 @@
                 [suggestions]="r[field.key]?.values ?? []"
                 [confidence]="r[field.key]?.confidence ?? null"
                 [reason]="r[field.key]?.reason ?? null"
-                [storageKey]="'optimize.flipkart.' + field.key"
+                (valueChange)="session.updateField('flipkart', field.key, $event)"
               />
             }
           </div>

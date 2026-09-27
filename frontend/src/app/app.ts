@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect, computed, isDevMode } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect, computed, isDevMode, untracked } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Title, Meta } from '@angular/platform-browser';
@@ -24,6 +24,7 @@ import { GstCalculator } from './gst-calculator';
 import { ImageEditor } from './image-editor';
 import { resizeImage } from './utils/image';
 import { parsePrice } from './utils/price';
+import { formatGstRate } from './utils/format';
 import { apiFetch, ApiError } from './services/api';
 import { PasswordField } from './ui/password-field/password-field';
 import { PasswordStrength } from './ui/password-strength/password-strength';
@@ -248,6 +249,7 @@ export class App {
     ? `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_PREFILL)}`
     : '';
   mobileMenuOpen = signal(false);
+  readonly formatGstRate = formatGstRate;
 
   /** The "Pay ₹499" Razorpay test box is for developers only — never rendered in production builds. */
   readonly showPaymentDemo = isDevMode();
@@ -335,7 +337,7 @@ export class App {
       else if (path === '/inventory') this.mainView.set('products');
       else if (path === '/gst-calculator') this.mainView.set('gst');
       else if (path === '/admin') this.mainView.set('admin');
-      else if (path === '/settings') { this.mainView.set('settings'); this.loadMarketplaceConnections(); }
+      else if (path === '/settings') { this.mainView.set('settings'); this.loadMarketplaceConnections(); this.profileMessage.set(null); this.passwordMessage.set(null); }
       else if (path.startsWith('/optimize')) this.mainView.set('workspace');
       else if (path.startsWith('/workspace/')) this.mainView.set('workspace');
       else this.mainView.set('page');
@@ -484,6 +486,13 @@ export class App {
 
       // URL Sync Logic — includes /login, /signup and the email-link pages (reset/verify tokens).
       this.syncViewWithUrl(window.location.pathname + window.location.search);
+
+      // Settings → Profile form mirrors the saved profile whenever Settings is shown or the profile reloads.
+      effect(() => {
+        if (this.mainView() === 'settings' && !this.showLanding() && this.auth.profile()) {
+          untracked(() => this.loadProfileForm());
+        }
+      });
 
       // One-time mobile-number prompt: remembered per account.
       effect(() => {
@@ -891,7 +900,19 @@ export class App {
 
   /** Pulls the seller's Amazon catalog into Inventory via the Reports API — can take up to
    * ~90s since Amazon's report generation is asynchronous. */
+  /** Confirmation text for marketplace syncs (they overwrite SellAssist values, never the marketplace's). */
+  private static syncConfirmText(marketplace: string): string {
+    return [
+      `Sync from ${marketplace}?`,
+      '',
+      `• Imports new ${marketplace} listings into your SellAssist inventory`,
+      `• Overwrites price and stock of already-synced products in SellAssist with ${marketplace}'s values`,
+      `• Does not change anything on ${marketplace}`,
+    ].join('\n');
+  }
+
   async syncAmazonInventory() {
+    if (!confirm(App.syncConfirmText('Amazon'))) return;
     this.syncingAmazonInventory.set(true);
     try {
       const result = await this.marketplaceConnections.syncAmazonInventory();
@@ -919,6 +940,7 @@ export class App {
 
   /** Pulls the seller's Flipkart catalog into Inventory. */
   async syncFlipkartInventory() {
+    if (!confirm(App.syncConfirmText('Flipkart'))) return;
     this.syncingFlipkartInventory.set(true);
     try {
       const result = await this.marketplaceConnections.syncFlipkartInventory();
@@ -1092,6 +1114,93 @@ export class App {
         this.resendTimer = null;
       }
     }, 1000);
+  }
+
+  // ---- Settings → Profile ----
+  profileName = signal('');
+  profilePhone = signal('');
+  profileWhatsappOptIn = signal(false);
+  profileSaving = signal(false);
+  profileMessage = signal<{ ok: boolean; text: string } | null>(null);
+  currentPasswordInput = signal('');
+  newPasswordInput = signal('');
+  passwordSaving = signal(false);
+  passwordMessage = signal<{ ok: boolean; text: string } | null>(null);
+  deleteConfirmOpen = signal(false);
+  deleteConfirmText = signal('');
+  deletePasswordInput = signal('');
+  deletingAccount = signal(false);
+  deleteMessage = signal<string | null>(null);
+
+  /** Fills the Profile form from the signed-in user's profile (phone shown without +91). */
+  private loadProfileForm() {
+    const p = this.auth.profile();
+    this.profileName.set(p?.displayName || '');
+    this.profilePhone.set(normalizeIndianMobile(p?.phoneNumber || ''));
+    this.profileWhatsappOptIn.set(!!p?.whatsapp_opt_in);
+  }
+
+  async saveProfile() {
+    const name = this.profileName().trim();
+    const digits = normalizeIndianMobile(this.profilePhone());
+    if (name.length < 2) {
+      this.profileMessage.set({ ok: false, text: 'Enter your full name.' });
+      return;
+    }
+    if (digits && !INDIAN_MOBILE_RE.test(digits)) {
+      this.profileMessage.set({ ok: false, text: 'Enter a valid 10-digit Indian mobile number.' });
+      return;
+    }
+    this.profileSaving.set(true);
+    try {
+      await this.auth.updateProfile({ displayName: name, phoneNumber: digits || '', whatsapp_opt_in: this.profileWhatsappOptIn() });
+      this.profileMessage.set({ ok: true, text: 'Profile saved.' });
+    } catch (error) {
+      const status = (error as ApiError)?.status;
+      this.profileMessage.set({ ok: false, text: status === 409 ? 'This number is already registered to another account.' : (error instanceof Error && error.message) || 'Could not save your profile.' });
+    } finally {
+      this.profileSaving.set(false);
+    }
+  }
+
+  async changePassword() {
+    this.passwordMessage.set(null);
+    if (!this.currentPasswordInput() || !this.newPasswordInput()) {
+      this.passwordMessage.set({ ok: false, text: 'Enter your current password and a new password.' });
+      return;
+    }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(this.newPasswordInput())) {
+      this.passwordMessage.set({ ok: false, text: 'New password needs 8+ characters with upper and lower case letters, a number and a symbol.' });
+      return;
+    }
+    this.passwordSaving.set(true);
+    try {
+      await this.auth.changePassword(this.currentPasswordInput(), this.newPasswordInput());
+      this.currentPasswordInput.set('');
+      this.newPasswordInput.set('');
+      this.passwordMessage.set({ ok: true, text: 'Password updated.' });
+    } catch (error) {
+      this.passwordMessage.set({ ok: false, text: (error instanceof Error && error.message) || 'Could not update your password.' });
+    } finally {
+      this.passwordSaving.set(false);
+    }
+  }
+
+  async deleteAccount() {
+    if (this.deleteConfirmText() !== 'DELETE' || !this.deletePasswordInput()) return;
+    this.deletingAccount.set(true);
+    this.deleteMessage.set(null);
+    try {
+      await this.auth.deleteAccount(this.deletePasswordInput());
+      this.deleteConfirmOpen.set(false);
+      this.deletePasswordInput.set('');
+      this.deleteConfirmText.set('');
+      this.navigateTo('landing');
+    } catch (error) {
+      this.deleteMessage.set((error instanceof Error && error.message) || 'Could not delete your account.');
+    } finally {
+      this.deletingAccount.set(false);
+    }
   }
 
   dismissPhonePrompt() {
@@ -1318,6 +1427,16 @@ export class App {
     this.isProcessing.set(true);
     try {
       const details = await this.gemini.extractProductDetails(base64, mimeType, this.templateService.templates(), this.auth.isPro());
+      // GST comes from the backend rate table (HSN + price), never from the AI.
+      if (details.hsnCode) {
+        try {
+          const gst = await this.listingService.getGstRate(details.hsnCode, parsePrice(details.sellingPrice ?? details.priceINR) || null);
+          details.gstRate = gst.rate;
+          details.gstReason = gst.reason;
+        } catch {
+          details.gstRate = null;
+        }
+      }
       this.productDetails.set(details);
       await this.auth.incrementUsage();
     } catch (error) {

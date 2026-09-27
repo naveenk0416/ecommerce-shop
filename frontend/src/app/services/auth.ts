@@ -217,6 +217,18 @@ export class AuthService {
     }
   }
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiFetch('/change-password', { method: 'POST', body: { currentPassword, newPassword } });
+  }
+
+  /** Permanently deletes the account and all its data, then signs out locally. */
+  async deleteAccount(password: string): Promise<void> {
+    await apiFetch('/me', { method: 'DELETE', body: { password } });
+    clearAuthToken();
+    this.user.set(null);
+    this.profile.set(null);
+  }
+
   async updateProfile(data: Partial<UserProfile>) {
     const u = this.user();
     if (!u || !getAuthToken()) return;

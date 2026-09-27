@@ -42,8 +42,8 @@ export class LogSaleDialog {
 
   submit(): void {
     const qty = Number(this.quantity());
-    if (qty <= 0) {
-      this.errorMessage.set('Enter a quantity greater than zero.');
+    if (!Number.isInteger(qty) || qty <= 0) {
+      this.errorMessage.set('Enter a whole number of 1 or more.');
       return;
     }
     if (qty > this.availableStock) {
@@ -53,7 +53,7 @@ export class LogSaleDialog {
     this.errorMessage.set(null);
     this.dialogRef.close({
       quantity: qty,
-      salePrice: Number(this.salePrice()) || 0,
+      salePrice: Math.max(0, Number(this.salePrice()) || 0),
       platform: this.platform(),
     });
   }
