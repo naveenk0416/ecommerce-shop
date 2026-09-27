@@ -8,23 +8,23 @@
 
 export const BUSINESS = {
   brandName: 'SellAssist',
-  legalName: '[BUSINESS NAME]',
-  address: '[ADDRESS]',
-  supportEmail: '[SUPPORT EMAIL]',
+  legalName: 'PURE ESSENTIALS',
+  address: 'L B Nagar, Hyderabad, Telangana 500074, India',
+  supportEmail: 'support@sellassist.in',
   /** Shown in the footer/contact page, e.g. '+91 98765 43210'. */
-  phoneDisplay: '[NUMBER]',
-  grievanceOfficerName: '[GRIEVANCE OFFICER NAME]',
-  grievanceOfficerEmail: '[GRIEVANCE OFFICER EMAIL]',
+  phoneDisplay: '+91 96666 50416',
+  grievanceOfficerName: 'K Naveen Kumar',
+  grievanceOfficerEmail: 'grievance@sellassist.in',
   websiteUrl: 'https://sellassist.in',
   /** City whose courts have jurisdiction under the Terms. */
-  jurisdictionCity: '[CITY FOR JURISDICTION]',
+  jurisdictionCity: 'Hyderabad',
 };
 
 /**
  * WhatsApp number in international format without "+" or spaces, e.g. '919876543210'.
  * Empty hides the floating "Chat on WhatsApp" button entirely.
  */
-export const WHATSAPP_NUMBER = '';
+export const WHATSAPP_NUMBER = '919666650416';
 export const WHATSAPP_PREFILL = 'Hi SellAssist, I want to know more about listing my products.';
 
 /** Meta Pixel ID (digits only). Empty disables the pixel — no script is loaded. */
