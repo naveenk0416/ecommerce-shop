@@ -1,4 +1,5 @@
-import { Component, output, input, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, output, input, ChangeDetectionStrategy, inject } from '@angular/core';
+import { LanguageService } from './services/language';
 import { CommonModule } from '@angular/common';
 import { 
   IonButton, IonIcon
@@ -32,21 +33,8 @@ export class Landing {
   readonly business = BUSINESS;
   readonly currentYear = new Date().getFullYear();
 
-  /** Hero language. Hindi by default for ?lang=hi or Hindi ad campaigns (utm_campaign=*hindi*). */
-  lang = signal<'en' | 'hi'>(Landing.initialLang());
-
-  private static initialLang(): 'en' | 'hi' {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('lang') === 'hi') return 'hi';
-      if (/hindi/i.test(params.get('utm_campaign') || '')) return 'hi';
-      const stored = JSON.parse(window.localStorage.getItem('sa_attribution') || 'null') as { utm_campaign?: string } | null;
-      if (/hindi/i.test(stored?.utm_campaign || '')) return 'hi';
-    } catch {
-      // No window/storage — default to English.
-    }
-    return 'en';
-  }
+  /** Hero language — shared with the cookie banner and sign-up form (LanguageService). */
+  readonly lang = inject(LanguageService).lang;
 
   /** In-page links — ion-content is its own scroll container, so router fragments don't scroll it. */
   scrollToSection(event: Event, id: string) {

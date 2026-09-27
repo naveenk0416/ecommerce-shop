@@ -97,7 +97,7 @@
         (login)="openSignIn()"
         (getStarted)="startSignup($event)"
         [isLoggedIn]="!!auth.user()"
-        (goDashboard)="showLanding.set(false); mainView.set('home')">
+        (goDashboard)="navigateTo('home')">
       </app-landing>
     } @else {
       <div class="max-w-7xl mx-auto space-y-8 pb-20 pt-12 px-6">
@@ -150,14 +150,34 @@
                 Continue
               </ion-button>
             } @else {
+              <!-- Missing, invalid or expired verification link -->
               <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ion-icon name="close" class="text-4xl text-red-500"></ion-icon>
               </div>
-              <h2 class="text-2xl font-black text-slate-900 tracking-tight">Verification Failed</h2>
-              <p class="text-slate-500 mt-2 text-sm font-medium mb-6">{{ emailVerificationError() }}</p>
-              <button (click)="emailVerificationState.set('none'); passwordResetMode.set('none'); showLanding.set(false); isRegistering.set(false)" class="text-sm text-orange-600 font-bold hover:underline">
-                Back to Login
-              </button>
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight">This link is invalid or has expired</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium mb-6">
+                {{ emailVerificationError() || 'Verification links work once and expire after 24 hours.' }} Enter your email to get a new verification link.
+              </p>
+              <div class="space-y-3 text-left">
+                <ion-input type="email" autocomplete="email" [value]="resendEmailInput()" (ionInput)="resendEmailInput.set($any($event).target.value)" (keyup.enter)="resendVerificationEmail(resendEmailInput())" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 border border-slate-100" aria-label="Email address"></ion-input>
+                <ion-button (click)="resendVerificationEmail(resendEmailInput())" expand="block" shape="round" class="btn-ion-orange h-12 font-black" [disabled]="isResendingVerification() || resendCooldown() > 0">
+                  @if (isResendingVerification()) {
+                    <ion-spinner name="crescent" slot="start"></ion-spinner>
+                    Sending…
+                  } @else if (resendCooldown() > 0) {
+                    Resend in {{ resendCooldown() }}s
+                  } @else {
+                    Send new verification link
+                  }
+                </ion-button>
+              </div>
+              @if (resendVerificationSent()) {
+                <p class="text-emerald-600 text-sm font-bold mt-4">If that account needs verification, a new link is on its way — check your inbox.</p>
+              }
+              @if (resendMessage()) {
+                <p class="field-error justify-center mt-4">{{ resendMessage() }}</p>
+              }
+              <a routerLink="/login" class="inline-block text-sm text-orange-600 font-bold hover:underline mt-6">Back to Login</a>
             }
           </section>
         } @else if (verificationPendingEmail()) {
@@ -166,24 +186,52 @@
             <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <ion-icon name="mail-outline" class="text-4xl text-orange-500"></ion-icon>
             </div>
-            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Check Your Inbox</h2>
-            <p class="text-slate-500 mt-2 text-sm font-medium">
-              We sent a verification link to <strong>{{ verificationPendingEmail() }}</strong>. Click it to activate your account — the link expires in 24 hours.
-            </p>
-
-            @if (resendVerificationSent()) {
-              <p class="text-emerald-600 text-sm font-bold mt-6">Verification email resent — check your inbox.</p>
+            @if (verificationEmailFailed()) {
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight">Account created</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium">
+                We couldn't send the verification email to <strong>{{ verificationPendingEmail() }}</strong> right now, please try again shortly.
+              </p>
             } @else {
-              <button (click)="resendVerificationEmail()" [disabled]="isResendingVerification()" class="text-sm text-orange-600 font-bold hover:underline mt-6 disabled:opacity-50">
-                {{ isResendingVerification() ? 'Sending…' : "Didn't get it? Resend verification email" }}
-              </button>
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight">Check Your Inbox</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium">
+                We sent a verification link to <strong>{{ verificationPendingEmail() }}</strong>. Click it to activate your account — the link expires in 24 hours.
+              </p>
+            }
+
+            <button (click)="resendVerificationEmail()" [disabled]="isResendingVerification() || resendCooldown() > 0" class="text-sm text-orange-600 font-bold hover:underline mt-6 disabled:opacity-50 disabled:no-underline">
+              @if (isResendingVerification()) {
+                Sending…
+              } @else if (resendCooldown() > 0) {
+                Resend verification email in {{ resendCooldown() }}s
+              } @else {
+                {{ verificationEmailFailed() ? 'Try sending the verification email again' : "Didn't get it? Resend verification email" }}
+              }
+            </button>
+            @if (resendVerificationSent()) {
+              <p class="text-emerald-600 text-sm font-bold mt-3">Verification email resent — check your inbox.</p>
+            }
+            @if (resendMessage()) {
+              <p class="field-error justify-center mt-3">{{ resendMessage() }}</p>
             }
 
             <div class="pt-6">
-              <button (click)="verificationPendingEmail.set(null); resendVerificationSent.set(false)" class="text-sm text-slate-400 font-bold hover:text-slate-600">
+              <a routerLink="/login" class="text-sm text-slate-400 font-bold hover:text-slate-600">
                 Back to Login
-              </button>
+              </a>
             </div>
+          </section>
+        } @else if (passwordResetMode() === 'invalid') {
+          <!-- /reset-password opened without a token -->
+          <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card text-center">
+            <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ion-icon name="lock-closed" class="text-4xl text-red-500"></ion-icon>
+            </div>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">This link is invalid or has expired</h2>
+            <p class="text-slate-500 mt-2 text-sm font-medium mb-6">Password reset links work once and expire after 30 minutes. Request a new one below.</p>
+            <ion-button routerLink="/forgot-password" expand="block" shape="round" class="btn-ion-orange h-12 font-black">
+              Request a new reset link
+            </ion-button>
+            <a routerLink="/login" class="inline-block text-sm text-orange-600 font-bold hover:underline mt-6">Back to Login</a>
           </section>
         } @else if (passwordResetMode() === 'forgot') {
           <!-- Forgot Password Section -->
@@ -299,6 +347,28 @@
         } @else if (mainView() === 'gst') {
           <app-gst-calculator></app-gst-calculator>
         } @else if (mainView() === 'workspace') {
+          @if (showPhonePrompt()) {
+            <!-- One-time prompt for accounts created before the mobile number was required. -->
+            <section class="phone-prompt" aria-labelledby="phone-prompt-title">
+              <div class="phone-prompt__body">
+                <h3 id="phone-prompt-title" class="text-sm font-black text-slate-900">Add your mobile number</h3>
+                <p class="text-xs text-slate-500 font-medium mt-1">For WhatsApp support &amp; stock alerts. No spam.</p>
+                <div class="flex flex-wrap items-center gap-2 mt-3">
+                  <span class="shrink-0 bg-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-slate-600">+91</span>
+                  <input type="tel" inputmode="numeric" autocomplete="tel-national" [value]="phonePromptValue()" (input)="phonePromptValue.set($any($event.target).value)" (keyup.enter)="savePhonePrompt()" placeholder="10-digit mobile number" aria-label="Mobile number" class="phone-prompt__input" />
+                  <button (click)="savePhonePrompt()" [disabled]="phonePromptSaving()" class="btn-orange-premium whitespace-nowrap">{{ phonePromptSaving() ? 'Saving…' : 'Save' }}</button>
+                  <button (click)="dismissPhonePrompt()" class="text-xs font-bold text-slate-400 hover:text-slate-600 px-2">Not now</button>
+                </div>
+                <label class="flex items-start gap-2 text-xs font-bold text-slate-500 cursor-pointer mt-3">
+                  <input type="checkbox" [checked]="phonePromptOptIn()" (change)="phonePromptOptIn.set($any($event.target).checked)" class="remember-me-checkbox mt-0.5" />
+                  Send me updates and stock alerts on WhatsApp
+                </label>
+                @if (phonePromptError()) {
+                  <p class="field-error">{{ phonePromptError() }}</p>
+                }
+              </div>
+            </section>
+          }
           <router-outlet></router-outlet>
         } @else if (!auth.user()) {
             <!-- Login/Auth Section if not logged in -->
@@ -337,14 +407,22 @@
 
                 @if (isRegistering()) {
                   <div class="mb-2">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Mobile Number (Optional)</ion-label>
+                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Mobile Number</ion-label>
                     <div class="flex items-center gap-2 mt-1">
                       <span class="shrink-0 bg-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-600 border border-slate-100">+91</span>
-                      <ion-input type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="10" [value]="regPhone()" (ionInput)="regPhone.set($any($event).target.value)" (ionBlur)="phoneTouched.set(true)" placeholder="10-digit mobile number" class="bg-slate-50 rounded-2xl px-5 py-2 border border-slate-100"></ion-input>
+                      <!-- No maxlength: a pasted "+91 98765 43210" or "098765…" is normalised to 10 digits. -->
+                      <ion-input type="tel" inputmode="numeric" autocomplete="tel-national" [value]="regPhone()" (ionInput)="regPhone.set($any($event).target.value)" (ionBlur)="phoneTouched.set(true)" placeholder="10-digit mobile number" aria-describedby="reg-phone-help" class="bg-slate-50 rounded-2xl px-5 py-2 border border-slate-100"></ion-input>
                     </div>
+                    <p id="reg-phone-help" class="text-[11px] text-slate-400 font-medium mt-1 ml-1" [attr.lang]="i18n.lang()">
+                      {{ i18n.t('For WhatsApp support & stock alerts. No spam.', 'WhatsApp support और stock alerts के लिए. कोई spam नहीं.') }}
+                    </p>
                     @if (showFieldError(phoneTouched(), regPhone()) && phoneError()) {
                       <p class="field-error">{{ phoneError() }}</p>
                     }
+                    <label class="flex items-start gap-2 text-xs font-bold text-slate-500 cursor-pointer mt-2" [attr.lang]="i18n.lang()">
+                      <input type="checkbox" [checked]="regWhatsappOptIn()" (change)="regWhatsappOptIn.set($any($event.target).checked)" class="remember-me-checkbox mt-0.5" />
+                      <span>{{ i18n.t('Send me updates and stock alerts on WhatsApp', 'WhatsApp पर updates और stock alerts भेजें') }}</span>
+                    </label>
                   </div>
                 }
 
@@ -421,9 +499,9 @@
                       <input type="checkbox" [checked]="rememberMe()" (change)="rememberMe.set($any($event.target).checked)" class="remember-me-checkbox" />
                       Remember me
                     </label>
-                    <button (click)="passwordResetMode.set('forgot'); authError.set(null)" class="text-xs text-slate-400 hover:text-orange-600 font-bold transition-colors">
+                    <a routerLink="/forgot-password" class="text-xs text-slate-400 hover:text-orange-600 font-bold transition-colors">
                       Forgot password?
-                    </button>
+                    </a>
                   </div>
                 }
 
@@ -432,13 +510,25 @@
                     <span class="auth-alert__icon"></span>
                     <div>
                       {{ authError() }}
+                      @if (phoneTakenError()) {
+                        <a routerLink="/login" class="block text-orange-600 font-bold hover:underline mt-2">Sign in instead</a>
+                      }
                       @if (showResendVerification()) {
                         @if (resendVerificationSent()) {
                           <p class="text-emerald-600 font-bold mt-2">Verification email resent — check your inbox.</p>
                         } @else {
-                          <button (click)="resendVerificationEmail()" [disabled]="isResendingVerification()" class="block text-orange-600 font-bold hover:underline mt-2 disabled:opacity-50">
-                            {{ isResendingVerification() ? 'Sending…' : 'Resend verification email' }}
+                          <button (click)="resendVerificationEmail()" [disabled]="isResendingVerification() || resendCooldown() > 0" class="block text-orange-600 font-bold hover:underline mt-2 disabled:opacity-50">
+                            @if (isResendingVerification()) {
+                              Sending…
+                            } @else if (resendCooldown() > 0) {
+                              Resend in {{ resendCooldown() }}s
+                            } @else {
+                              Resend verification email
+                            }
                           </button>
+                        }
+                        @if (resendMessage()) {
+                          <p class="mt-2">{{ resendMessage() }}</p>
                         }
                       }
                     </div>
@@ -1201,8 +1291,10 @@
     </footer>
   </ion-content>
   <!-- Floating WhatsApp chat (public pages only; hidden until WHATSAPP_NUMBER is configured) -->
+  <app-cookie-banner />
   @if (whatsappUrl && (showLanding() || !auth.user())) {
-    <a [href]="whatsappUrl" target="_blank" rel="noopener" class="whatsapp-fab" aria-label="Chat on WhatsApp">
+    <!-- Lifted above the cookie banner while it's showing, so neither covers the other. -->
+    <a [href]="whatsappUrl" target="_blank" rel="noopener" class="whatsapp-fab" [class.whatsapp-fab--raised]="consent.choice() === null" aria-label="Chat on WhatsApp">
       <ion-icon name="logo-whatsapp"></ion-icon>
       <span class="whatsapp-fab__label">Chat on WhatsApp</span>
     </a>

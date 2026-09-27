@@ -32,7 +32,8 @@ import { BUSINESS, LEGAL_LAST_UPDATED } from '../config/site-config';
 
       <h2>2. What we collect</h2>
       <ul>
-        <li><strong>Account details:</strong> name, email address, mobile number (optional), password (stored only as a one-way hash), state and city, the marketplaces you sell on, and your GST number (optional).</li>
+        <li><strong>Account details:</strong> name, email address, mobile number, password (stored only as a one-way hash), state and city, the marketplaces you sell on, and your GST number (optional).</li>
+        <li><strong>WhatsApp preference:</strong> whether you agreed to receive updates and stock alerts on WhatsApp, and when you gave or changed that choice.</li>
         <li><strong>Product content:</strong> product photos you upload and the listing text, HSN codes, GST rates, prices and other details generated or edited in the Service.</li>
         <li><strong>Business data:</strong> inventory quantities, cost and selling prices, and sales you record.</li>
         <li><strong>Marketplace connections:</strong> if you connect Amazon or Flipkart, the access tokens and seller identifiers needed to read and update your listings on your behalf.</li>
@@ -47,6 +48,7 @@ import { BUSINESS, LEGAL_LAST_UPDATED } from '../config/site-config';
         <li>To run inventory, sales and marketplace-sync features you choose to use.</li>
         <li>To process payments and keep records required by tax and accounting law.</li>
         <li>To provide support, send service messages (for example verification and password-reset emails) and respond to grievances.</li>
+        <li>To contact you about your account and support requests using your mobile number. We send updates and stock alerts on WhatsApp <strong>only if you opt in</strong> — giving us your number alone is not consent, and you can opt out at any time by emailing us.</li>
         <li>To measure and improve our website and advertising, including understanding which campaigns lead to sign-ups.</li>
         <li>To prevent fraud and abuse and comply with legal obligations.</li>
       </ul>
@@ -75,8 +77,10 @@ import { BUSINESS, LEGAL_LAST_UPDATED } from '../config/site-config';
       <h2>5. Cookies and tracking</h2>
       <p>
         We use cookies and similar technologies for sign-in, analytics (Google Analytics) and advertising measurement (Meta
-        Pixel). You can block or delete cookies in your browser settings; the Service will still work, but you may need
-        to sign in again.
+        Pixel). On your first visit we ask for your choice: the Meta Pixel is loaded only if you click "Accept", and Google
+        Analytics runs in a cookieless, consent-denied mode until then. If you decline, we remember that choice. To change
+        it later, clear this site's data in your browser and choose again. You can also block or delete cookies in your
+        browser settings; the Service will still work, but you may need to sign in again.
       </p>
 
       <h2>6. How long we keep it</h2>

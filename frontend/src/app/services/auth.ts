@@ -15,6 +15,16 @@ export interface UserProfile extends AdditionalUserData {
     date: string;
     count: number;
   };
+  /** Explicit WhatsApp updates/alerts consent (sent when adding a phone number later). */
+  whatsapp_opt_in?: boolean;
+}
+
+/** /register response — emailSent is false when the verification email couldn't be delivered. */
+export interface RegisterResult {
+  requiresVerification: true;
+  email: string;
+  emailSent?: boolean;
+  emailError?: string;
 }
 
 export interface AdditionalUserData {
@@ -25,6 +35,7 @@ export interface AdditionalUserData {
   city?: string;
   sellsOn?: string[];
   termsAccepted?: boolean;
+  whatsappOptIn?: boolean;
   attribution?: Attribution | null;
 }
 
@@ -86,9 +97,9 @@ export class AuthService {
 
   /** Registration no longer signs the user in directly — the account stays inactive until they
    * verify their email (see verifyEmail below). */
-  async registerWithEmail(email: string, password: string, additionalData: AdditionalUserData = {}) {
+  async registerWithEmail(email: string, password: string, additionalData: AdditionalUserData = {}): Promise<RegisterResult> {
     try {
-      await apiFetch<{ requiresVerification: true; email: string }>('/register', {
+      return await apiFetch<RegisterResult>('/register', {
         method: 'POST',
         body: {
           email,
@@ -100,15 +111,17 @@ export class AuthService {
           city: additionalData.city,
           sellsOn: additionalData.sellsOn,
           termsAccepted: additionalData.termsAccepted,
+          whatsappOptIn: additionalData.whatsappOptIn,
           attribution: additionalData.attribution ?? undefined,
         },
       });
     } catch (error) {
       const apiError = error as ApiError & { code?: string };
-      // The backend returns 409 for both a duplicate email and a duplicate phone number with
-      // different messages — check which one it actually was rather than assuming email.
+      // The backend returns 409 for both a duplicate email and a duplicate phone number — check
+      // which one it actually was (code PHONE_TAKEN) rather than assuming email.
       if (apiError.status === 409) {
-        apiError.code = /phone/i.test(apiError.message) ? 'auth/phone-already-in-use' : 'auth/email-already-in-use';
+        const phoneTaken = (apiError.data as { code?: string } | undefined)?.code === 'PHONE_TAKEN' || /phone|number/i.test(apiError.message);
+        apiError.code = phoneTaken ? 'auth/phone-already-in-use' : 'auth/email-already-in-use';
       }
       console.error('Registration failed:', error);
       throw apiError;

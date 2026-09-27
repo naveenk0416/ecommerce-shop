@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { META_PIXEL_ID } from '../config/site-config';
+import { ConsentService } from './consent';
 
 /** First-touch marketing attribution captured from the landing URL. */
 export interface Attribution {
@@ -30,7 +31,9 @@ type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) 
 export class AnalyticsService {
   private router = inject(Router);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private consent = inject(ConsentService);
   private initialized = false;
+  private pixelStarted = false;
 
   init(): void {
     if (!this.isBrowser || this.initialized) return;
@@ -38,10 +41,10 @@ export class AnalyticsService {
 
     this.captureAttribution();
 
-    if (META_PIXEL_ID) {
-      this.loadPixel();
-      this.fbq('init', META_PIXEL_ID);
-      this.fbq('track', 'PageView');
+    // Meta Pixel only after cookie consent — accepted on an earlier visit, or later via
+    // enableAdTracking() when the banner's Accept is clicked.
+    if (this.consent.choice() === 'granted') {
+      this.startPixel();
     }
 
     // The first NavigationEnd is the initial load, already counted above.
@@ -53,6 +56,20 @@ export class AnalyticsService {
       }
       this.fbq('track', 'PageView');
     });
+  }
+
+  /** Called when the visitor accepts cookies: loads the pixel and counts the current page. */
+  enableAdTracking(): void {
+    if (!this.isBrowser) return;
+    this.startPixel();
+  }
+
+  private startPixel(): void {
+    if (!META_PIXEL_ID || this.pixelStarted) return;
+    this.pixelStarted = true;
+    this.loadPixel();
+    this.fbq('init', META_PIXEL_ID);
+    this.fbq('track', 'PageView');
   }
 
   /** "Start Free" / "Get Started" / "Create your free account" clicks. */
@@ -99,7 +116,7 @@ export class AnalyticsService {
   }
 
   private fbq(...args: unknown[]): void {
-    if (!this.isBrowser || !META_PIXEL_ID) return;
+    if (!this.isBrowser || !META_PIXEL_ID || !this.pixelStarted) return;
     (window as unknown as { fbq?: Fbq }).fbq?.(...args);
   }
 

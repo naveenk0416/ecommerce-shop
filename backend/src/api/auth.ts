@@ -4,8 +4,8 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { ensureConnected, User } from './common.js';
-import { sendMail } from '../utils/mailer.js';
-import { GSTIN_RE, INDIAN_MOBILE_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, sanitizeAttribution } from '../utils/signup-fields.js';
+import { MAIL_UNAVAILABLE_MESSAGE, MailDeliveryError, sendMail } from '../utils/mailer.js';
+import { GSTIN_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, phoneLookupValues, sanitizeAttribution, toIndianE164 } from '../utils/signup-fields.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env['JWT_SECRET'] || 'dev_jwt_secret_change_me';
@@ -64,6 +64,19 @@ function passwordPolicyError(password: string): string | null {
   return null;
 }
 
+/** Minimum gap between verification emails to the same account. */
+const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+
+/**
+ * Base URL for links in emails. FRONTEND_URL can be a comma-separated list (it doubles as the
+ * CORS allow-list), so only its first entry is used — pasting the whole list produced broken
+ * links like "https://sellassist.in,https://www.sellassist.in/verify-email?token=...".
+ */
+function appBaseUrl(): string {
+  const configured = process.env['PUBLIC_APP_URL'] || (process.env['FRONTEND_URL'] || 'http://localhost:4200').split(',')[0];
+  return configured.trim().replace(/\/$/, '');
+}
+
 function signToken(user: any) {
   return jwt.sign({ uid: user._id.toString(), email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 }
@@ -74,10 +87,10 @@ async function sendVerificationEmail(user: any): Promise<void> {
   const rawToken = crypto.randomBytes(32).toString('hex');
   user.emailVerificationTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
   user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  user.verificationEmailSentAt = new Date();
   await user.save();
 
-  const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:4200';
-  const verifyLink = `${frontendUrl}/verify-email?token=${rawToken}`;
+  const verifyLink = `${appBaseUrl()}/verify-email?token=${rawToken}`;
 
   await sendMail({
     to: user.email,
@@ -123,7 +136,10 @@ router.post('/register', registerLimiter, async (req, res) => {
     return;
   }
 
-  const { email, password, displayName, phoneNumber, termsAccepted, attribution } = req.body || {};
+  const { email, password, displayName, termsAccepted, attribution } = req.body || {};
+  const phoneNumber = toIndianE164(req.body?.phoneNumber);
+  // Opt-in must be an explicit boolean true — a phone number on its own is not consent.
+  const whatsappOptIn = req.body?.whatsappOptIn === true;
   const gstNumber = req.body?.gstNumber ? String(req.body.gstNumber).trim().toUpperCase() : undefined;
   const state = String(req.body?.state || '').trim();
   const city = String(req.body?.city || '').trim();
@@ -141,8 +157,8 @@ router.post('/register', registerLimiter, async (req, res) => {
     return;
   }
 
-  if (phoneNumber && !INDIAN_MOBILE_RE.test(String(phoneNumber))) {
-    res.status(400).json({ error: 'Enter a valid 10-digit Indian mobile number.' });
+  if (!phoneNumber) {
+    res.status(400).json({ error: 'Enter a valid 10-digit Indian mobile number.', code: 'INVALID_PHONE' });
     return;
   }
 
@@ -179,12 +195,10 @@ router.post('/register', registerLimiter, async (req, res) => {
       return;
     }
 
-    if (phoneNumber) {
-      const existingPhone = await User.findOne({ phoneNumber });
-      if (existingPhone) {
-        res.status(409).json({ error: 'Phone number already registered' });
-        return;
-      }
+    const existingPhone = await User.findOne({ phoneNumber: { $in: phoneLookupValues(phoneNumber) } });
+    if (existingPhone) {
+      res.status(409).json({ error: 'This number is already registered. Sign in instead?', code: 'PHONE_TAKEN' });
+      return;
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -199,6 +213,8 @@ router.post('/register', registerLimiter, async (req, res) => {
       city,
       sellsOn,
       termsAcceptedAt: now,
+      whatsapp_opt_in: whatsappOptIn,
+      whatsapp_opt_in_at: now,
       signupAt: now,
       attribution: sanitizeAttribution(attribution),
       lastLogin: now.toISOString(),
@@ -207,17 +223,21 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     await user.save();
 
+    // The account exists either way; if the email couldn't be sent, say so honestly so the page
+    // can offer "Resend verification email" instead of claiming a link is on its way.
+    let emailSent = true;
     try {
       await sendVerificationEmail(user);
-    } catch (mailErr) {
-      // Account is created either way — don't fail registration over a flaky mail send. The
-      // "Resend verification email" action covers this case.
-      console.error('Verification email failed to send', mailErr);
+    } catch (mailErr: any) {
+      emailSent = false;
+      console.error('Verification email failed to send', mailErr instanceof MailDeliveryError ? `(${mailErr.reason}) ${mailErr.message}` : mailErr);
     }
 
     res.json({
       requiresVerification: true,
       email: user.email,
+      emailSent,
+      ...(emailSent ? {} : { emailError: MAIL_UNAVAILABLE_MESSAGE }),
     });
   } catch (err: any) {
     console.error('Register error', err);
@@ -362,10 +382,23 @@ router.post('/resend-verification', resendVerificationLimiter, async (req, res) 
   try {
     const user = await User.findOne({ email });
     if (user && !user.emailVerified) {
+      const lastSent = user.verificationEmailSentAt ? new Date(user.verificationEmailSentAt).getTime() : 0;
+      const waitMs = lastSent + VERIFICATION_RESEND_COOLDOWN_MS - Date.now();
+      if (waitMs > 0) {
+        const retryAfter = Math.ceil(waitMs / 1000);
+        res.setHeader('Retry-After', String(retryAfter));
+        res.status(429).json({ error: `Please wait ${retryAfter} seconds before requesting another email.`, retryAfter });
+        return;
+      }
       await sendVerificationEmail(user);
     }
     res.json(genericResponse);
   } catch (err: any) {
+    if (err instanceof MailDeliveryError) {
+      console.error(`Resend verification: email not sent (${err.reason})`, err.message);
+      res.status(503).json({ error: MAIL_UNAVAILABLE_MESSAGE, code: 'EMAIL_SEND_FAILED' });
+      return;
+    }
     console.error('Resend verification error', err);
     res.status(500).json({ error: 'Failed to resend verification email' });
   }
@@ -399,8 +432,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
       user.resetPasswordExpires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
       await user.save();
 
-      const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:4200';
-      const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
+      const resetLink = `${appBaseUrl()}/reset-password?token=${rawToken}`;
 
       await sendMail({
         to: user.email,
@@ -416,6 +448,11 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
 
     res.json(genericResponse);
   } catch (err: any) {
+    if (err instanceof MailDeliveryError) {
+      console.error(`Forgot password: email not sent (${err.reason})`, err.message);
+      res.status(503).json({ error: MAIL_UNAVAILABLE_MESSAGE, code: 'EMAIL_SEND_FAILED' });
+      return;
+    }
     console.error('Forgot password error', err);
     res.status(500).json({ error: 'Failed to process request' });
   }
@@ -526,12 +563,29 @@ router.patch('/users/:id', authMiddleware, async (req, res) => {
       }
     }
 
-    if (updates.phoneNumber && updates.phoneNumber !== user.phoneNumber) {
-      const existingPhone = await User.findOne({ phoneNumber: updates.phoneNumber });
-      if (existingPhone) {
-        res.status(409).json({ error: 'Phone number already registered' });
-        return;
+    // Phone numbers are validated and stored as E.164 (+91XXXXXXXXXX), same as registration.
+    if (updates.phoneNumber !== undefined) {
+      if (updates.phoneNumber === '' || updates.phoneNumber === null) {
+        delete updates.phoneNumber;
+        user.phoneNumber = undefined;
+      } else {
+        const normalized = toIndianE164(updates.phoneNumber);
+        if (!normalized) {
+          res.status(400).json({ error: 'Enter a valid 10-digit Indian mobile number.', code: 'INVALID_PHONE' });
+          return;
+        }
+        updates.phoneNumber = normalized;
+        const existingPhone = await User.findOne({ phoneNumber: { $in: phoneLookupValues(normalized) }, _id: { $ne: user._id } });
+        if (existingPhone) {
+          res.status(409).json({ error: 'This number is already registered. Sign in instead?', code: 'PHONE_TAKEN' });
+          return;
+        }
       }
+    }
+
+    if (typeof updates.whatsapp_opt_in === 'boolean') {
+      user.whatsapp_opt_in = updates.whatsapp_opt_in;
+      user.whatsapp_opt_in_at = new Date();
     }
 
     // Only admins may change roles — otherwise any user could promote themselves.

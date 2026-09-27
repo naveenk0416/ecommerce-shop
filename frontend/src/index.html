@@ -109,6 +109,27 @@
         dataLayer.push(arguments);
       }
 
+      // Google Consent Mode v2 — everything denied until the visitor accepts the cookie banner
+      // (ConsentService). A choice saved on an earlier visit is applied before any tag fires.
+      // Storage key must match CONSENT_STORAGE_KEY in src/app/services/consent.ts.
+      gtag("consent", "default", {
+        analytics_storage: "denied",
+        ad_storage: "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied",
+        wait_for_update: 500,
+      });
+      try {
+        if (localStorage.getItem("sa_cookie_consent") === "granted") {
+          gtag("consent", "update", {
+            analytics_storage: "granted",
+            ad_storage: "granted",
+            ad_user_data: "granted",
+            ad_personalization: "granted",
+          });
+        }
+      } catch (e) {}
+
       gtag("js", new Date());
       gtag("config", "G-NYCJ00ML3F");
     </script>

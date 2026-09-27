@@ -24,6 +24,10 @@ const userSchema = new mongoose.Schema({
   city: { type: String },
   sellsOn: { type: [String], default: undefined },
   termsAcceptedAt: { type: Date },
+  // Explicit WhatsApp marketing/alerts consent — a phone number on its own is not consent.
+  whatsapp_opt_in: { type: Boolean },
+  whatsapp_opt_in_at: { type: Date },
+  verificationEmailSentAt: { type: Date },
   signupAt: { type: Date },
   // First-touch campaign attribution captured on the landing URL (e.g. utm_campaign=surat_hindi).
   attribution: {

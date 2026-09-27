@@ -29,7 +29,11 @@ import { PasswordField } from './ui/password-field/password-field';
 import { PasswordStrength } from './ui/password-strength/password-strength';
 import { loadRazorpay } from './utils/razorpay';
 import { AnalyticsService } from './services/analytics';
-import { GSTIN_RE, INDIAN_MOBILE_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS } from './config/signup-options';
+import { GSTIN_RE, INDIAN_MOBILE_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, normalizeIndianMobile } from './config/signup-options';
+import { LanguageService } from './services/language';
+import { ConsentService } from './services/consent';
+import { CookieBanner } from './ui/cookie-banner/cookie-banner';
+import { DASHBOARD_PATH, safeReturnUrl } from './guards/auth.guard';
 import { BUSINESS, WHATSAPP_NUMBER, WHATSAPP_PREFILL } from './config/site-config';
 
 @Component({
@@ -42,7 +46,7 @@ import { BUSINESS, WHATSAPP_NUMBER, WHATSAPP_PREFILL } from './config/site-confi
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle,
     IonLabel, IonSpinner,
     IonInput, IonTextarea,
-    PasswordField, PasswordStrength
+    PasswordField, PasswordStrength, CookieBanner
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -60,6 +64,8 @@ export class App {
   private metaService = inject(Meta);
   private router = inject(Router);
   private analytics = inject(AnalyticsService);
+  readonly i18n = inject(LanguageService);
+  readonly consent = inject(ConsentService);
 
   showLanding = signal(true);
   selectedImage = signal<string | null>(null);
@@ -73,7 +79,8 @@ export class App {
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<string>('details');
   /** 'page' = public routed content (legal pages, contact, 404) rendered through <router-outlet>. */
-  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst' | 'workspace' | 'page'>('home');
+  /** 'auth' = /login, /signup and the email-link screens (/forgot-password, /reset-password, /verify-email). */
+  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst' | 'workspace' | 'page' | 'auth'>('home');
   currentPath = signal<string>('');
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
@@ -100,6 +107,8 @@ export class App {
   regCity = signal('');
   regSellsOn = signal<string[]>([]);
   regTermsAccepted = signal(false);
+  /** Separate, explicit WhatsApp consent (checked by default) — the phone number itself is not consent. */
+  regWhatsappOptIn = signal(true);
   readonly indianStates = INDIAN_STATES_AND_UTS;
   readonly sellingChannels = SELLING_CHANNELS;
 
@@ -123,10 +132,10 @@ export class App {
 
   nameError = computed(() => (this.regName().trim().length < 2 ? 'Enter your full name.' : ''));
 
-  /** Mobile number is optional (matches the backend), but must be a valid Indian mobile if given. */
+  /** Mobile number is required; spaces and a pasted leading 0 / 91 / +91 are stripped first. */
   phoneError = computed(() => {
-    const digits = this.regPhone().replace(/\D/g, '');
-    if (!digits) return '';
+    const digits = normalizeIndianMobile(this.regPhone());
+    if (!digits) return 'Enter your mobile number.';
     if (!INDIAN_MOBILE_RE.test(digits)) return 'Enter a valid 10-digit Indian mobile number.';
     return '';
   });
@@ -171,11 +180,14 @@ export class App {
 
   isRegistering = signal(false);
   authError = signal<string | null>(null);
+  /** The last registration was rejected because the phone number already has an account. */
+  phoneTakenError = signal(false);
   checkoutMessage = signal<string | null>(null);
   isProcessingCheckout = signal(false);
 
   // Forgot/Reset Password State
-  passwordResetMode = signal<'none' | 'forgot' | 'reset'>('none');
+  /** 'invalid' = /reset-password opened without a token. */
+  passwordResetMode = signal<'none' | 'forgot' | 'reset' | 'invalid'>('none');
   resetToken = signal<string | null>(null);
   forgotEmailSent = signal(false);
   newPassword = signal('');
@@ -189,9 +201,32 @@ export class App {
   showResendVerification = signal(false);
   isResendingVerification = signal(false);
   resendVerificationSent = signal(false);
-  /** Set when the URL is /verify-email?token=... — drives the auto-verify screen. */
+  /** Set when the URL is /verify-email?token=... — drives the auto-verify screen. 'error' covers a
+   * missing, invalid or expired token. */
   emailVerificationState = signal<'none' | 'verifying' | 'success' | 'error'>('none');
   emailVerificationError = signal<string | null>(null);
+  /** The token already sent for verification, so the same link isn't verified twice. */
+  private verifiedToken: string | null = null;
+  /** Registration succeeded but the verification email couldn't be sent. */
+  verificationEmailFailed = signal(false);
+  /** Inline result/error for the "Resend verification email" buttons. */
+  resendMessage = signal<string | null>(null);
+  /** Seconds until another verification email may be requested (backend enforces 60s too). */
+  resendCooldown = signal(0);
+  private resendTimer: ReturnType<typeof setInterval> | null = null;
+  /** Email typed on the invalid-link screen to request a fresh verification link. */
+  resendEmailInput = signal('');
+
+  // One-time "add your mobile number" prompt for accounts created before it was required.
+  phonePromptDismissed = signal(false);
+  phonePromptValue = signal('');
+  phonePromptOptIn = signal(true);
+  phonePromptError = signal<string | null>(null);
+  phonePromptSaving = signal(false);
+  showPhonePrompt = computed(() => {
+    const profile = this.auth.profile();
+    return !!profile && !profile.phoneNumber && !this.phonePromptDismissed();
+  });
 
   // Marketplace Connections (Settings)
   marketplaceConnectionsData = signal<MarketplaceConnectionsResponse | null>(null);
@@ -281,8 +316,17 @@ export class App {
   }
 
   private syncViewWithUrl(url: string) {
-    const path = url.split(/[?#]/)[0] || '/';
+    const [pathPart, query = ''] = url.split('#')[0].split('?');
+    const path = pathPart || '/';
     this.currentPath.set(path);
+    this.mobileMenuOpen.set(false);
+    if (App.AUTH_PATHS.has(path)) {
+      this.showLanding.set(false);
+      this.applyAuthPath(path, new URLSearchParams(query));
+      return;
+    }
+    // Leaving the auth pages drops any half-finished auth screen state.
+    this.clearAuthScreens();
     if (path === '/' || path === '/home') {
       this.showLanding.set(true);
     } else {
@@ -294,12 +338,65 @@ export class App {
       else if (path === '/settings') { this.mainView.set('settings'); this.loadMarketplaceConnections(); }
       else if (path.startsWith('/optimize')) this.mainView.set('workspace');
       else if (path.startsWith('/workspace/')) this.mainView.set('workspace');
-      else if (!App.SHELL_PATHS.has(path)) this.mainView.set('page');
+      else this.mainView.set('page');
     }
   }
 
-  /** Paths the shell renders itself from window.location; everything else unknown is a routed page (legal pages or the 404). */
-  private static readonly SHELL_PATHS = new Set(['/reset-password', '/forgot-password', '/verify-email']);
+  /** Auth screens are real routes, rendered by the shell (not through <router-outlet>). */
+  private static readonly AUTH_PATHS = new Set(['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email']);
+
+  private applyAuthPath(path: string, params: URLSearchParams) {
+    this.mainView.set('auth');
+    const token = params.get('token');
+    switch (path) {
+      case '/login':
+      case '/signup':
+        this.clearAuthScreens();
+        this.isRegistering.set(path === '/signup');
+        break;
+      case '/forgot-password':
+        this.clearAuthScreens();
+        this.passwordResetMode.set('forgot');
+        break;
+      case '/reset-password':
+        this.clearAuthScreens();
+        if (token) {
+          this.resetToken.set(token);
+          this.passwordResetMode.set('reset');
+        } else {
+          this.passwordResetMode.set('invalid');
+        }
+        break;
+      case '/verify-email':
+        if (!token) {
+          this.emailVerificationState.set('error');
+          this.emailVerificationError.set(null);
+        } else if (token !== this.verifiedToken) {
+          this.verifiedToken = token;
+          this.verifyEmailFromLink(token);
+        }
+        break;
+    }
+  }
+
+  private clearAuthScreens() {
+    this.passwordResetMode.set('none');
+    this.forgotEmailSent.set(false);
+    this.resetPasswordSuccess.set(false);
+    this.resetToken.set(null);
+    if (this.emailVerificationState() !== 'verifying') {
+      this.emailVerificationState.set('none');
+      this.emailVerificationError.set(null);
+    }
+    this.verificationPendingEmail.set(null);
+    this.verificationEmailFailed.set(false);
+    this.resendMessage.set(null);
+    this.authError.set(null);
+    this.phoneTakenError.set(false);
+    this.showResendVerification.set(false);
+    this.resendVerificationSent.set(false);
+    this.submitAttempted.set(false);
+  }
 
   async sendPasswordResetEmail() {
     this.authError.set(null);
@@ -354,7 +451,7 @@ export class App {
     this.email.set('');
     this.newPassword.set('');
     this.confirmNewPassword.set('');
-    this.navigateTo('landing');
+    this.router.navigate(['/login']);
   }
 
   navigateTo(view: 'home' | 'listings' | 'products' | 'gst' | 'admin' | 'settings' | 'landing') {
@@ -385,30 +482,22 @@ export class App {
     if (isPlatformBrowser(this.platformId)) {
       this.analytics.init();
 
-      // URL Sync Logic
-      this.syncViewWithUrl(window.location.pathname);
+      // URL Sync Logic — includes /login, /signup and the email-link pages (reset/verify tokens).
+      this.syncViewWithUrl(window.location.pathname + window.location.search);
 
-      // Forgot/Reset Password Link Handling
-      if (window.location.pathname === '/reset-password') {
-        const token = new URLSearchParams(window.location.search).get('token');
-        if (token) {
-          this.resetToken.set(token);
-          this.passwordResetMode.set('reset');
-          this.showLanding.set(false);
+      // One-time mobile-number prompt: remembered per account.
+      effect(() => {
+        const uid = this.auth.user()?.uid;
+        let dismissed = false;
+        try {
+          dismissed = !!uid && window.localStorage.getItem(`sa_phone_prompt_dismissed_${uid}`) === '1';
+        } catch {
+          // Storage blocked — show the prompt.
         }
-      } else if (window.location.pathname === '/forgot-password') {
-        this.passwordResetMode.set('forgot');
-        this.showLanding.set(false);
-      } else if (window.location.pathname === '/verify-email') {
-        const token = new URLSearchParams(window.location.search).get('token');
-        this.showLanding.set(false);
-        if (token) {
-          this.verifyEmailFromLink(token);
-        } else {
-          this.emailVerificationState.set('error');
-          this.emailVerificationError.set('Missing verification token.');
-        }
-      } else if (window.location.pathname === '/home') {
+        this.phonePromptDismissed.set(dismissed);
+      });
+
+      if (window.location.pathname === '/home') {
         // Landing back here after the Amazon or Flipkart OAuth redirect round-trip. Shown as a
         // toast (rather than the marketplaceConnectionMessage banner, which only renders inside
         // the Settings view's markup) since this redirect target isn't the Settings page.
@@ -498,6 +587,9 @@ export class App {
             case 'admin':
               title = 'Admin Panel - SellAssist';
               break;
+            case 'auth':
+              title = this.isRegistering() ? 'Create your account - SellAssist' : 'Sign in - SellAssist';
+              break;
           }
         }
 
@@ -524,10 +616,10 @@ export class App {
             this.listingService.getListings(user.uid, (listings) => this.myListings.set(listings), false, (error) => this.notifyListingsFetchError(error));
           }
         } else {
+          // No redirect here: authGuard already sends signed-out visitors of /inventory and
+          // /listings to /login?returnUrl=..., and redirecting to /optimize first would overwrite
+          // that returnUrl.
           this.myListings.set([]);
-          if (this.mainView() === 'products' || this.mainView() === 'listings') {
-            this.navigateTo('home');
-          }
         }
       });
     }
@@ -903,8 +995,9 @@ export class App {
     this.isProcessing.set(true);
     try {
       await this.auth.loginWithEmail(this.email(), this.password(), this.rememberMe());
-      this.navigateTo('home');
+      const returnUrl = safeReturnUrl(this.router.parseUrl(this.router.url).queryParamMap.get('returnUrl'));
       this.resetAuthForm();
+      await this.router.navigateByUrl(returnUrl ?? DASHBOARD_PATH);
     } catch (error: unknown) {
       const code = (error as { code?: string }).code || (error as Error).message;
       this.authError.set(this.getAuthErrorMessage(code));
@@ -917,6 +1010,7 @@ export class App {
   async register() {
     this.submitAttempted.set(true);
     this.authError.set(null);
+    this.phoneTakenError.set(false);
 
     // Inline field errors (shown now that submitAttempted is set) already cover this — no need
     // to repeat the same message in the alert box below.
@@ -927,9 +1021,10 @@ export class App {
     this.isProcessing.set(true);
     try {
       const registeredEmail = this.email();
-      await this.auth.registerWithEmail(registeredEmail, this.password(), {
+      const result = await this.auth.registerWithEmail(registeredEmail, this.password(), {
         displayName: this.regName().trim(),
-        phoneNumber: this.regPhone().replace(/\D/g, ''),
+        phoneNumber: normalizeIndianMobile(this.regPhone()),
+        whatsappOptIn: this.regWhatsappOptIn(),
         gstNumber: this.regGST().trim().toUpperCase(),
         state: this.regState(),
         city: this.regCity().trim(),
@@ -940,28 +1035,92 @@ export class App {
       this.analytics.trackSignUp();
       this.resetAuthForm();
       this.verificationPendingEmail.set(registeredEmail);
+      this.resendMessage.set(null);
+      if (result?.emailSent === false) {
+        this.verificationEmailFailed.set(true);
+      } else {
+        this.verificationEmailFailed.set(false);
+        this.startResendCooldown(60);
+      }
     } catch (error: unknown) {
       const code = (error as { code?: string }).code || (error as Error).message;
+      this.phoneTakenError.set(code === 'auth/phone-already-in-use');
       this.authError.set(this.getAuthErrorMessage(code));
     } finally {
       this.isProcessing.set(false);
     }
   }
 
-  async resendVerificationEmail() {
-    const email = this.verificationPendingEmail() || this.email();
-    if (!email) return;
+  /** "Resend verification email" — at most once per 60 seconds (also enforced by the backend). */
+  async resendVerificationEmail(emailOverride?: string) {
+    const email = (emailOverride ?? (this.verificationPendingEmail() || this.email())).trim();
+    this.resendMessage.set(null);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.resendMessage.set('Enter the email address you signed up with.');
+      return;
+    }
+    if (this.resendCooldown() > 0 || this.isResendingVerification()) return;
 
     this.isResendingVerification.set(true);
     this.resendVerificationSent.set(false);
     try {
       await this.auth.resendVerification(email);
       this.resendVerificationSent.set(true);
+      this.verificationEmailFailed.set(false);
+      this.startResendCooldown(60);
     } catch (error) {
+      const apiError = error as ApiError;
+      const retryAfter = Number((apiError?.data as { retryAfter?: number } | undefined)?.retryAfter);
+      if (apiError?.status === 429 && retryAfter > 0) {
+        this.startResendCooldown(retryAfter);
+      }
       console.error('Resend verification failed', error);
-      this.authError.set('Failed to resend verification email. Please try again.');
+      this.resendMessage.set((error instanceof Error && error.message) || "We couldn't send the email right now, please try again shortly.");
     } finally {
       this.isResendingVerification.set(false);
+    }
+  }
+
+  private startResendCooldown(seconds: number) {
+    this.resendCooldown.set(Math.ceil(seconds));
+    if (this.resendTimer) clearInterval(this.resendTimer);
+    this.resendTimer = setInterval(() => {
+      const next = this.resendCooldown() - 1;
+      this.resendCooldown.set(Math.max(0, next));
+      if (next <= 0 && this.resendTimer) {
+        clearInterval(this.resendTimer);
+        this.resendTimer = null;
+      }
+    }, 1000);
+  }
+
+  dismissPhonePrompt() {
+    const uid = this.auth.user()?.uid;
+    this.phonePromptDismissed.set(true);
+    try {
+      if (uid) window.localStorage.setItem(`sa_phone_prompt_dismissed_${uid}`, '1');
+    } catch {
+      // Storage blocked — hidden for this session only.
+    }
+  }
+
+  async savePhonePrompt() {
+    const digits = normalizeIndianMobile(this.phonePromptValue());
+    this.phonePromptError.set(null);
+    if (!INDIAN_MOBILE_RE.test(digits)) {
+      this.phonePromptError.set('Enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+    this.phonePromptSaving.set(true);
+    try {
+      await this.auth.updateProfile({ phoneNumber: digits, whatsapp_opt_in: this.phonePromptOptIn() });
+    } catch (error) {
+      const apiError = error as ApiError;
+      this.phonePromptError.set(apiError?.status === 409
+        ? 'This number is already registered to another account.'
+        : (error instanceof Error && error.message) || 'Could not save your number. Please try again.');
+    } finally {
+      this.phonePromptSaving.set(false);
     }
   }
 
@@ -973,7 +1132,7 @@ export class App {
     } catch (error) {
       this.emailVerificationState.set('error');
       this.emailVerificationError.set(
-        (error instanceof Error && error.message) || 'Your verification link has expired. Request a new verification email.',
+        (error instanceof Error && error.message) || null,
       );
     }
   }
@@ -1046,7 +1205,7 @@ export class App {
     this.regCity.set('');
     this.regSellsOn.set([]);
     this.regTermsAccepted.set(false);
-    this.isRegistering.set(false);
+    this.regWhatsappOptIn.set(true);
     this.emailTouched.set(false);
     this.passwordTouched.set(false);
     this.nameTouched.set(false);
@@ -1061,7 +1220,7 @@ export class App {
       case 'auth/email-already-in-use':
         return 'This email is already registered. Try signing in instead.';
       case 'auth/phone-already-in-use':
-        return 'This mobile number is already registered to another account.';
+        return 'This number is already registered. Sign in instead?';
       case 'auth/invalid-email':
         return 'Enter a valid email address.';
       case 'auth/weak-password':
@@ -1078,31 +1237,25 @@ export class App {
         // /forgot-password always returns a generic response).
         return 'Incorrect email or password. Please try again.';
       default:
-        return 'Something went wrong signing you in. Please try again.';
+        // Backend validation messages (e.g. "Enter a valid 10-digit Indian mobile number.") are
+        // already user-facing sentences; anything else gets the generic text.
+        return /\s/.test(code) && code.length < 200 ? code : 'Something went wrong. Please try again.';
     }
   }
 
   openSignIn() {
-    this.showLanding.set(false);
-    this.isRegistering.set(false);
-    this.submitAttempted.set(false);
-    this.mainView.set('home');
+    this.router.navigate(['/login']);
   }
 
   /** Every "Start Free / Get Started / Create your free account" button lands here. */
   startSignup(source: string) {
     this.analytics.trackLead(source);
-    this.showLanding.set(false);
-    this.isRegistering.set(true);
-    this.mainView.set('home');
+    this.router.navigate(['/signup']);
   }
 
+  /** "Need an account? Sign Up" ↔ "Already have an account? Login" — keeps any returnUrl. */
   toggleRegister() {
-    this.isRegistering.set(!this.isRegistering());
-    this.submitAttempted.set(false);
-    this.authError.set(null);
-    this.showResendVerification.set(false);
-    this.resendVerificationSent.set(false);
+    this.router.navigate([this.isRegistering() ? '/login' : '/signup'], { queryParamsHandling: 'preserve' });
   }
 
   async logout() {
