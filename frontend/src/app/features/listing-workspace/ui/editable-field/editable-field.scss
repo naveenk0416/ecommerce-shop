@@ -131,3 +131,40 @@
     }
   }
 }
+
+// "✨ Improve · 7 left" — free AI assist button.
+.editable-field__improve-wrap {
+  display: inline-flex;
+}
+
+.editable-field__improve {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: 999px;
+
+  mat-spinner {
+    display: inline-block;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+}
+
+// Phones: the action buttons (now including Improve) move under the value instead of squeezing it.
+@media (max-width: 600px) {
+  .editable-field__view-row {
+    flex-wrap: wrap;
+  }
+
+  .editable-field__edit-row {
+    flex-wrap: wrap;
+  }
+
+  .editable-field__view-row .editable-field__actions,
+  .editable-field__edit-row .editable-field__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

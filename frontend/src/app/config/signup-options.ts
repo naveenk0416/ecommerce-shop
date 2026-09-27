@@ -10,6 +10,14 @@ export const INDIAN_STATES_AND_UTS: readonly string[] = [
   'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
 ];
 
+/** "How many products do you sell?" — keep values in sync with catalogSizeBands in backend/config/coins.json. */
+export const CATALOG_SIZE_BANDS: readonly { value: string; label: string }[] = [
+  { value: '1-10', label: '1–10' },
+  { value: '11-50', label: '11–50' },
+  { value: '51-200', label: '51–200' },
+  { value: '200+', label: '200+' },
+];
+
 export const SELLING_CHANNELS: readonly string[] = [
   'Meesho', 'Flipkart', 'Amazon', 'Myntra', 'Instagram/WhatsApp', 'Offline shop',
 ];

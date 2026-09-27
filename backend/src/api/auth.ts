@@ -3,9 +3,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
-import { AmazonAuthState, ensureConnected, Feedback, Listing, ListingDraft, MarketplaceConnection, Sale, TemplateConfig, User } from './common.js';
+import { AmazonAuthState, AssistCounter, CoinLedger, ensureConnected, Feedback, GstLookup, Listing, ListingDraft, MarketplaceConnection, PackInterest, Sale, TemplateConfig, User } from './common.js';
 import { MAIL_UNAVAILABLE_MESSAGE, MailDeliveryError, sendMail } from '../utils/mailer.js';
 import { GSTIN_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, phoneLookupValues, sanitizeAttribution, toIndianE164 } from '../utils/signup-fields.js';
+import { coinConfig, dayKey } from '../config/coins.js';
+import { deviceId, ipHash } from '../utils/request-identity.js';
+import { ensureWallet, grantBonus, reverseReferralOnDelete } from '../utils/wallet.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env['JWT_SECRET'] || 'dev_jwt_secret_change_me';
@@ -113,6 +116,25 @@ async function sendVerificationEmail(user: any): Promise<void> {
   });
 }
 
+/** Most identifiers kept per account for the self-referral check. */
+const MAX_TRACKED_IDS = 20;
+
+/**
+ * Records today as an active day (retention stats) and any new browser id / network (salted
+ * hash) for the self-referral check. Only writes when something is new, so it's usually free.
+ */
+function recordActivity(req: express.Request, user: any): void {
+  const today = dayKey();
+  const device = deviceId(req);
+  const ip = ipHash(req);
+  const addToSet: Record<string, string> = {};
+  if (!user.activeDays?.includes(today)) addToSet['activeDays'] = today;
+  if (device && !user.deviceIds?.includes(device) && (user.deviceIds?.length ?? 0) < MAX_TRACKED_IDS) addToSet['deviceIds'] = device;
+  if (ip && !user.ipHashes?.includes(ip) && (user.ipHashes?.length ?? 0) < MAX_TRACKED_IDS) addToSet['ipHashes'] = ip;
+  if (Object.keys(addToSet).length === 0) return;
+  User.updateOne({ _id: user._id }, { $addToSet: addToSet }).catch((err: unknown) => console.error('recordActivity failed', err));
+}
+
 async function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -131,6 +153,7 @@ async function authMiddleware(req: express.Request, res: express.Response, next:
     }
 
     (req as any).authUser = user;
+    recordActivity(req, user);
     next();
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
@@ -191,6 +214,12 @@ router.post('/register', registerLimiter, async (req, res) => {
     return;
   }
 
+  const catalogSizeBand = String(req.body?.catalogSizeBand || '');
+  if (!coinConfig.catalogSizeBands.includes(catalogSizeBand)) {
+    res.status(400).json({ error: 'Tell us how many products you sell.', code: 'CATALOG_SIZE_REQUIRED' });
+    return;
+  }
+
   const passwordError = passwordPolicyError(String(password));
   if (passwordError) {
     res.status(400).json({ error: passwordError });
@@ -212,6 +241,16 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const now = new Date();
+    const cleanAttribution = sanitizeAttribution(attribution);
+    // Referral link (?ref=CODE): the reward is decided later, after the new seller's first AI listing.
+    let referral: Record<string, unknown> | undefined;
+    const refCode = cleanAttribution?.['ref']?.toUpperCase();
+    if (refCode && /^[A-Z0-9]{4,16}$/.test(refCode)) {
+      const referrer = await User.findOne({ referralCode: refCode }).select('_id').lean();
+      if (referrer) referral = { referrerUid: referrer._id.toString(), code: refCode, status: 'pending' };
+    }
+    const signupDevice = deviceId(req);
+    const signupIp = ipHash(req);
     const user = new User({
       email,
       passwordHash,
@@ -225,7 +264,13 @@ router.post('/register', registerLimiter, async (req, res) => {
       whatsapp_opt_in: whatsappOptIn,
       whatsapp_opt_in_at: now,
       signupAt: now,
-      attribution: sanitizeAttribution(attribution),
+      attribution: cleanAttribution,
+      catalogSizeBand,
+      referral,
+      signupDeviceId: signupDevice ?? undefined,
+      signupIpHash: signupIp ?? undefined,
+      deviceIds: signupDevice ? [signupDevice] : undefined,
+      ipHashes: signupIp ? [signupIp] : undefined,
       lastLogin: now.toISOString(),
       emailVerified: false,
     });
@@ -345,6 +390,9 @@ router.post('/verify-email', async (req, res) => {
     user.emailVerificationExpires = undefined;
     user.lastLogin = new Date().toISOString();
     await user.save();
+
+    // Welcome bonus (and the mobile-number bonus) land as soon as the email is verified.
+    await ensureWallet(user._id.toString()).catch((err) => console.error('[wallet] welcome bonus failed', err));
 
     // Sign the user in immediately — they just proved ownership of the email, no need to make
     // them type their password again right after clicking the link.
@@ -532,6 +580,9 @@ router.get('/me', authMiddleware, async (req, res) => {
       state: user.state,
       city: user.city,
       whatsapp_opt_in: user.whatsapp_opt_in ?? false,
+      catalogSizeBand: user.catalogSizeBand ?? null,
+      catalogPromptDismissed: !!user.catalogPromptDismissedAt,
+      coins: { free: user.coins?.free ?? 0, paid: user.coins?.paid ?? 0 },
     },
   });
 });
@@ -580,7 +631,14 @@ router.delete('/me', authMiddleware, accountChangeLimiter, async (req, res) => {
       return;
     }
     const uid = user._id.toString();
+    // A referral reward paid for this account in the last few days is taken back from the referrer.
+    await reverseReferralOnDelete(user.toObject()).catch((err) => console.error('[referral] reversal failed', err));
+    // AI usage rows and coin-pack payment records are kept (by user id only) for accounting.
     await Promise.all([
+      CoinLedger.deleteMany({ uid }),
+      AssistCounter.deleteMany({ uid }),
+      PackInterest.deleteMany({ uid }),
+      GstLookup.deleteMany({ uid }),
       Listing.deleteMany({ uid }),
       Sale.deleteMany({ uid }),
       ListingDraft.deleteMany({ uid }),
@@ -672,6 +730,12 @@ router.patch('/users/:id', authMiddleware, async (req, res) => {
     }
 
     await user.save();
+
+    // +2 coins the first time a mobile number is saved on the profile (once per account).
+    const selfId = authUser._id.toString();
+    if (user.phoneNumber && selfId === String(id)) {
+      await ensureWallet(selfId).then(() => grantBonus(selfId, 'mobile')).catch((err) => console.error('[wallet] mobile bonus failed', err));
+    }
     res.json({ ok: true });
   } catch (err: any) {
     console.error('User update error', err);

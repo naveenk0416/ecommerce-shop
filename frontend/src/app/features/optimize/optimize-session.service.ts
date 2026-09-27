@@ -1,6 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { AiFieldExtraction, formatGeminiError, GeminiService } from '../../services/gemini';
+import { AiFieldExtraction, formatGeminiError, GeminiService, isOutOfCoinsError } from '../../services/gemini';
+import { AssistsLeft, isBlockedAiField, WalletService, WalletSummary } from '../../services/wallet';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { LanguageService } from '../../services/language';
+import { ApiError } from '../../services/api';
 import { DraftResults, ListingService } from '../../services/listing';
 import { normalizeHashtags } from '../../utils/hashtags';
 import { resizeImage } from '../../utils/image';
@@ -31,6 +35,9 @@ export class OptimizeSessionService {
   private readonly gemini = inject(GeminiService);
   private readonly listingService = inject(ListingService);
   private readonly router = inject(Router);
+  private readonly wallet = inject(WalletService);
+  private readonly i18n = inject(LanguageService);
+  private readonly snackBar = inject(MatSnackBar);
 
   /** Data URL for a fresh upload, or the draft's image URL once loaded from the backend. */
   imagePreview = signal<string | null>(null);
@@ -56,6 +63,15 @@ export class OptimizeSessionService {
   loadError = signal<string | null>(null);
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private creating: Promise<void> | null = null;
+
+  // ---- "✨ Improve" free assists for this listing ----
+  /** Free field improvements left for this listing (null until the draft exists). */
+  fixAssists = signal<AssistsLeft | null>(null);
+  /** Set when a limit was hit: 'item' = this listing, 'day' = today across listings. */
+  fixLimit = signal<'item' | 'day' | null>(null);
+  /** "tab:field" currently being improved. */
+  improvingField = signal<string | null>(null);
+  improveError = signal<string | null>(null);
 
   hasImage(): boolean {
     return this.imagePreview() !== null;
@@ -124,7 +140,21 @@ export class OptimizeSessionService {
         this.cache.set({ ...next, general: { ...(next.general ?? {}), ...sellerValues } });
         return this.saveNow();
       })
-      .catch((err) => this.generationError.set(formatGeminiError(err)))
+      .then(() => this.wallet.load())
+      .catch((err) => {
+        if (isOutOfCoinsError(err)) {
+          const wallet = (err as ApiError).data as { wallet?: WalletSummary } | undefined;
+          if (wallet?.wallet) this.wallet.setWallet(wallet.wallet);
+          this.generationError.set(this.i18n.t(
+            'You’re out of coins. Earn more coins or wait for your monthly free coins, then try again.',
+            'आपके coins खत्म हो गए हैं। और coins कमाएं या मासिक free coins का इंतज़ार करें, फिर कोशिश करें।',
+          ));
+          this.wallet.outOfCoins.set(true);
+          return;
+        }
+        this.generationError.set(formatGeminiError(err));
+        void this.wallet.load();
+      })
       .finally(() => this.isGenerating.set(false));
   }
 
@@ -146,6 +176,7 @@ export class OptimizeSessionService {
       this.galleryImages.set(draft.imageUrl ? [draft.imageUrl] : []);
       this.generationError.set(null);
       this.saveState.set('saved');
+      void this.loadFixAssists();
     } catch (error) {
       this.loadError.set((error instanceof Error && error.message) || 'Could not open this listing.');
     } finally {
@@ -191,7 +222,68 @@ export class OptimizeSessionService {
     this.isGenerating.set(false);
   }
 
+  /** Remaining free "✨ Improve" uses for the current listing. */
+  async loadFixAssists(): Promise<void> {
+    const id = this.draftId();
+    if (!id) return;
+    try {
+      const assists = await this.wallet.assists('field_fix', id);
+      if (id !== this.draftId()) return;
+      this.fixAssists.set(assists);
+      this.fixLimit.set(assists.dayLeft <= 0 ? 'day' : assists.left <= 0 ? 'item' : null);
+    } catch {
+      // Leave the button hidden rather than showing a wrong count.
+    }
+  }
+
+  /**
+   * "✨ Improve" on one field: a free AI rewrite (never costs coins), limited per listing and per
+   * day. The result replaces the field's value like a seller edit and is saved with the draft.
+   */
+  async improveField(tab: OptimizeTabKey, key: string, label: string, maxLength: number): Promise<void> {
+    const listingKey = this.draftId();
+    if (!listingKey || this.improvingField()) return;
+    if (this.saveTimer || this.saveState() === 'saving') await this.saveNow();
+    this.improvingField.set(`${tab}:${key}`);
+    this.improveError.set(null);
+    const general = this.cache().general ?? {};
+    try {
+      const result = await this.wallet.fieldFix({
+        listingKey,
+        tab,
+        fieldKey: key,
+        label,
+        value: this.cache()[tab]?.[key]?.values?.[0] ?? '',
+        maxLength,
+        context: {
+          title: general['productTitle']?.values?.[0],
+          category: general['category']?.values?.[0],
+          description: general['description']?.values?.[0],
+        },
+      });
+      this.updateField(tab, key, result.value);
+      this.fixAssists.set(result.assists);
+      this.fixLimit.set(result.assists.dayLeft <= 0 ? 'day' : result.assists.left <= 0 ? 'item' : null);
+    } catch (error) {
+      const data = (error as ApiError).data as { code?: string; limit?: 'item' | 'day'; assists?: AssistsLeft } | undefined;
+      if (data?.assists) this.fixAssists.set(data.assists);
+      if (data?.code === 'ASSIST_LIMIT') this.fixLimit.set(data.limit ?? 'item');
+      this.improveError.set((error instanceof Error && error.message) || 'Could not improve this field. Please try again.');
+      this.snackBar.open(this.improveError()!, 'OK', { duration: 4000 });
+    } finally {
+      this.improvingField.set(null);
+    }
+  }
+
+  /** Fields the seller must enter themselves (brand, MRP, origin, …) get no Improve button. */
+  isAiBlocked(key: string, label: string): boolean {
+    return isBlockedAiField(key, label, this.wallet.wallet()?.blockedFieldPatterns ?? []);
+  }
+
   private clearDraft(): void {
+    this.fixAssists.set(null);
+    this.fixLimit.set(null);
+    this.improveError.set(null);
     this.cancelPendingSave();
     this.draftId.set(null);
     this.draftStatus.set('draft');
@@ -220,6 +312,7 @@ export class OptimizeSessionService {
       const draft = await this.listingService.createDraft({ results: this.cache() as DraftResults, image });
       this.draftId.set(draft.id);
       this.draftStatus.set(draft.status);
+      void this.loadFixAssists();
       if (draft.imageUrl) this.galleryImages.update((imgs) => (imgs.length ? imgs : [draft.imageUrl!]));
       this.putDraftIdInUrl(draft.id);
     })();

@@ -1,11 +1,13 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, effect, inject, input, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, effect, inject, input, model, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { LanguageService } from '../../../../services/language';
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
@@ -17,7 +19,7 @@ const COPIED_BADGE_DURATION_MS = 1500;
   selector: 'app-editable-field',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatTooltipModule],
+  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatTooltipModule, MatProgressSpinnerModule],
   templateUrl: './editable-field.html',
   styleUrl: './editable-field.scss',
 })
@@ -35,6 +37,29 @@ export class EditableField {
   reason = input<string | null>(null);
 
   value = model('');
+
+  // ---- "✨ Improve" (free AI assist, limited per listing and per day) ----
+  /** Free improvements left; null hides the Improve button (e.g. outside /optimize). */
+  improveLeft = input<number | null>(null);
+  /** Why Improve can't be used: 'item' = this listing's limit, 'day' = daily limit, 'blocked' = a field the seller must enter. */
+  improveLimit = input<'item' | 'day' | 'blocked' | null>(null);
+  improving = input(false);
+  improve = output<void>();
+
+  protected readonly i18n = inject(LanguageService);
+
+  improveDisabled = computed(() => this.improving() || this.improveLimit() !== null || (this.improveLeft() ?? 0) <= 0);
+
+  improveTooltip = computed(() => {
+    switch (this.improveLimit()) {
+      case 'blocked': return this.i18n.t('Please enter this yourself — the AI doesn’t fill it.', 'इसे खुद भरें — AI इसे नहीं भरता।');
+      case 'day': return this.i18n.t('Daily free AI limit reached — try again tomorrow.', 'आज की free AI limit पूरी हो गई — कल फिर कोशिश करें।');
+      case 'item': return this.i18n.t('Free AI limit reached for this listing.', 'इस listing के लिए free AI limit पूरी हो गई।');
+      default: return (this.improveLeft() ?? 0) <= 0
+        ? this.i18n.t('Free AI limit reached for this listing.', 'इस listing के लिए free AI limit पूरी हो गई।')
+        : this.i18n.t('Rewrite this field with AI — free, no coins used.', 'AI से यह field बेहतर करें — free, कोई coin नहीं लगेगा।');
+    }
+  });
 
   confidenceTier = computed<'high' | 'medium' | 'low'>(() => {
     const value = this.confidence();

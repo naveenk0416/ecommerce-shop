@@ -342,3 +342,31 @@
     padding-right: 12px;
   }
 }
+
+// Coin balance: sidebar badge and header pill (links to the Coins page).
+.optimize-sidebar__score--coins {
+  background: #ea580c;
+  color: #fff;
+}
+
+.optimize-header__coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+  font-weight: 800;
+  font-size: 13px;
+  text-decoration: none;
+  flex: 0 0 auto;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}

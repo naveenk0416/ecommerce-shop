@@ -27,6 +27,10 @@
                 [confidence]="r[field.key]?.confidence ?? null"
                 [reason]="r[field.key]?.reason ?? null"
                 (valueChange)="session.updateField('amazon', field.key, $event)"
+                [improveLeft]="session.fixAssists()?.left ?? null"
+                [improveLimit]="session.isAiBlocked(field.key, field.label) ? 'blocked' : session.fixLimit()"
+                [improving]="session.improvingField() === 'amazon:' + field.key"
+                (improve)="session.improveField('amazon', field.key, field.label, field.maxLength)"
               />
             }
           </div>

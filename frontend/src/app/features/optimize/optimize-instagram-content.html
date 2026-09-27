@@ -23,6 +23,10 @@
                 [confidence]="r[field.key]?.confidence ?? null"
                 [reason]="r[field.key]?.reason ?? null"
                 (valueChange)="session.updateField('instagram', field.key, $event)"
+                [improveLeft]="session.fixAssists()?.left ?? null"
+                [improveLimit]="session.isAiBlocked(field.key, field.label) ? 'blocked' : session.fixLimit()"
+                [improving]="session.improvingField() === 'instagram:' + field.key"
+                (improve)="session.improveField('instagram', field.key, field.label, field.maxLength)"
               />
             }
           </div>

@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
-import { GoogleGenAI } from "@google/genai";
-import { GEMINI_API_KEY } from '../env';
+import { apiFetch } from './api';
 import { PlatformTemplate } from './template';
 import { GENERAL_DETAILS_SECTIONS } from '../features/listing-workspace/tabs/general-details/general-details.mock';
 import { AMAZON_LISTING_SECTIONS } from '../features/listing-workspace/tabs/amazon-listing/amazon-listing.mock';
@@ -73,26 +72,31 @@ export interface ProductDetails {
   sellingPrice?: number;
 }
 
+/** Thrown when an AI listing is refused because the seller has no coins left (HTTP 402). */
+export function isOutOfCoinsError(err: unknown): boolean {
+  return (err as { status?: number; data?: { code?: string } })?.status === 402
+    && (err as { data?: { code?: string } }).data?.code === 'OUT_OF_COINS';
+}
+
+/**
+ * Builds the prompts and JSON schemas for AI listings. The Gemini call itself happens on the
+ * backend (POST /api/ai/listing), which holds the API key, charges the listing's coin and refunds
+ * it if the call fails — the browser never talks to Gemini directly.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class GeminiService {
-  private aiClient: GoogleGenAI | null = null;
-
-  private get ai() {
-    if (!this.aiClient) {
-      const key = GEMINI_API_KEY as string;
-      if (!key) {
-        throw new Error('GEMINI_API_KEY is not defined. Please configure it in your secrets.');
-      }
-      this.aiClient = new GoogleGenAI({ apiKey: key });
-    }
-    return this.aiClient;
+  /** One AI listing call through the backend. Costs a coin (refunded by the server on failure). */
+  private async generate<T>(prompt: string, responseSchema: Record<string, unknown>, image?: { data: string; mimeType: string }, temperature = 0.4): Promise<T> {
+    const body = await apiFetch<{ result: T }>('/ai/listing', {
+      method: 'POST',
+      body: { prompt, schema: responseSchema, image, temperature },
+    });
+    return body.result;
   }
 
   async extractProductDetails(base64Image: string, mimeType: string, templates: PlatformTemplate[], isPro = false): Promise<ProductDetails> {
-    const model = "gemini-3-flash-preview";
-    
     // Build parts of the prompt based on templates
     const detailTemplate = templates.find(t => t.id === 'details');
     const enabledPlatforms = templates.filter(t => t.id !== 'details' && t.enabled);
@@ -175,100 +179,7 @@ export class GeminiService {
       required
     };
 
-    const response = await this.ai.models.generateContent({
-      model: model,
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            { inlineData: { data: base64Image, mimeType: mimeType } }
-          ]
-        }
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        temperature: 0
-      }
-    });
-
-    if (!response.text) {
-      throw new Error("Failed to extract product details: Empty response");
-    }
-    return JSON.parse(response.text);
-  }
-
-  /** Text-only structured generation: given a prompt and a JSON schema, returns the parsed result. */
-  async generateStructured<T>(prompt: string, responseSchema: Record<string, unknown>): Promise<T> {
-    const response = await this.ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema,
-        temperature: 0,
-      }
-    });
-
-    if (!response.text) {
-      throw new Error("Failed to generate structured content: Empty response");
-    }
-    return JSON.parse(response.text) as T;
-  }
-
-  /** Same as generateStructured, but grounds the answer in the product's own photo — used where
-   * the requested values (material, color, gem type, ...) are best read off the actual image
-   * rather than guessed from name/description text alone. */
-  async generateStructuredFromImage<T>(prompt: string, base64Image: string, mimeType: string, responseSchema: Record<string, unknown>): Promise<T> {
-    const response = await this.ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [{ parts: [{ text: prompt }, { inlineData: { data: base64Image, mimeType } }] }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema,
-        temperature: 0,
-      }
-    });
-
-    if (!response.text) {
-      throw new Error("Failed to generate structured content: Empty response");
-    }
-    return JSON.parse(response.text) as T;
-  }
-
-  async generateWhiteBackground(base64Image: string, mimeType: string): Promise<string> {
-    // Using gemini-2.5-flash-image to "edit" the image
-    const model = "gemini-2.5-flash-image";
-    
-    const response = await this.ai.models.generateContent({
-      model: model,
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              data: base64Image,
-              mimeType: mimeType,
-            },
-          },
-          {
-            text: 'Please regenerate this exact product but on a clean, professional pure white background for an e-commerce listing. The product should be centered and well-lit.',
-          },
-        ],
-      },
-    });
-
-    const candidates = response.candidates;
-    if (!candidates || candidates.length === 0 || !candidates[0].content?.parts) {
-      throw new Error("Failed to generate image: No candidates returned");
-    }
-
-    for (const part of candidates[0].content.parts) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
-      }
-    }
-    
-    throw new Error("Failed to generate image with white background");
+    return this.generate<ProductDetails>(prompt, responseSchema, { data: base64Image, mimeType }, 0);
   }
 
   /**
@@ -360,27 +271,7 @@ export class GeminiService {
       required.push(field.key);
     }
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            { inlineData: { data: base64Image, mimeType } },
-          ],
-        },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: { type: 'object', properties, required },
-        temperature: 0.4,
-      },
-    });
-
-    if (!response.text) {
-      throw new Error('Failed to extract product details: empty response');
-    }
-    return JSON.parse(response.text) as Record<string, AiFieldExtraction>;
+    return this.generate<Record<string, AiFieldExtraction>>(prompt, { type: 'object', properties, required }, { data: base64Image, mimeType });
   }
 
   /** Builds the shared values+confidence+reason JSON-schema fragment for a flat field list. */
@@ -435,27 +326,7 @@ export class GeminiService {
 
     const { properties, required } = this.fieldSchemaFor(fields);
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            { inlineData: { data: base64Image, mimeType } },
-          ],
-        },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: { type: 'object', properties, required },
-        temperature: 0.4,
-      },
-    });
-
-    if (!response.text) {
-      throw new Error('Failed to generate content: empty response');
-    }
-    return JSON.parse(response.text) as Record<string, AiFieldExtraction>;
+    return this.generate<Record<string, AiFieldExtraction>>(prompt, { type: 'object', properties, required }, { data: base64Image, mimeType });
   }
 
   /** Generates the simplified listing summary (title, category, price, stock, tags) for /optimize's General Details tab. */
@@ -669,27 +540,7 @@ export class GeminiService {
       Respond only with the requested JSON, covering all five sections: ${groups.map((g) => g.key).join(', ')}.
     `;
 
-    const response = await this.ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            { inlineData: { data: base64Image, mimeType } },
-          ],
-        },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: { type: 'object', properties, required },
-        temperature: 0.4,
-      },
-    });
-
-    if (!response.text) {
-      throw new Error('Failed to generate listings: empty response');
-    }
-    return JSON.parse(response.text) as AllListingsResult;
+    return this.generate<AllListingsResult>(prompt, { type: 'object', properties, required }, { data: base64Image, mimeType });
   }
 }
 

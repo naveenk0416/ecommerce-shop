@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { firstValueFrom } from 'rxjs';
 import { Listing } from '../../../services/listing';
 import {
   AmazonAttributeSummary,
@@ -15,7 +17,9 @@ import {
   MarketplaceConnectionsService,
 } from '../../../services/marketplace-connections';
 import { ApiError } from '../../../services/api';
-import { formatGeminiError, GeminiService } from '../../../services/gemini';
+import { AssistsLeft, AutofillField, isBlockedAiField, WalletService } from '../../../services/wallet';
+import { LanguageService } from '../../../services/language';
+import { ConfirmActionData, ConfirmActionDialog } from '../confirm-action-dialog';
 
 type FieldKind = 'text' | 'textarea' | 'select' | 'bullets' | 'number';
 
@@ -116,15 +120,50 @@ const NON_RENDERABLE_REQUIRED_KEYS = new Set(['marketplace_id', 'language_tag'])
   selector: 'app-create-amazon-listing-dialog',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, MatButtonModule, MatIconModule, MatCheckboxModule, MatProgressSpinnerModule, MatDialogModule],
+  imports: [FormsModule, MatButtonModule, MatIconModule, MatCheckboxModule, MatProgressSpinnerModule, MatDialogModule, MatTooltipModule],
   templateUrl: './create-amazon-listing-dialog.html',
   styleUrl: './create-amazon-listing-dialog.scss',
 })
 export class CreateAmazonListingDialog {
   private readonly dialogRef = inject(MatDialogRef<CreateAmazonListingDialog, boolean>);
   private readonly marketplaceConnections = inject(MarketplaceConnectionsService);
-  private readonly gemini = inject(GeminiService);
+  private readonly wallet = inject(WalletService);
+  private readonly dialog = inject(MatDialog);
+  protected readonly i18n = inject(LanguageService);
   protected readonly listing = inject<Listing>(MAT_DIALOG_DATA as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  // ---- "Fill empty fields with AI" (free, limited per product per marketplace and per day) ----
+  aiAssists = signal<AssistsLeft | null>(null);
+  aiLimit = signal<'item' | 'day' | null>(null);
+  /** Fields the AI filled that the seller hasn't edited or confirmed yet (shown with a "✨ AI" badge). */
+  aiFilled = signal<ReadonlySet<string>>(new Set());
+  /** Once the AI filled anything, Publish needs the "I've reviewed…" tick. */
+  aiUsed = signal(false);
+  reviewedAi = signal(false);
+  aiFillNotice = signal<string | null>(null);
+  /** Fields the seller typed in — the AI never overwrites them. */
+  private touched = new Set<string>();
+
+  aiButtonLabel = computed(() => {
+    const left = this.aiAssists()?.left;
+    const base = this.i18n.t('Fill empty fields with AI', 'खाली fields AI से भरें');
+    return left === undefined ? base : `${base} · ${left} ${this.i18n.t('left', 'बाकी')}`;
+  });
+
+  aiButtonTooltip = computed(() => {
+    if (this.aiLimit() === 'day') return this.i18n.t('Daily free AI limit reached — try again tomorrow.', 'आज की free AI limit पूरी हो गई — कल फिर कोशिश करें।');
+    if (this.aiLimit() === 'item' || this.aiAssists()?.left === 0) return this.i18n.t('Free AI limit reached for this product on Amazon.', 'Amazon पर इस product के लिए free AI limit पूरी हो गई।');
+    return this.i18n.t('Free — fills only empty descriptive fields. No coins used.', 'Free — सिर्फ़ खाली descriptive fields भरता है। कोई coin नहीं लगेगा।');
+  });
+
+  aiButtonDisabled = computed(() => this.aiFilling() || this.aiLimit() !== null || this.aiAssists()?.left === 0);
+
+  /** Amazon only accepts "Generic" as a brand in some cases. */
+  brandWarning = computed(() => {
+    if (!this.requiredFields().some((f) => f.name === 'brand')) return false;
+    const brand = (this.fieldValues()['brand'] || '').trim();
+    return !brand || /^generic$/i.test(brand);
+  });
 
   keywords = signal(this.listing.category || this.listing.name || '');
   searching = signal(false);
@@ -159,6 +198,54 @@ export class CreateAmazonListingDialog {
    * submit() can check itemRequired (e.g. whether language_tag belongs in the value) without
    * re-fetching. */
   private attributeSchemas = new Map<string, AmazonAttributeSummary>();
+
+  constructor() {
+    void this.loadAiAssists();
+    if (!this.wallet.wallet()) void this.wallet.load();
+  }
+
+  private async loadAiAssists(): Promise<void> {
+    if (!this.listing.id) return;
+    try {
+      const assists = await this.wallet.assists('marketplace_autofill', this.listing.id, 'amazon');
+      this.aiAssists.set(assists);
+      this.aiLimit.set(assists.dayLeft <= 0 ? 'day' : assists.left <= 0 ? 'item' : null);
+    } catch {
+      // Count unavailable — the button still works and the server enforces the limit.
+    }
+  }
+
+  /** Manufacturer, origin, MRP, weight, dimensions, GTIN, brand, compliance … — entered by the seller only. */
+  isBlocked(name: string, label = ''): boolean {
+    return isBlockedAiField(name, label, this.wallet.wallet()?.blockedFieldPatterns ?? []);
+  }
+
+  /** "Required — please enter" under empty fields the AI never fills. */
+  needsSellerInput(field: RenderableField): boolean {
+    return !field.optional && this.isBlocked(field.name, field.label) && !(this.fieldValues()[field.name] || '').trim();
+  }
+
+  compositeNeedsSellerInput(ca: CompositeAttribute, sf: CompositeSubField): boolean {
+    return this.isBlocked(`${ca.name}_${sf.key}`, `${ca.label} ${sf.label}`) && !sf.value.trim();
+  }
+
+  isAiFilled(key: string): boolean {
+    return this.aiFilled().has(key);
+  }
+
+  /** "Looks right" — the seller confirms an AI value without editing it. */
+  confirmAiValue(key: string): void {
+    this.aiFilled.update((set) => {
+      const next = new Set(set);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  private markTouched(key: string): void {
+    this.touched.add(key);
+    this.confirmAiValue(key);
+  }
 
   async search(): Promise<void> {
     const keywords = this.keywords().trim();
@@ -420,10 +507,11 @@ export class CreateAmazonListingDialog {
 
   private defaultValueFor(field: RenderableField): string {
     if (field.name === 'item_name') return this.listing.name || '';
-    if (field.name === 'brand' || field.name === 'manufacturer') return this.listing.brand || '';
+    if (field.name === 'brand') return this.listing.brand || '';
     if (field.name === 'product_description') return this.listing.description || '';
-    if (field.options?.includes('IN') && field.name === 'country_of_origin') return 'IN';
     if (field.name === 'condition_type' && field.options?.includes('new_new')) return 'new_new';
+    // Manufacturer, origin, MRP, compliance … are never pre-filled or AI-filled — the seller enters them.
+    if (this.isBlocked(field.name, field.label)) return '';
     if (field.options?.includes('not_applicable')) return 'not_applicable';
     if (field.kind === 'select' && field.options?.length) return field.options[0];
     if (field.kind === 'number') return '1';
@@ -441,6 +529,7 @@ export class CreateAmazonListingDialog {
     // Items), not a string — despite $event being typed `any` here so TS doesn't catch it. Coerce
     // at the source so every reader below can safely call .trim() on fieldValues() entries.
     this.fieldValues.update((v) => ({ ...v, [name]: String(value ?? '') }));
+    this.markTouched(name);
   }
 
   setQuantityAxisValue(attrName: string, axisKey: string, value: number): void {
@@ -461,6 +550,7 @@ export class CreateAmazonListingDialog {
     this.compositeAttributes.update((list) => list.map((ca) => (
       ca.name !== attrName ? ca : { ...ca, subFields: ca.subFields.map((sf) => (sf.key !== key ? sf : { ...sf, value: String(value ?? '') })) }
     )));
+    this.markTouched(`${attrName}__${key}`);
   }
 
   /** Human-readable reasons Publish is disabled — surfaced in the template so a field missed
@@ -489,6 +579,7 @@ export class CreateAmazonListingDialog {
 
     if (this.hasHsn() && this.hsnCode().trim().length === 0) missing.push('HSN code');
     if (this.hasGtinExemptionOption() && !this.hasGtinExemption()) missing.push('GTIN/UPC/EAN exemption checkbox');
+    if (this.aiUsed() && !this.reviewedAi()) missing.push(this.i18n.t('tick "I\'ve reviewed the AI-filled details"', '"मैंने AI से भरी details जांच ली हैं" पर tick करें'));
     return missing;
   }
 
@@ -503,185 +594,82 @@ export class CreateAmazonListingDialog {
     return this.requiredFields().length > 0 || this.quantityAttributes().length > 0 || this.compositeAttributes().length > 0;
   }
 
-  /** Asks Gemini to suggest values for every currently-rendered field, grounded in the product's
-   * own saved photo where one exists — so the seller reviews/edits AI guesses instead of typing
-   * every Amazon-specific attribute (material, gem type, department, ...) from scratch. Only fills
-   * fields still empty; it never overwrites something already typed in. */
+  /**
+   * "Fill empty fields with AI": free (no coins), limited per product and per day. Only fields the
+   * seller left empty (or still at their automatic default) and that aren't on the blocked list are
+   * sent — measurements, MRP, origin, manufacturer, GTIN, brand and compliance fields never are,
+   * and the server drops them again anyway. Filled fields get a "✨ AI" badge until edited or
+   * confirmed, and Publish then needs the "I've reviewed…" tick.
+   */
   async fillWithAi(): Promise<void> {
-    if (this.aiFilling() || !this.hasFillableFields()) return;
-    this.aiFilling.set(true);
-    this.aiFillError.set(null);
-
-    try {
-      const { properties, required } = this.buildAiSchema();
-      if (required.length === 0) return;
-
-      const prompt = this.buildAiPrompt();
-      const source = await this.toDataUri(this.listing.processedImage || this.listing.originalImage || '');
-      const imageMatch = /^data:([^;]+);base64,(.+)$/.exec(source);
-
-      const result = imageMatch
-        ? await this.gemini.generateStructuredFromImage<Record<string, string | number>>(prompt, imageMatch[2], this.normalizeImageMimeType(imageMatch[1]), { type: 'object', properties, required })
-        : await this.gemini.generateStructured<Record<string, string | number>>(prompt, { type: 'object', properties, required });
-
-      this.applyAiSuggestions(result);
-    } catch (error) {
-      this.aiFillError.set(formatGeminiError(error));
-    } finally {
-      this.aiFilling.set(false);
-    }
-  }
-
-  /** Builds the JSON schema Gemini must answer against — one property per currently-rendered
-   * input, keyed to line back up with fieldValues/quantityAttributes/compositeAttributes in
-   * applyAiSuggestions. Deliberately no JSON-schema enums: Amazon's option lists are large (e.g.
-   * ~250 country codes) and across a few dozen fields Gemini rejects the schema outright with a
-   * bare "Request contains an invalid argument." The prompt already lists each field's allowed
-   * options, and applyAiSuggestions drops any answer that isn't one of them. */
-  private buildAiSchema(): { properties: Record<string, unknown>; required: string[] } {
-    const properties: Record<string, unknown> = {};
-    const required: string[] = [];
-
+    if (this.aiButtonDisabled() || !this.hasFillableFields() || !this.listing.id) return;
+    const values = this.fieldValues();
+    const fields: AutofillField[] = [];
     for (const field of this.requiredFields()) {
-      properties[field.name] = { type: 'string' };
-      required.push(field.name);
-    }
-    for (const qa of this.quantityAttributes()) {
-      for (const axis of qa.axes) {
-        const valueKey = `${qa.name}__${axis.key}`;
-        properties[valueKey] = { type: 'number' };
-        required.push(valueKey);
-        if (axis.unitOptions.length > 1) {
-          const unitKey = `${valueKey}__unit`;
-          properties[unitKey] = { type: 'string' };
-          required.push(unitKey);
-        }
-      }
+      if (this.touched.has(field.name) || this.isBlocked(field.name, field.label)) continue;
+      const current = (values[field.name] || '').trim();
+      const isDefault = field.kind === 'select' && current === this.defaultValueFor(field);
+      if (current && !isDefault) continue;
+      fields.push({ key: field.name, label: field.label, kind: field.kind, options: field.options });
     }
     for (const ca of this.compositeAttributes()) {
       for (const sf of ca.subFields) {
         const key = `${ca.name}__${sf.key}`;
-        properties[key] = { type: sf.kind === 'number' ? 'number' : 'string' };
-        required.push(key);
+        if (this.touched.has(key) || this.isBlocked(`${ca.name}_${sf.key}`, `${ca.label} ${sf.label}`)) continue;
+        if (sf.value.trim() && !(sf.kind === 'select' && sf.value === (sf.options?.[0] ?? ''))) continue;
+        fields.push({ key, label: `${ca.label} ${sf.label}`, kind: sf.kind === 'number' ? 'number' : sf.kind === 'select' ? 'select' : 'text', options: sf.options });
       }
     }
+    if (fields.length === 0) {
+      this.aiFillNotice.set(this.i18n.t('Nothing to fill — the remaining empty fields must be entered by you.', 'भरने के लिए कुछ नहीं — बाकी खाली fields आपको खुद भरने होंगे।'));
+      return;
+    }
 
-    return { properties, required };
-  }
-
-  /** The listings list serves images as URLs (not inline base64) — downloads one back into a
-   * data URI so it can be sent to Gemini. Returns '' on failure so AI fill falls back to text-only. */
-  private async toDataUri(source: string): Promise<string> {
-    if (!/^https?:\/\//i.test(source)) return source;
+    this.aiFilling.set(true);
+    this.aiFillError.set(null);
+    this.aiFillNotice.set(null);
     try {
-      const response = await fetch(source);
-      if (!response.ok) return '';
-      const blob = await response.blob();
-      return await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return '';
-    }
-  }
-
-  /** Gemini's inlineData only accepts a specific set of image MIME types and rejects anything
-   * else with a bare "Request contains an invalid argument." — including "image/jpg", a common
-   * non-standard variant some tools emit instead of the correct "image/jpeg". Normalizes to a
-   * type Gemini actually accepts, defaulting to image/jpeg for anything unrecognized rather than
-   * passing an arbitrary stored mime type straight through. */
-  private normalizeImageMimeType(mimeType: string): string {
-    const supported = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif']);
-    const lower = mimeType.toLowerCase();
-    if (supported.has(lower)) return lower;
-    if (lower === 'image/jpg') return 'image/jpeg';
-    return 'image/jpeg';
-  }
-
-  private buildAiPrompt(): string {
-    const lines: string[] = [
-      'You are filling in Amazon India marketplace listing attributes for this product.',
-      `Product name: ${this.listing.name || 'Unknown'}`,
-      `Description: ${this.listing.description || 'Not provided'}`,
-      `Category: ${this.listing.category || 'Not provided'}`,
-      `Brand: ${this.listing.brand || 'Not provided'}`,
-      '',
-      'For each attribute below, give the single most plausible value for THIS product. When a',
-      'list of allowed options is given, you must pick exactly one of them verbatim — never invent',
-      'a value outside that list.',
-      '',
-    ];
-
-    for (const field of this.requiredFields()) {
-      const opts = field.options?.length ? ` — choose one of: ${field.options.join(', ')}` : '';
-      lines.push(`- ${field.name}: ${field.label}${opts}`);
-    }
-    for (const qa of this.quantityAttributes()) {
-      for (const axis of qa.axes) {
-        const label = qa.axes.length > 1 ? `${qa.label} ${axis.label}` : qa.label;
-        lines.push(`- ${qa.name}__${axis.key}: a realistic numeric ${label} for this product`);
-        if (axis.unitOptions.length > 1) {
-          lines.push(`- ${qa.name}__${axis.key}__unit: unit for the above — choose one of: ${axis.unitOptions.join(', ')}`);
+      const result = await this.wallet.marketplaceAutofill(this.listing.id, 'amazon', fields);
+      this.aiAssists.set(result.assists);
+      this.aiLimit.set(result.assists.dayLeft <= 0 ? 'day' : result.assists.left <= 0 ? 'item' : null);
+      const filled = new Set(this.aiFilled());
+      this.fieldValues.update((current) => {
+        const next = { ...current };
+        for (const field of this.requiredFields()) {
+          const value = result.values[field.name];
+          if (value === undefined || this.touched.has(field.name)) continue;
+          next[field.name] = String(value);
+          filled.add(field.name);
         }
+        return next;
+      });
+      this.compositeAttributes.update((list) => list.map((ca) => ({
+        ...ca,
+        subFields: ca.subFields.map((sf) => {
+          const key = `${ca.name}__${sf.key}`;
+          const value = result.values[key];
+          if (value === undefined || this.touched.has(key)) return sf;
+          filled.add(key);
+          return { ...sf, value: String(value) };
+        }),
+      })));
+      this.aiFilled.set(filled);
+      if (filled.size > 0) {
+        this.aiUsed.set(true);
+        this.reviewedAi.set(false);
       }
+      const count = filled.size;
+      this.aiFillNotice.set(count
+        ? this.i18n.t(`AI filled ${count} field${count === 1 ? '' : 's'} — check each one marked ✨ AI.`, `AI ने ${count} fields भरे — ✨ AI वाले हर field को जांचें।`)
+        : this.i18n.t('The AI wasn\'t sure about any empty field — please fill them in yourself.', 'AI किसी खाली field के बारे में पक्का नहीं था — कृपया खुद भरें।'));
+    } catch (error) {
+      const data = (error as ApiError).data as { code?: string; limit?: 'item' | 'day'; assists?: AssistsLeft } | undefined;
+      if (data?.assists) this.aiAssists.set(data.assists);
+      if (data?.code === 'ASSIST_LIMIT') this.aiLimit.set(data.limit ?? 'item');
+      this.aiFillError.set((error instanceof Error && error.message) || this.i18n.t('AI fill failed. Please try again.', 'AI से भरना नहीं हो पाया। फिर से कोशिश करें।'));
+    } finally {
+      this.aiFilling.set(false);
     }
-    for (const ca of this.compositeAttributes()) {
-      for (const sf of ca.subFields) {
-        const opts = sf.options?.length ? ` — choose one of: ${sf.options.join(', ')}` : '';
-        lines.push(`- ${ca.name}__${sf.key}: ${ca.label} ${sf.label}${opts}`);
-      }
-    }
-
-    return lines.join('\n');
-  }
-
-  /** Maps a Gemini answer onto one of the field's allowed options (case-insensitively, returning
-   * Amazon's exact spelling), or undefined when it isn't one — the schema no longer enforces
-   * enums, so this is what keeps invented values out of select fields. Free-text fields (no
-   * options) pass through as-is. */
-  private matchOption(suggestion: string | number | undefined, options?: string[]): string | undefined {
-    if (suggestion === undefined || suggestion === null) return undefined;
-    const value = String(suggestion).trim();
-    if (!options?.length) return value;
-    return options.find((o) => o === value) ?? options.find((o) => o.toLowerCase() === value.toLowerCase());
-  }
-
-  private applyAiSuggestions(result: Record<string, string | number>): void {
-    this.fieldValues.update((values) => {
-      const next = { ...values };
-      for (const field of this.requiredFields()) {
-        if ((next[field.name] || '').trim()) continue; // don't clobber what's already filled in
-        const suggestion = this.matchOption(result[field.name], field.options);
-        if (suggestion !== undefined) next[field.name] = suggestion;
-      }
-      return next;
-    });
-
-    this.quantityAttributes.update((list) => list.map((qa) => ({
-      ...qa,
-      axes: qa.axes.map((axis) => {
-        const valueKey = `${qa.name}__${axis.key}`;
-        const suggestedValue = result[valueKey];
-        const suggestedUnit = axis.unitOptions.length > 1 ? this.matchOption(result[`${valueKey}__unit`], axis.unitOptions) : undefined;
-        return {
-          ...axis,
-          value: axis.value > 0 ? axis.value : (typeof suggestedValue === 'number' ? suggestedValue : axis.value),
-          unit: axis.unit || (typeof suggestedUnit === 'string' ? suggestedUnit : axis.unit),
-        };
-      }),
-    })));
-
-    this.compositeAttributes.update((list) => list.map((ca) => ({
-      ...ca,
-      subFields: ca.subFields.map((sf) => {
-        if (sf.value.trim()) return sf; // don't clobber what's already filled in
-        const suggestion = this.matchOption(result[`${ca.name}__${sf.key}`], sf.options);
-        return suggestion !== undefined ? { ...sf, value: suggestion } : sf;
-      }),
-    })));
   }
 
   cancel(): void {
@@ -690,6 +678,25 @@ export class CreateAmazonListingDialog {
 
   async submit(): Promise<void> {
     if (!this.isValid() || !this.listing.id) return;
+    const confirmed = await firstValueFrom(this.dialog.open<ConfirmActionDialog, ConfirmActionData, boolean>(ConfirmActionDialog, {
+      width: '480px',
+      maxWidth: '95vw',
+      data: {
+        title: 'Publish to Amazon?',
+        intro: 'This creates a new, live listing on your Amazon seller account.',
+        items: [{
+          heading: this.listing.name || 'This product',
+          lines: [
+            `Product type: ${this.selectedProductType()}`,
+            `Price ₹${this.listing.sellingPrice || 0} · MRP ₹${this.listing.mrp || this.listing.sellingPrice || 0} · Stock ${this.listing.quantity ?? 0}`,
+            ...(this.aiUsed() ? ['Includes AI-filled details you reviewed'] : []),
+          ],
+        }],
+        confirmLabel: 'Publish to Amazon',
+        warning: 'Amazon shows this listing to buyers once it is accepted.',
+      },
+    }).afterClosed());
+    if (!confirmed) return;
     this.submitting.set(true);
     this.submitError.set(null);
     this.retryNotice.set(null);

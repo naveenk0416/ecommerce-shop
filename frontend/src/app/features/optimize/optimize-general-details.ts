@@ -13,6 +13,7 @@ import { BarcodeLookupResult, BarcodeService } from '../../services/barcode';
 import { AiFieldExtraction } from '../../services/gemini';
 import { formatInrCompact, parseAmountInput } from '../../utils/format';
 import { OptimizeSessionService } from './optimize-session.service';
+import { WalletService } from '../../services/wallet';
 
 /** General-tab keys this form reads/writes in the session (AI content + seller-entered values). */
 type GeneralKey = 'productTitle' | 'category' | 'sku' | 'brand' | 'hsnCode' | 'description'
@@ -32,6 +33,7 @@ export class OptimizeGeneralDetails {
   private readonly injector = inject(Injector);
   protected readonly auth = inject(AuthService);
   protected readonly session = inject(OptimizeSessionService);
+  private readonly wallet = inject(WalletService);
 
   /** Lazily injected — MatSnackBar/MatDialog as field initializers can throw NG0203 on lazy-loaded routes. */
   private get snackBar(): MatSnackBar {
@@ -287,7 +289,12 @@ export class OptimizeGeneralDetails {
       if (saved?.id) await this.session.markSavedToInventory(saved.id);
 
       const gstNote = typeof saved?.gstRate === 'number' ? ` GST ${saved.gstRate}%.` : ' GST needs review — add or check the HSN code.';
-      this.snackBar.open(`${existingId ? 'Inventory item updated.' : 'Saved to inventory.'}${gstNote}`, 'Dismiss', { duration: 4000 });
+      // The first save to inventory earns bonus coins (granted by the server).
+      const bonusBefore = this.wallet.wallet()?.bonuses.find((b) => b.id === 'firstInventorySave');
+      const wallet = await this.wallet.load();
+      const bonusAfter = wallet?.bonuses.find((b) => b.id === 'firstInventorySave');
+      const bonusNote = bonusBefore && !bonusBefore.done && bonusAfter?.done ? ` +${bonusAfter.coins} coins earned!` : '';
+      this.snackBar.open(`${existingId ? 'Inventory item updated.' : 'Saved to inventory.'}${gstNote}${bonusNote}`, 'Dismiss', { duration: 4000 });
     } catch (error) {
       this.snackBar.open((error instanceof Error && error.message) || 'Failed to save to inventory. Please try again.', 'Dismiss', { duration: 5000 });
     } finally {

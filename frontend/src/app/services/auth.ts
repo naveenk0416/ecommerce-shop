@@ -34,6 +34,8 @@ export interface AdditionalUserData {
   state?: string;
   city?: string;
   sellsOn?: string[];
+  /** "How many products do you sell?" band: 1-10, 11-50, 51-200, 200+. */
+  catalogSizeBand?: string;
   termsAccepted?: boolean;
   whatsappOptIn?: boolean;
   attribution?: Attribution | null;
@@ -110,6 +112,7 @@ export class AuthService {
           state: additionalData.state,
           city: additionalData.city,
           sellsOn: additionalData.sellsOn,
+          catalogSizeBand: additionalData.catalogSizeBand,
           termsAccepted: additionalData.termsAccepted,
           whatsappOptIn: additionalData.whatsappOptIn,
           attribution: additionalData.attribution ?? undefined,

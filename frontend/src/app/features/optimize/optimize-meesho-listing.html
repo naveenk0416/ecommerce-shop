@@ -27,6 +27,10 @@
                 [confidence]="r[field.key]?.confidence ?? null"
                 [reason]="r[field.key]?.reason ?? null"
                 (valueChange)="session.updateField('meesho', field.key, $event)"
+                [improveLeft]="session.fixAssists()?.left ?? null"
+                [improveLimit]="session.isAiBlocked(field.key, field.label) ? 'blocked' : session.fixLimit()"
+                [improving]="session.improvingField() === 'meesho:' + field.key"
+                (improve)="session.improveField('meesho', field.key, field.label, field.maxLength)"
               />
             }
           </div>

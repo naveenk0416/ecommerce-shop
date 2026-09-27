@@ -58,26 +58,45 @@
         }
 
         @if (hasFillableFields()) {
-          <button type="button" mat-stroked-button class="ai-fill-btn" [disabled]="aiFilling()" (click)="fillWithAi()">
-            @if (aiFilling()) {
-              <mat-spinner diameter="16"></mat-spinner>
-            } @else {
-              <mat-icon>auto_awesome</mat-icon>
-            }
-            {{ aiFilling() ? 'Filling with AI…' : 'Fill empty fields with AI' }}
-          </button>
+          <span class="ai-fill-wrap" [matTooltip]="aiButtonTooltip()" matTooltipPosition="above">
+            <button type="button" mat-stroked-button class="ai-fill-btn" [disabled]="aiButtonDisabled()" (click)="fillWithAi()">
+              @if (aiFilling()) {
+                <mat-spinner diameter="16"></mat-spinner>
+              } @else {
+                <mat-icon>auto_awesome</mat-icon>
+              }
+              {{ aiFilling() ? i18n.t('Filling with AI…', 'AI से भर रहे हैं…') : aiButtonLabel() }}
+            </button>
+          </span>
+          <p class="hint">{{ i18n.t('Free, no coins. The AI only fills empty descriptive fields — brand, MRP, origin, manufacturer, weight, dimensions, barcode and safety details are always entered by you.', 'Free, कोई coin नहीं। AI सिर्फ़ खाली descriptive fields भरता है — brand, MRP, origin, manufacturer, weight, dimensions, barcode और safety details आप खुद भरें।') }}</p>
+          @if (aiFillNotice()) {
+            <p class="hint hint--info" role="status">{{ aiFillNotice() }}</p>
+          }
           @if (aiFillError()) {
-            <p class="hint hint--error">{{ aiFillError() }}</p>
+            <p class="hint hint--error" role="alert">{{ aiFillError() }}</p>
           }
         }
 
         @for (field of requiredFields(); track field.name) {
-          <label class="field">
-            <span class="field__label">{{ field.label }}</span>
+          <label class="field" [class.field--ai]="isAiFilled(field.name)">
+            <span class="field__label">
+              {{ field.label }}
+              @if (isAiFilled(field.name)) {
+                <span class="ai-badge">✨ AI</span>
+                <button type="button" class="looks-right" (click)="$event.preventDefault(); confirmAiValue(field.name)">{{ i18n.t('Looks right', 'सही है') }}</button>
+              }
+            </span>
+            @if (needsSellerInput(field)) {
+              <span class="field__required" role="note">{{ i18n.t('Required — please enter', 'ज़रूरी — कृपया भरें') }}</span>
+            }
+            @if (field.name === 'brand' && brandWarning()) {
+              <span class="field__warn" role="note">{{ i18n.t('Amazon only allows "Generic" in some cases — confirm your brand.', 'Amazon सिर्फ़ कुछ मामलों में "Generic" की अनुमति देता है — अपना brand confirm करें।') }}</span>
+            }
 
             @switch (field.kind) {
               @case ('select') {
                 <select class="field__input" [ngModel]="fieldValues()[field.name]" (ngModelChange)="setFieldValue(field.name, $event)">
+                  <option value="">{{ i18n.t('Select…', 'चुनें…') }}</option>
                   @for (option of field.options; track option) {
                     <option [value]="option">{{ option }}</option>
                   }
@@ -110,6 +129,9 @@
           </label>
         }
 
+        @if (quantityAttributes().length > 0) {
+          <p class="hint">{{ i18n.t('Weight and dimensions: enter them from your product or its packaging — the AI never fills these.', 'Weight और dimensions: अपने product या packaging से खुद भरें — AI इन्हें कभी नहीं भरता।') }}</p>
+        }
         @for (qa of quantityAttributes(); track qa.name) {
           @for (axis of qa.axes; track axis.key) {
             <div class="field-row">
@@ -141,8 +163,17 @@
             <span class="field__label">{{ ca.label }}</span>
             <div class="field-row">
               @for (sf of ca.subFields; track sf.key) {
-                <label class="field">
-                  <span class="field__label">{{ sf.label }}</span>
+                <label class="field" [class.field--ai]="isAiFilled(ca.name + '__' + sf.key)">
+                  <span class="field__label">
+                    {{ sf.label }}
+                    @if (isAiFilled(ca.name + '__' + sf.key)) {
+                      <span class="ai-badge">✨ AI</span>
+                      <button type="button" class="looks-right" (click)="$event.preventDefault(); confirmAiValue(ca.name + '__' + sf.key)">{{ i18n.t('Looks right', 'सही है') }}</button>
+                    }
+                  </span>
+                  @if (compositeNeedsSellerInput(ca, sf)) {
+                    <span class="field__required" role="note">{{ i18n.t('Required — please enter', 'ज़रूरी — कृपया भरें') }}</span>
+                  }
                   @if (sf.kind === 'select') {
                     <select class="field__input" [ngModel]="sf.value" (ngModelChange)="setCompositeSubFieldValue(ca.name, sf.key, $event)">
                       @for (option of sf.options; track option) {
@@ -181,6 +212,12 @@
         }
       }
     </div>
+  }
+
+  @if (aiUsed()) {
+    <mat-checkbox class="review-check" [ngModel]="reviewedAi()" (ngModelChange)="reviewedAi.set($event)">
+      {{ i18n.t('I\'ve reviewed the AI-filled details', 'मैंने AI से भरी details जांच ली हैं') }}
+    </mat-checkbox>
   }
 
   @if (retryNotice()) {

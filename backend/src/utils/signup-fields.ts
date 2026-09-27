@@ -36,7 +36,8 @@ export function phoneLookupValues(e164: string): string[] {
 /** GSTIN: 2-digit state code, 10-char PAN, entity number, 'Z', checksum character. */
 export const GSTIN_RE = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 
-const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'fbclid', 'landingPath', 'capturedAt'] as const;
+// `ref` is the referral code from a sellassist.in/?ref=CODE link, stored with the UTM attribution.
+const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'fbclid', 'ref', 'landingPath', 'capturedAt'] as const;
 
 /** Keeps only known attribution keys as short strings — the client controls this payload. */
 export function sanitizeAttribution(input: unknown): Record<string, string> | undefined {

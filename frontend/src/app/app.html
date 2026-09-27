@@ -462,6 +462,21 @@
                     </div>
                   </div>
 
+                  <fieldset class="mb-2" [attr.aria-invalid]="submitAttempted() && !!catalogSizeError()">
+                    <legend class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">{{ i18n.t('How many products do you sell?', 'आप कितने products बेचते हैं?') }}</legend>
+                    <div class="flex flex-wrap gap-2 mt-2" role="radiogroup" [attr.aria-label]="i18n.t('How many products do you sell?', 'आप कितने products बेचते हैं?')">
+                      @for (band of catalogSizeBands; track band.value) {
+                        <label class="signup-chip" [class.signup-chip--on]="regCatalogSize() === band.value">
+                          <input type="radio" name="catalogSizeBand" class="sr-only" [value]="band.value" [checked]="regCatalogSize() === band.value" (change)="regCatalogSize.set(band.value)" />
+                          {{ band.label }}
+                        </label>
+                      }
+                    </div>
+                    @if (submitAttempted() && catalogSizeError()) {
+                      <p class="field-error">{{ catalogSizeError() }}</p>
+                    }
+                  </fieldset>
+
                   <fieldset class="mb-2">
                     <legend class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Where do you sell? (Optional)</legend>
                     <div class="flex flex-wrap gap-2 mt-2">

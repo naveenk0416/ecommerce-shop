@@ -18,6 +18,7 @@ import { ProductFormDialog, ProductFormResult } from './product-form-dialog';
 import { LogSaleDialog, LogSaleResult } from './log-sale-dialog';
 import { CreateAmazonListingDialog } from './create-amazon-listing-dialog';
 import { ConfirmActionData, ConfirmActionDialog } from '../confirm-action-dialog';
+import { WalletService } from '../../../services/wallet';
 
 @Component({
   selector: 'app-optimize-inventory',
@@ -33,6 +34,8 @@ export class OptimizeInventory {
   private readonly marketplaceConnections = inject(MarketplaceConnectionsService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
+  /** Coin balance changes after the first publish (+5) — refreshed on success. */
+  private readonly wallet = inject(WalletService);
 
   protected readonly defaultThreshold = DEFAULT_LOW_STOCK_THRESHOLD;
   protected readonly formatInr = formatInrCompact;
@@ -229,6 +232,7 @@ export class OptimizeInventory {
         await this.marketplaceConnections.publishFlipkartListing(listing.id);
       }
       this.snackBar.open(`Published to ${marketplaceName}: ₹${listing.sellingPrice || 0}, ${listing.quantity ?? 0} units.`, 'Dismiss', { duration: 4000 });
+      void this.wallet.load();
     } catch (error) {
       this.snackBar.open((error instanceof Error && error.message) || 'Failed to publish. Please try again.', 'Dismiss', { duration: 6000 });
     } finally {
@@ -246,6 +250,7 @@ export class OptimizeInventory {
       .subscribe((created) => {
         if (!created) return;
         this.snackBar.open('Amazon listing created successfully.', 'Dismiss', { duration: 4000 });
+        void this.wallet.load();
       });
   }
 

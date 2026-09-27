@@ -2,6 +2,7 @@ import express from 'express';
 import { authMiddleware } from './auth.js';
 import { ensureConnected, Listing, ListingDraft, Sale } from './common.js';
 import { gstFieldsFor, normalizeListingNumbers, parseAmount } from '../utils/listing-fields.js';
+import { ensureWallet, grantBonus } from '../utils/wallet.js';
 
 const router = express.Router();
 
@@ -191,6 +192,9 @@ router.post('/', authMiddleware, async (req, res) => {
       createdAt: new Date().toISOString(),
     });
     await listing.save();
+    // +3 coins for the first product saved to inventory (once per account).
+    const uid = authUser._id.toString();
+    await ensureWallet(uid).then(() => grantBonus(uid, 'firstInventorySave')).catch((err) => console.error('[wallet] inventory bonus failed', err));
     res.json(toClientListing(listing));
   } catch (err: any) {
     console.error('Save listing error', err);

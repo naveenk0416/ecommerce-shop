@@ -115,3 +115,59 @@
     font-weight: 600;
   }
 }
+
+// ---- AI fill: badges, seller-only fields, review tick ----
+.ai-fill-wrap {
+  display: inline-flex;
+  align-self: flex-start;
+}
+
+.field--ai .field__input {
+  border-color: #c084fc;
+  background: #faf5ff;
+}
+
+.ai-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f3e8ff;
+  color: #7e22ce;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.looks-right {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border: 1px solid #d8b4fe;
+  border-radius: 999px;
+  background: #fff;
+  color: #7e22ce;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.field__required {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.field__warn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.review-check {
+  display: block;
+  margin-top: 8px;
+  font-weight: 600;
+}

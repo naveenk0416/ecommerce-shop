@@ -10,6 +10,7 @@ export const OPTIMIZE_ROUTES: Routes = [
       { path: '', redirectTo: 'general', pathMatch: 'full' },
       { path: 'general', loadComponent: () => import('./optimize-general-details').then((m) => m.OptimizeGeneralDetails) },
       { path: 'my-listings', title: 'My Listings - SellAssist', loadComponent: () => import('./my-listings').then((m) => m.MyListings) },
+      { path: 'wallet', title: 'Coins - SellAssist', loadComponent: () => import('./wallet/wallet-page').then((m) => m.WalletPage) },
       { path: 'inventory', loadComponent: () => import('./inventory/optimize-inventory').then((m) => m.OptimizeInventory) },
       { path: 'amazon', loadComponent: () => import('./optimize-amazon-listing').then((m) => m.OptimizeAmazonListing) },
       { path: 'flipkart', loadComponent: () => import('./optimize-flipkart-listing').then((m) => m.OptimizeFlipkartListing) },

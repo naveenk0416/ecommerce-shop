@@ -6,6 +6,7 @@ import { people, cube, refresh, eye, trash, mailOutline, create, cash, search, p
 import { AdminService, UserProfile } from './services/admin';
 import { Listing, ListingService, Sale } from './services/listing';
 import { parsePrice } from './utils/price';
+import { AdminStats } from './admin-stats';
 
 const ROLES = ['FREE', 'PAID_PRO', 'ADMIN'] as const;
 const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Instagram', 'Offline', 'Other'];
@@ -15,7 +16,7 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, IonIcon, IonSpinner
+    CommonModule, IonIcon, IonSpinner, AdminStats
   ],
   template: `
     <div class="admin-panel p-10 space-y-12 pb-20">
@@ -52,11 +53,14 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
           </div>
         </div>
 
+        <!-- Growth, coins and AI cost (admin only) -->
+        <app-admin-stats />
+
         <!-- Users Table -->
         <section class="space-y-4 pt-4">
           <div class="flex items-center justify-between px-2 gap-4 flex-wrap">
             <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Registered Users</h3>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
               <span class="text-[9px] font-bold text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{{ filteredUsers().length }} of {{ users().length }}</span>
               <div class="relative">
                 <ion-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></ion-icon>
@@ -158,7 +162,7 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
         <section class="space-y-4 pt-4">
           <div class="flex items-center justify-between px-2 gap-4 flex-wrap">
             <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">All Saved Listings</h3>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
               <span class="text-[9px] font-bold text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{{ filteredListings().length }} of {{ listings().length }}</span>
               <div class="relative">
                 <ion-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></ion-icon>

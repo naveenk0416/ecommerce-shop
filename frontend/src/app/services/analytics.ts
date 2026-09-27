@@ -12,6 +12,8 @@ export interface Attribution {
   utm_campaign?: string;
   utm_content?: string;
   fbclid?: string;
+  /** Referral code from a sellassist.in/?ref=CODE link. */
+  ref?: string;
   landingPath?: string;
   capturedAt?: string;
 }
@@ -96,7 +98,10 @@ export class AnalyticsService {
     }
   }
 
-  /** First touch wins: saved only when the URL carries campaign params and nothing is stored yet. */
+  /**
+   * First touch wins: saved only when the URL carries campaign params and nothing is stored yet.
+   * A referral code (?ref=) is added to the stored attribution even when UTM params came first.
+   */
   private captureAttribution(): void {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -105,11 +110,20 @@ export class AnalyticsService {
         const value = params.get(key);
         if (value) found[key] = value.slice(0, 200);
       }
-      if (Object.keys(found).length === 0) return;
-      if (window.localStorage.getItem(ATTRIBUTION_KEY)) return;
-      found.landingPath = window.location.pathname.slice(0, 200);
-      found.capturedAt = new Date().toISOString();
-      window.localStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(found));
+      if (Object.keys(found).length > 0 && !window.localStorage.getItem(ATTRIBUTION_KEY)) {
+        found.landingPath = window.location.pathname.slice(0, 200);
+        found.capturedAt = new Date().toISOString();
+        window.localStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(found));
+      }
+
+      const ref = params.get('ref')?.trim().toUpperCase();
+      if (ref && /^[A-Z0-9]{4,16}$/.test(ref)) {
+        const stored = this.getAttribution();
+        if (!stored?.ref) {
+          const base: Attribution = stored ?? { landingPath: window.location.pathname.slice(0, 200), capturedAt: new Date().toISOString() };
+          window.localStorage.setItem(ATTRIBUTION_KEY, JSON.stringify({ ...base, ref }));
+        }
+      }
     } catch {
       // Storage blocked (private mode, disabled cookies) — attribution is best-effort.
     }

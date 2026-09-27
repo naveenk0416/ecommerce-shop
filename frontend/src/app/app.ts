@@ -12,7 +12,8 @@ import { IonApp, IonHeader, IonToolbar, IonContent,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, menu, logoWhatsapp, personCircle, pencil, save, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, eyeOff, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, storefront, linkOutline, unlink, heart, trendingUp } from 'ionicons/icons';
-import { GeminiService, ProductDetails } from './services/gemini';
+import { GeminiService, ProductDetails, isOutOfCoinsError } from './services/gemini';
+import { WalletService } from './services/wallet';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
 import { TemplateService } from './services/template';
@@ -30,7 +31,7 @@ import { PasswordField } from './ui/password-field/password-field';
 import { PasswordStrength } from './ui/password-strength/password-strength';
 import { loadRazorpay } from './utils/razorpay';
 import { AnalyticsService } from './services/analytics';
-import { GSTIN_RE, INDIAN_MOBILE_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, normalizeIndianMobile } from './config/signup-options';
+import { CATALOG_SIZE_BANDS, GSTIN_RE, INDIAN_MOBILE_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, normalizeIndianMobile } from './config/signup-options';
 import { LanguageService } from './services/language';
 import { ConsentService } from './services/consent';
 import { CookieBanner } from './ui/cookie-banner/cookie-banner';
@@ -67,6 +68,7 @@ export class App {
   private analytics = inject(AnalyticsService);
   readonly i18n = inject(LanguageService);
   readonly consent = inject(ConsentService);
+  private wallet = inject(WalletService);
 
   showLanding = signal(true);
   selectedImage = signal<string | null>(null);
@@ -107,6 +109,10 @@ export class App {
   regState = signal('');
   regCity = signal('');
   regSellsOn = signal<string[]>([]);
+  /** "How many products do you sell?" — required one-tap answer, saved as catalogSizeBand. */
+  regCatalogSize = signal('');
+  readonly catalogSizeBands = CATALOG_SIZE_BANDS;
+  catalogSizeError = computed(() => (this.regCatalogSize() ? '' : this.i18n.t('Choose how many products you sell.', 'चुनें कि आप कितने products बेचते हैं।')));
   regTermsAccepted = signal(false);
   /** Separate, explicit WhatsApp consent (checked by default) — the phone number itself is not consent. */
   regWhatsappOptIn = signal(true);
@@ -165,6 +171,7 @@ export class App {
       !this.stateError() &&
       !this.cityError() &&
       !this.termsError() &&
+      !this.catalogSizeError() &&
       this.passwordValid(),
   );
 
@@ -1051,6 +1058,7 @@ export class App {
         state: this.regState(),
         city: this.regCity().trim(),
         sellsOn: this.regSellsOn(),
+        catalogSizeBand: this.regCatalogSize(),
         termsAccepted: this.regTermsAccepted(),
         attribution: this.analytics.getAttribution(),
       });
@@ -1154,6 +1162,7 @@ export class App {
     this.profileSaving.set(true);
     try {
       await this.auth.updateProfile({ displayName: name, phoneNumber: digits || '', whatsapp_opt_in: this.profileWhatsappOptIn() });
+      void this.wallet.load(); // +2 coins the first time a mobile number is saved
       this.profileMessage.set({ ok: true, text: 'Profile saved.' });
     } catch (error) {
       const status = (error as ApiError)?.status;
@@ -1223,6 +1232,7 @@ export class App {
     this.phonePromptSaving.set(true);
     try {
       await this.auth.updateProfile({ phoneNumber: digits, whatsapp_opt_in: this.phonePromptOptIn() });
+      void this.wallet.load(); // +2 coins the first time a mobile number is saved
     } catch (error) {
       const apiError = error as ApiError;
       this.phonePromptError.set(apiError?.status === 409
@@ -1313,6 +1323,7 @@ export class App {
     this.regState.set('');
     this.regCity.set('');
     this.regSellsOn.set([]);
+    this.regCatalogSize.set('');
     this.regTermsAccepted.set(false);
     this.regWhatsappOptIn.set(true);
     this.emailTouched.set(false);
@@ -1438,9 +1449,20 @@ export class App {
         }
       }
       this.productDetails.set(details);
-      await this.auth.incrementUsage();
+      void this.wallet.load();
     } catch (error) {
       console.error("Error extracting details:", error);
+      if (isOutOfCoinsError(error)) {
+        this.wallet.outOfCoins.set(true);
+        const toast = await this.toastController?.create?.({
+          message: this.i18n.t('You\'re out of coins. Open Coins to earn more or see when your free coins return.', 'आपके coins खत्म हो गए हैं। और coins कमाने के लिए Coins page खोलें।'),
+          duration: 5000,
+          color: 'warning',
+          position: 'bottom',
+        });
+        if (toast) await toast.present();
+        return;
+      }
       const message = error instanceof Error ? error.message : String(error);
       const isOverloaded = message.includes('UNAVAILABLE') || message.includes('high demand');
       const toast = await this.toastController?.create?.({

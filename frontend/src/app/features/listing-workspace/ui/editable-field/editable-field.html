@@ -42,9 +42,19 @@
         }
       </mat-form-field>
       <div class="editable-field__actions">
-        <button mat-icon-button [disabled]="!suggestions().length" (click)="regenerate()" aria-label="Regenerate {{ label() }}" matTooltip="Regenerate">
-          <mat-icon>auto_fix_high</mat-icon>
+        <button mat-icon-button [disabled]="suggestions().length < 2" (click)="regenerate()" aria-label="Show another suggestion for {{ label() }}" matTooltip="Show another suggestion">
+          <mat-icon>autorenew</mat-icon>
         </button>
+        @if (improveLeft() !== null && improveLimit() !== 'blocked') {
+          <span class="editable-field__improve-wrap" [matTooltip]="improveTooltip()" matTooltipPosition="above">
+            <button mat-stroked-button type="button" class="editable-field__improve" [disabled]="improveDisabled()" (click)="improve.emit()" [attr.aria-label]="i18n.t('Improve ' + label() + ' with AI, ' + (improveLeft() ?? 0) + ' left', label() + ' को AI से बेहतर करें, ' + (improveLeft() ?? 0) + ' बाकी')">
+              @if (improving()) {
+                <mat-spinner diameter="14"></mat-spinner>
+              }
+              ✨ {{ i18n.t('Improve', 'बेहतर करें') }} · {{ improveLeft() }} {{ i18n.t('left', 'बाकी') }}
+            </button>
+          </span>
+        }
         <button mat-icon-button (click)="copy()" aria-label="Copy {{ label() }}" matTooltip="Copy">
           <mat-icon>content_copy</mat-icon>
         </button>
@@ -57,9 +67,19 @@
     <div class="editable-field__view-row">
       <span class="editable-field__value">{{ value() || placeholder() }}</span>
       <div class="editable-field__actions">
-        <button mat-icon-button [disabled]="!suggestions().length" (click)="regenerate()" aria-label="Regenerate {{ label() }}" matTooltip="Regenerate">
-          <mat-icon>auto_fix_high</mat-icon>
+        <button mat-icon-button [disabled]="suggestions().length < 2" (click)="regenerate()" aria-label="Show another suggestion for {{ label() }}" matTooltip="Show another suggestion">
+          <mat-icon>autorenew</mat-icon>
         </button>
+        @if (improveLeft() !== null && improveLimit() !== 'blocked') {
+          <span class="editable-field__improve-wrap" [matTooltip]="improveTooltip()" matTooltipPosition="above">
+            <button mat-stroked-button type="button" class="editable-field__improve" [disabled]="improveDisabled()" (click)="improve.emit()" [attr.aria-label]="i18n.t('Improve ' + label() + ' with AI, ' + (improveLeft() ?? 0) + ' left', label() + ' को AI से बेहतर करें, ' + (improveLeft() ?? 0) + ' बाकी')">
+              @if (improving()) {
+                <mat-spinner diameter="14"></mat-spinner>
+              }
+              ✨ {{ i18n.t('Improve', 'बेहतर करें') }} · {{ improveLeft() }} {{ i18n.t('left', 'बाकी') }}
+            </button>
+          </span>
+        }
         <button mat-icon-button (click)="copy()" aria-label="Copy {{ label() }}" matTooltip="Copy">
           <mat-icon>content_copy</mat-icon>
         </button>

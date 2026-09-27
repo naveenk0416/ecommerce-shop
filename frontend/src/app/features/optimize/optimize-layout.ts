@@ -8,18 +8,23 @@ import { computeMarketplaceRows } from './optimize-readiness.util';
 import { OptimizeSessionService } from './optimize-session.service';
 import { AuthService } from '../../services/auth';
 import { ListingPreviewDialog } from './listing-preview-dialog';
+import { WalletService } from '../../services/wallet';
+import { LanguageService } from '../../services/language';
+import { WalletNudges } from './wallet/wallet-nudges';
 
 @Component({
   selector: 'app-optimize-layout',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, MatButtonModule, MatIconModule, MarketplaceIcon],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, MatButtonModule, MatIconModule, MarketplaceIcon, WalletNudges],
   templateUrl: './optimize-layout.html',
   styleUrl: './optimize-layout.scss',
 })
 export class OptimizeLayout {
   protected readonly session = inject(OptimizeSessionService);
   protected readonly auth = inject(AuthService);
+  protected readonly wallet = inject(WalletService);
+  protected readonly i18n = inject(LanguageService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
 

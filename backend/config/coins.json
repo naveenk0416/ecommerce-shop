@@ -1,0 +1,74 @@
+{
+  "_comment": "Coin wallet settings. Edit and restart the backend; no code change needed. COIN_PACKS_ENABLED in the .env overrides packs.enabled.",
+
+  "listingCost": 1,
+  "welcomeBonus": 10,
+  "monthlyFreeTopUpTo": 3,
+  "timezone": "Asia/Kolkata",
+
+  "earnedBonuses": {
+    "mobile": 2,
+    "firstInventorySave": 3,
+    "firstPublish": 5
+  },
+  "mobileBonusOnSignup": true,
+
+  "referral": {
+    "reward": 10,
+    "maxRewardsPerReferrerPerMonth": 20,
+    "reverseIfDeletedWithinDays": 7,
+    "baseUrl": "https://sellassist.in/"
+  },
+
+  "freeAssists": {
+    "fieldFixPerListing": 10,
+    "autofillPerListingPerMarketplace": 3,
+    "perUserPerDay": 60
+  },
+
+  "ai": {
+    "listingModel": "gemini-3-flash-preview",
+    "assistModel": "gemini-3.1-flash-lite",
+    "fieldFixMaxOutputTokens": 400,
+    "autofillMaxOutputTokens": 1500,
+    "usdToInr": 88,
+    "pricePerMillionTokensUsd": {
+      "gemini-3-flash-preview": { "input": 0.5, "output": 3.0 },
+      "gemini-3.1-flash-lite": { "input": 0.25, "output": 1.5 }
+    }
+  },
+
+  "autofillBlockedFieldPatterns": [
+    "manufacturer", "packer", "importer", "country_of_origin", "countryoforigin", "origin",
+    "mrp", "maximum_retail_price", "retail_price", "list_price",
+    "net_quantity", "net_content", "item_package_quantity",
+    "weight", "dimension", "length", "width", "height", "depth", "capacity", "volume",
+    "gtin", "ean", "upc", "isbn", "external_product", "product_identifier", "exemption",
+    "brand",
+    "safety", "compliance", "hazmat", "dg_hz", "dangerous", "battery", "batteries", "regulat",
+    "warning", "certification", "legal",
+    "part_number", "model_number"
+  ],
+
+  "packs": {
+    "enabled": false,
+    "regular": [
+      { "id": "pack_30", "name": "30 coins", "coins": 30, "priceInr": 99 },
+      { "id": "pack_70", "name": "70 coins", "coins": 70, "priceInr": 199 },
+      { "id": "pack_200", "name": "200 coins", "coins": 200, "priceInr": 499 }
+    ],
+    "starter": { "id": "starter", "name": "Starter pack", "coins": 20, "priceInr": 49, "offerHours": 48 },
+    "festive": [
+      { "id": "diwali_2026", "name": "Diwali pack", "coins": 120, "priceInr": 299, "startsAt": "2026-10-25T00:00:00+05:30", "endsAt": "2026-11-12T23:59:59+05:30" }
+    ],
+    "lowBalanceThreshold": 3
+  },
+
+  "timeSavedMinutes": {
+    "aiListing": 20,
+    "marketplaceAutofill": 10,
+    "gstLookup": 2
+  },
+
+  "catalogSizeBands": ["1-10", "11-50", "51-200", "200+"]
+}

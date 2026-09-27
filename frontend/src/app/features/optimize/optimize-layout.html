@@ -22,6 +22,13 @@
           <mat-icon aria-hidden="true">inventory_2</mat-icon>
           <span class="optimize-sidebar__item-label">Inventory</span>
         </a>
+        <a class="optimize-sidebar__item" routerLink="wallet" routerLinkActive="optimize-sidebar__item--active">
+          <mat-icon aria-hidden="true">savings</mat-icon>
+          <span class="optimize-sidebar__item-label">Coins</span>
+          @if (wallet.balance() !== null) {
+            <span class="optimize-sidebar__score optimize-sidebar__score--coins">{{ wallet.balance() }}</span>
+          }
+        </a>
       </div>
 
       <div class="optimize-sidebar__group">
@@ -77,6 +84,7 @@
       <a class="optimize-tabs__item" routerLink="general" queryParamsHandling="preserve" routerLinkActive="optimize-tabs__item--active">General</a>
       <a class="optimize-tabs__item" routerLink="my-listings" routerLinkActive="optimize-tabs__item--active">My Listings</a>
       <a class="optimize-tabs__item" routerLink="inventory" routerLinkActive="optimize-tabs__item--active">Inventory</a>
+      <a class="optimize-tabs__item" routerLink="wallet" routerLinkActive="optimize-tabs__item--active">Coins</a>
       @for (row of marketplaceRows(); track row.tab) {
         <a class="optimize-tabs__item" [routerLink]="row.tab" queryParamsHandling="preserve" routerLinkActive="optimize-tabs__item--active">{{ row.label }}</a>
       }
@@ -92,6 +100,12 @@
         <h1 class="optimize-header__title">{{ productTitle() }}</h1>
       </div>
       <div class="optimize-header__actions">
+        @if (wallet.balance() !== null) {
+          <a class="optimize-header__coins" routerLink="wallet" [attr.aria-label]="i18n.t(wallet.balance() + ' coins — open Coins page', wallet.balance() + ' coins — Coins page खोलें')">
+            <mat-icon aria-hidden="true">savings</mat-icon>
+            <span data-testid="header-coins">{{ wallet.balance() }}</span>
+          </a>
+        }
         <span class="optimize-header__status" [class.optimize-header__status--saved]="session.saveState() === 'saved' || session.draftStatus() === 'saved'" role="status">
           <span class="optimize-header__status-dot" aria-hidden="true"></span>
           {{ statusLabel() }}
@@ -112,6 +126,8 @@
     } @else if (session.loadError()) {
       <p class="optimize-notice optimize-notice--error" role="alert">{{ session.loadError() }} <a routerLink="my-listings">Back to My Listings</a></p>
     }
+
+    <app-wallet-nudges />
 
     <main class="optimize-content">
       <router-outlet></router-outlet>

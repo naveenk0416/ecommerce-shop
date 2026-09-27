@@ -27,6 +27,10 @@
                 [confidence]="r[field.key]?.confidence ?? null"
                 [reason]="r[field.key]?.reason ?? null"
                 (valueChange)="session.updateField('flipkart', field.key, $event)"
+                [improveLeft]="session.fixAssists()?.left ?? null"
+                [improveLimit]="session.isAiBlocked(field.key, field.label) ? 'blocked' : session.fixLimit()"
+                [improving]="session.improvingField() === 'flipkart:' + field.key"
+                (improve)="session.improveField('flipkart', field.key, field.label, field.maxLength)"
               />
             }
           </div>

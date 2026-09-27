@@ -1,7 +1,9 @@
+import { getDeviceId } from '../utils/device-id';
+
 const isBrowser = typeof window !== 'undefined' && typeof window.location !== 'undefined';
 // Always hit the deployed backend, in every environment (including local dev) — no local
 // backend proxying.
-const apiBase = 'https://api.sellassist.in/api';
+export const apiBase = 'https://api.sellassist.in/api';
 
 const AUTH_TOKEN_KEY = 'auth_token';
 
@@ -52,6 +54,9 @@ export async function apiFetch<T = unknown>(path: string, options: ApiOptions = 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
+
+  const deviceId = getDeviceId();
+  if (deviceId) headers.set('X-Device-Id', deviceId);
 
   const response = await fetch(`${apiBase}${path}`, {
     ...options,

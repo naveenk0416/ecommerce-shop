@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import { authMiddleware } from './auth.js';
 import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from './common.js';
 import { encryptToken } from '../utils/token-crypto.js';
+import { grantBonusSafely } from '../utils/wallet.js';
+import { User } from './common.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
 import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema, createAmazonListing, getAmazonListingItem, buildMainImageLocator } from '../utils/amazon-sp-api.js';
@@ -52,6 +54,12 @@ function amazonCallbackRedirectUri() {
 
 function flipkartCallbackRedirectUri() {
   return `${backendUrl()}/flipkart/callback`;
+}
+
+/** Seller size from their real catalog: the number of products the last Sync imported. */
+async function recordImportedCatalogSize(uid: string, count: number, from: 'amazon' | 'flipkart'): Promise<void> {
+  await User.updateOne({ _id: uid }, { $set: { catalogSizeImported: count, catalogSizeImportedAt: new Date(), catalogSizeImportedFrom: from } })
+    .catch((err: unknown) => console.error('recordImportedCatalogSize failed', err));
 }
 
 async function createAuthState(uid: string): Promise<string> {
@@ -373,6 +381,7 @@ router.post('/amazon/sync-inventory', authMiddleware, async (req, res) => {
       await new Promise((resolve) => setTimeout(resolve, IMAGE_FETCH_SPACING_MS));
     }
 
+    await recordImportedCatalogSize(uid, rows.length, 'amazon');
     res.json({ imported, updated, total: rows.length, imagesFetched });
   } catch (err: any) {
     if (err instanceof AmazonReauthorizationRequiredError) {
@@ -430,6 +439,7 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
       else imported += 1;
     }
 
+    await recordImportedCatalogSize(uid, items.length, 'flipkart');
     res.json({ imported, updated, total: items.length });
   } catch (err: any) {
     if (err instanceof FlipkartReauthorizationRequiredError) {
@@ -634,6 +644,8 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
     }
 
     await Listing.findOneAndUpdate({ _id: listing._id }, { $set: { sku, source: 'amazon', listingStatus: 'ACTIVE' } });
+    // +5 coins for the first successful publish (only reached after the marketplace accepted it).
+    await grantBonusSafely(uid, 'firstPublish');
     res.json({ ok: true, sku });
   } catch (err: any) {
     if (err instanceof AmazonReauthorizationRequiredError) {
@@ -728,6 +740,8 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
       res.status(422).json({ error: detail ? `Amazon rejected the update: ${detail}` : 'Amazon rejected the update.' });
       return;
     }
+    // +5 coins for the first successful publish (only reached after the marketplace accepted it).
+    await grantBonusSafely(uid, 'firstPublish');
     res.json({ ok: true });
   } catch (err: any) {
     if (err instanceof AmazonReauthorizationRequiredError) {
@@ -769,6 +783,8 @@ router.post('/flipkart/publish/:listingId', authMiddleware, async (req, res) => 
       res.status(422).json({ error: detail ? `Flipkart rejected the update: ${detail}` : 'Flipkart rejected the update.' });
       return;
     }
+    // +5 coins for the first successful publish (only reached after the marketplace accepted it).
+    await grantBonusSafely(uid, 'firstPublish');
     res.json({ ok: true });
   } catch (err: any) {
     if (err instanceof FlipkartReauthorizationRequiredError) {

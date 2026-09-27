@@ -11,6 +11,9 @@ export async function ensureConnected() {
   }
 
   await mongoose.connect(mongoUri, { autoIndex: true });
+  // The wallet's "exactly once" guarantees rely on these unique indexes existing before the
+  // first write, so wait for them instead of letting autoIndex build them in the background.
+  await Promise.all([User.init(), CoinLedger.init(), AssistCounter.init(), GstLookup.init(), CoinOrder.init()]);
   connected = true;
 }
 
@@ -36,6 +39,8 @@ const userSchema = new mongoose.Schema({
     utm_campaign: { type: String },
     utm_content: { type: String },
     fbclid: { type: String },
+    /** Referral code from a sellassist.in/?ref=CODE link. */
+    ref: { type: String },
     landingPath: { type: String },
     capturedAt: { type: String },
   },
@@ -51,6 +56,48 @@ const userSchema = new mongoose.Schema({
   emailVerified: { type: Boolean, default: false },
   emailVerificationTokenHash: { type: String },
   emailVerificationExpires: { type: Date },
+
+  // ---- Coin wallet (see utils/wallet.ts; every change is also a CoinLedger row) ----
+  coins: {
+    free: { type: Number, default: 0 },
+    paid: { type: Number, default: 0 },
+  },
+  walletInitAt: { type: Date },
+  /** "2026-09" — month (Asia/Kolkata) whose free top-up has already been applied. */
+  lastTopupMonth: { type: String },
+  hasPurchased: { type: Boolean, default: false },
+  firstPurchaseAt: { type: Date },
+  /** First-purchase (starter pack) offer window, started when the balance first hits 0. */
+  offerStartedAt: { type: Date },
+  offerExpiresAt: { type: Date },
+  /** First time the free balance was fully used up. */
+  freeExhaustedAt: { type: Date },
+
+  // ---- Referrals ----
+  referralCode: { type: String, unique: true, sparse: true },
+  referral: {
+    referrerUid: { type: String },
+    code: { type: String },
+    status: { type: String, enum: ['pending', 'rewarded', 'blocked', 'reversed'] },
+    reason: { type: String },
+    rewardedAt: { type: Date },
+    referrerRewarded: { type: Boolean },
+  },
+  /** Salted hashes of IPs / random browser ids seen for this account — used only to stop
+   * self-referrals from the same device or network. */
+  signupIpHash: { type: String },
+  signupDeviceId: { type: String },
+  ipHashes: { type: [String], default: undefined },
+  deviceIds: { type: [String], default: undefined },
+  /** Days (Asia/Kolkata, "2026-09-27") the account used the app — for retention stats. */
+  activeDays: { type: [String], default: undefined },
+
+  // ---- Seller size ----
+  catalogSizeBand: { type: String },
+  catalogPromptDismissedAt: { type: Date },
+  catalogSizeImported: { type: Number },
+  catalogSizeImportedAt: { type: Date },
+  catalogSizeImportedFrom: { type: String },
 }, { timestamps: true });
 
 export const User = (mongoose.models as any).User || mongoose.model('User', userSchema);
@@ -133,6 +180,96 @@ marketplaceConnectionSchema.index({ uid: 1, marketplace: 1 }, { unique: true });
 
 export const MarketplaceConnection = (mongoose.models as any).MarketplaceConnection
   || mongoose.model('MarketplaceConnection', marketplaceConnectionSchema);
+
+// Every coin movement. `key` makes one-time grants idempotent: the unique {uid, key} index is
+// what guarantees "welcome", "bonus:mobile", "topup:2026-10", "purchase:starter" … happen once.
+const coinLedgerSchema = new mongoose.Schema({
+  uid: { type: String, required: true, index: true },
+  type: {
+    type: String,
+    required: true,
+    enum: ['welcome_bonus', 'monthly_topup', 'earned_bonus', 'referral', 'referral_reversal', 'spend', 'refund', 'purchase', 'admin_adjust'],
+  },
+  /** + credit, − debit, in coins. */
+  amount: { type: Number, required: true },
+  /** How the amount splits across the free and paid balances. */
+  free: { type: Number, default: 0 },
+  paid: { type: Number, default: 0 },
+  reason: { type: String, default: '' },
+  key: { type: String },
+  meta: { type: mongoose.Schema.Types.Mixed },
+  balanceAfter: { free: Number, paid: Number },
+}, { timestamps: true });
+
+coinLedgerSchema.index({ uid: 1, key: 1 }, { unique: true, partialFilterExpression: { key: { $type: 'string' } } });
+
+export const CoinLedger = (mongoose.models as any).CoinLedger || mongoose.model('CoinLedger', coinLedgerSchema);
+
+// One row per Gemini call made by the backend — drives coin refunds, free-assist limits,
+// "time saved" and the admin AI cost page.
+const aiUsageSchema = new mongoose.Schema({
+  uid: { type: String, required: true, index: true },
+  purpose: { type: String, required: true, enum: ['listing', 'field_fix', 'marketplace_autofill'] },
+  model: { type: String },
+  success: { type: Boolean, default: false },
+  inputTokens: { type: Number, default: 0 },
+  outputTokens: { type: Number, default: 0 },
+  costInr: { type: Number, default: 0 },
+  coinsCharged: { type: Number, default: 0 },
+  listingKey: { type: String },
+  marketplace: { type: String },
+  error: { type: String },
+}, { timestamps: true });
+
+aiUsageSchema.index({ purpose: 1, createdAt: 1 });
+
+export const AiUsage = (mongoose.models as any).AiUsage || mongoose.model('AiUsage', aiUsageSchema);
+
+// Atomic counters for the free AI assists (per listing, per listing+marketplace, per day).
+const assistCounterSchema = new mongoose.Schema({
+  uid: { type: String, required: true },
+  scope: { type: String, required: true },
+  count: { type: Number, default: 0 },
+}, { timestamps: true });
+
+assistCounterSchema.index({ uid: 1, scope: 1 }, { unique: true });
+
+export const AssistCounter = (mongoose.models as any).AssistCounter || mongoose.model('AssistCounter', assistCounterSchema);
+
+// A Razorpay order for a coin pack. Coins are credited once, when the payment signature verifies.
+const coinOrderSchema = new mongoose.Schema({
+  uid: { type: String, required: true, index: true },
+  packId: { type: String, required: true },
+  packName: { type: String },
+  coins: { type: Number, required: true },
+  amountInr: { type: Number, required: true },
+  orderId: { type: String, required: true, unique: true },
+  paymentId: { type: String },
+  status: { type: String, enum: ['created', 'paid', 'rejected'], default: 'created' },
+  paidAt: { type: Date },
+  note: { type: String },
+}, { timestamps: true });
+
+export const CoinOrder = (mongoose.models as any).CoinOrder || mongoose.model('CoinOrder', coinOrderSchema);
+
+// "Notify me when coin packs launch" clicks.
+const packInterestSchema = new mongoose.Schema({
+  uid: { type: String, required: true, index: true },
+  balance: { type: Number, default: 0 },
+}, { timestamps: true });
+
+export const PackInterest = (mongoose.models as any).PackInterest || mongoose.model('PackInterest', packInterestSchema);
+
+// GST rate lookups by signed-in sellers, one row per HSN per day — for "time saved".
+const gstLookupSchema = new mongoose.Schema({
+  uid: { type: String, required: true },
+  hsn: { type: String, required: true },
+  day: { type: String, required: true },
+}, { timestamps: true });
+
+gstLookupSchema.index({ uid: 1, hsn: 1, day: 1 }, { unique: true });
+
+export const GstLookup = (mongoose.models as any).GstLookup || mongoose.model('GstLookup', gstLookupSchema);
 
 // Backs the OAuth `state` parameter for both entry points of Amazon's Website Authorization
 // Workflow (seller-initiated via /amazon/connect, and Amazon-initiated via /amazon/login).
