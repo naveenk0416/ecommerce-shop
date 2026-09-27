@@ -28,7 +28,7 @@ export const WHATSAPP_NUMBER = '919666650416';
 export const WHATSAPP_PREFILL = 'Hi SellAssist, I want to know more about listing my products.';
 
 /** Meta Pixel ID (digits only). Empty disables the pixel — no script is loaded. */
-export const META_PIXEL_ID = '';
+export const META_PIXEL_ID = '1020160774160627';
 
 /** GA4 measurement ID — already loaded via gtag in index.html. */
 export const GA4_MEASUREMENT_ID = 'G-NYCJ00ML3F';
