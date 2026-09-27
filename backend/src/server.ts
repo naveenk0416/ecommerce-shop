@@ -36,6 +36,8 @@ app.use(cors({
     }
   },
   credentials: true,
+  // X-Coin-Balance keeps the header coin pill current; Server-Timing shows where AI time goes.
+  exposedHeaders: ['X-Coin-Balance', 'Server-Timing'],
 }));
 
 app.use((req: Request, res: Response, next: NextFunction) => {

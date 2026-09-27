@@ -135,7 +135,7 @@ export class WalletNudges {
 
   showMonthlySaved = computed(() => {
     const w = this.wallet();
-    if (!w || w.lastMonthTimeSaved.hours <= 0) return false;
+    if (!w || w.lastMonthTimeSaved.hours < 0.5) return false;
     return this.monthlySeen() !== w.timeSaved.month;
   });
 

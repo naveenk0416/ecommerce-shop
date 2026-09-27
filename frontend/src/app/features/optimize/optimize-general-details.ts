@@ -12,7 +12,8 @@ import { GstRateResult, Listing, ListingService } from '../../services/listing';
 import { BarcodeLookupResult, BarcodeService } from '../../services/barcode';
 import { AiFieldExtraction } from '../../services/gemini';
 import { formatInrCompact, parseAmountInput } from '../../utils/format';
-import { OptimizeSessionService } from './optimize-session.service';
+import { AI_IMAGE_MAX_PX, OptimizeSessionService } from './optimize-session.service';
+import { resizeImage } from '../../utils/image';
 import { WalletService } from '../../services/wallet';
 
 /** General-tab keys this form reads/writes in the session (AI content + seller-entered values). */
@@ -33,7 +34,7 @@ export class OptimizeGeneralDetails {
   private readonly injector = inject(Injector);
   protected readonly auth = inject(AuthService);
   protected readonly session = inject(OptimizeSessionService);
-  private readonly wallet = inject(WalletService);
+  protected readonly wallet = inject(WalletService);
 
   /** Lazily injected — MatSnackBar/MatDialog as field initializers can throw NG0203 on lazy-loaded routes. */
   private get snackBar(): MatSnackBar {
@@ -168,6 +169,10 @@ export class OptimizeGeneralDetails {
 
   /** Re-runs the single combined Gemini call covering this tab and every other tab. */
   generate(): void {
+    if (this.wallet.cannotAffordListing()) {
+      this.wallet.outOfCoins.set(true);
+      return;
+    }
     this.session.generateAll();
   }
 
@@ -228,12 +233,22 @@ export class OptimizeGeneralDetails {
   private uploadPrimary(file: File): void {
     this.selectedImageIndex.set(0);
 
+    // No coins → show the out-of-coins screen instead of uploading.
+    if (this.wallet.cannotAffordListing()) {
+      this.wallet.outOfCoins.set(true);
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
+    reader.onload = async () => {
+      const t0 = performance.now();
+      const original = reader.result as string;
+      // Phone photos are often 3–12 MP; ≤1024px is plenty for the AI and uploads far faster.
+      const dataUrl = await resizeImage(original, AI_IMAGE_MAX_PX, AI_IMAGE_MAX_PX, 0.85).catch(() => original);
+      console.info(`[timing] photo resize ${Math.round(performance.now() - t0)}ms (${Math.round(original.length / 1024)} KB → ${Math.round(dataUrl.length / 1024)} KB)`);
       const base64 = dataUrl.split(',')[1] ?? '';
+      const mimeType = dataUrl.startsWith('data:image/jpeg') ? 'image/jpeg' : file.type;
       // setImage() starts a new listing and fires the combined Gemini call for every tab.
-      this.session.setImage(dataUrl, base64, file.type);
+      this.session.setImage(dataUrl, base64, mimeType);
     };
     reader.onerror = () => this.session.generationError.set('Failed to read the selected file.');
     reader.readAsDataURL(file);

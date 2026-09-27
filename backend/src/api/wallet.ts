@@ -6,6 +6,7 @@ import { CoinLedger, CoinOrder, ensureConnected, PackInterest, User } from './co
 import { activeFestivePacks, coinConfig, type CoinPack } from '../config/coins.js';
 import { verifyRazorpaySignature } from '../utils/razorpay.js';
 import { credit, ensureWallet, walletSummary } from '../utils/wallet.js';
+import { setCoinBalanceHeaderFrom } from '../utils/coin-header.js';
 
 const router = express.Router();
 
@@ -33,7 +34,9 @@ export function setOrderCreatorForTests(fn: OrderCreator | null): void {
 
 router.get('/', authMiddleware, async (req, res) => {
   await ensureConnected();
-  res.json(await walletSummary(uidOf(req)));
+  const summary = await walletSummary(uidOf(req));
+  setCoinBalanceHeaderFrom(res, summary.balance);
+  res.json(summary);
 });
 
 /** "Notify me when coin packs launch" — every click is recorded with the balance at the time. */
@@ -153,7 +156,9 @@ router.post('/packs/verify', authMiddleware, async (req, res) => {
     return;
   }
   await User.updateOne({ _id: uid }, { $set: { hasPurchased: true }, $min: { firstPurchaseAt: new Date() } });
-  res.json({ ok: true, wallet: await walletSummary(uid) });
+  const summary = await walletSummary(uid);
+  setCoinBalanceHeaderFrom(res, summary.balance);
+  res.json({ ok: true, wallet: summary });
 });
 
 export default router;

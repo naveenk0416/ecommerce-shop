@@ -7,6 +7,7 @@ import { UiSection } from '../listing-workspace/ui/section/section';
 import { SeoScoreCard } from '../listing-workspace/ui/seo-score-card/seo-score-card';
 import { AiTabStatus } from '../listing-workspace/ui/ai-tab-status/ai-tab-status';
 import { OptimizeSessionService } from './optimize-session.service';
+import { WalletService } from '../../services/wallet';
 
 @Component({
   selector: 'app-optimize-meesho-listing',
@@ -18,6 +19,7 @@ import { OptimizeSessionService } from './optimize-session.service';
 })
 export class OptimizeMeeshoListing {
   protected readonly session = inject(OptimizeSessionService);
+  protected readonly wallet = inject(WalletService);
 
   protected readonly sections = MEESHO_LISTING_SECTIONS;
 

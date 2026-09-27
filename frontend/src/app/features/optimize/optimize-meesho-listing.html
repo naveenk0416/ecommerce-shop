@@ -3,7 +3,8 @@
     [hasImage]="session.hasImage()"
     [isAnalyzing]="session.isGenerating()"
     [error]="session.generationError()"
-    analyzingLabel="Generating your Meesho listing with Gemini AI…"
+    [analyzingLabel]="session.progressText()"
+    [retryNote]="wallet.costNote()"
     (retry)="generate()"
   />
 

@@ -3,7 +3,9 @@ import mongoose from 'mongoose';
 import { authMiddleware } from './auth.js';
 import { ensureConnected, Listing, ListingDraft, User } from './common.js';
 import { coinConfig, isBlockedAutofillField } from '../config/coins.js';
-import { AiCallError, callGemini } from '../utils/gemini.js';
+import { AiCallError, AiTiming, callGemini } from '../utils/gemini.js';
+import { ownImageUrl } from '../utils/public-url.js';
+import { setCoinBalanceHeader } from '../utils/coin-header.js';
 import {
   assistsLeft, ensureWallet, processReferralAfterListing, refundSpend, releaseAssist, reserveAssist, spendCoins, walletSummary,
   type AssistKind,
@@ -14,6 +16,16 @@ const router = express.Router();
 const IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif']);
 const MAX_IMAGE_BASE64_CHARS = 11 * 1024 * 1024; // ≈ 8 MB of image bytes
 const MAX_PROMPT_CHARS = 40000;
+
+/**
+ * Server-Timing header + one log line per AI request, so where the time goes is visible in the
+ * browser's network panel and in the server log: gemini = the model call, total = whole request.
+ */
+function reportTiming(res: express.Response, label: string, startedAt: number, timing: AiTiming): void {
+  const total = Date.now() - startedAt;
+  res.setHeader('Server-Timing', `gemini;dur=${timing.geminiMs},total;dur=${total}`);
+  console.log(`[timing] ${label} total=${total}ms gemini=${timing.geminiMs}ms overhead=${total - timing.geminiMs}ms`);
+}
 
 function uidOf(req: express.Request): string {
   return (req as any).authUser._id.toString();
@@ -35,6 +47,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * The client builds the prompt/schema (its field lists live there); the model is chosen here.
  */
 router.post('/listing', authMiddleware, async (req, res) => {
+  const startedAt = Date.now();
+  const timing: AiTiming = { geminiMs: 0 };
   await ensureConnected();
   const uid = uidOf(req);
   const { prompt, schema, image, temperature } = req.body || {};
@@ -56,6 +70,7 @@ router.post('/listing', authMiddleware, async (req, res) => {
   const cost = coinConfig.listingCost;
   const charge = await spendCoins(uid, cost, 'AI listing', {});
   if (!charge.ok) {
+    await setCoinBalanceHeader(res, uid);
     res.status(402).json({ error: 'You are out of coins.', code: 'OUT_OF_COINS', wallet: await walletSummary(uid) });
     return;
   }
@@ -67,7 +82,9 @@ router.post('/listing', authMiddleware, async (req, res) => {
       schema: schema as Record<string, unknown> | undefined,
       image: image ? { data: String(image['data']), mimeType: normalizeMime(image['mimeType']) } : undefined,
       temperature: typeof temperature === 'number' ? Math.min(Math.max(temperature, 0), 1) : 0.4,
-    }, { coinsCharged: cost });
+      thinkingLevel: coinConfig.ai.listingThinkingLevel,
+      maxOutputTokens: coinConfig.ai.listingMaxOutputTokens,
+    }, { coinsCharged: cost }, timing);
 
     const today = new Date().toISOString().split('T')[0];
     const user = await User.findById(uid).select('dailyStats').lean();
@@ -76,11 +93,17 @@ router.post('/listing', authMiddleware, async (req, res) => {
       : { $inc: { usageCount: 1 }, $set: { dailyStats: { date: today, count: 1 } } });
 
     await processReferralAfterListing(uid).catch((err) => console.error('[referral] reward failed', err));
-    res.json({ result, balance: charge.balance });
+    // Balance after the charge and any referral reward that this listing just unlocked.
+    await setCoinBalanceHeader(res, uid);
+    reportTiming(res, 'listing', startedAt, timing);
+    const fresh = await User.findById(uid).select('coins').lean();
+    res.json({ result, balance: { free: fresh?.coins?.free ?? 0, paid: fresh?.coins?.paid ?? 0 } });
   } catch (err) {
     await refundSpend(uid, charge, 'Refund — the AI listing failed');
     const message = err instanceof AiCallError ? err.message : 'The AI request failed. Please try again.';
     if (!(err instanceof AiCallError)) console.error('AI listing error', err);
+    await setCoinBalanceHeader(res, uid);
+    reportTiming(res, 'listing (failed)', startedAt, timing);
     res.status(502).json({ error: `${message} Your coin was refunded.`, code: 'AI_FAILED' });
   }
 });
@@ -119,6 +142,8 @@ router.get('/assists', authMiddleware, async (req, res) => {
  * count. Fields the AI must never fill (brand, MRP, origin, …) are refused.
  */
 router.post('/field-fix', authMiddleware, async (req, res) => {
+  const startedAt = Date.now();
+  const timing: AiTiming = { geminiMs: 0 };
   await ensureConnected();
   const uid = uidOf(req);
   const { listingKey, tab, fieldKey, label, value, maxLength, context } = req.body || {};
@@ -149,7 +174,7 @@ router.post('/field-fix', authMiddleware, async (req, res) => {
     `Improve one field of a ${channel} product listing for an Indian seller.`,
     `Product: ${String(ctx['title'] || 'Unknown').slice(0, 200)}`,
     `Category: ${String(ctx['category'] || 'Unknown').slice(0, 200)}`,
-    ctx['description'] ? `Description: ${String(ctx['description']).slice(0, 800)}` : '',
+    ctx['description'] ? `Description: ${String(ctx['description']).slice(0, 300)}` : '',
     `Field: ${label.slice(0, 100)}`,
     `Current value: ${String(value ?? '').slice(0, 2000) || '(empty)'}`,
     '',
@@ -165,11 +190,15 @@ router.post('/field-fix', authMiddleware, async (req, res) => {
       schema: { type: 'object', properties: { value: { type: 'string' } }, required: ['value'] },
       temperature: 0.6,
       maxOutputTokens: coinConfig.ai.fieldFixMaxOutputTokens,
-      minimalThinking: true,
-    }, { listingKey, marketplace: String(tab || '') }) as { value?: unknown };
+      thinkingLevel: coinConfig.ai.assistThinkingLevel,
+      hedgeAfterMs: coinConfig.ai.fieldFixHedgeAfterMs,
+      maxBackups: coinConfig.ai.fieldFixMaxBackups,
+    }, { listingKey, marketplace: String(tab || '') }, timing) as { value?: unknown };
     const improved = String(result?.value ?? '').trim().slice(0, limit);
     if (!improved) throw new AiCallError('The AI returned an empty suggestion. Please try again.');
-    res.json({ value: improved, assists: await assistsLeft(uid, 'field_fix', listingKey) });
+    const assists = await assistsLeft(uid, 'field_fix', listingKey);
+    reportTiming(res, 'field_fix', startedAt, timing);
+    res.json({ value: improved, assists });
   } catch (err) {
     await releaseAssist(uid, 'field_fix', listingKey);
     const message = err instanceof AiCallError ? err.message : 'The AI request failed. Please try again.';
@@ -180,7 +209,13 @@ router.post('/field-fix', authMiddleware, async (req, res) => {
 
 /** The product photo as base64 for Gemini — stored as a data URL, or a marketplace image URL. */
 async function listingImage(listing: any): Promise<{ data: string; mimeType: string } | undefined> {
-  const source: string = listing.processedImage || listing.originalImage || '';
+  let source: string = ownImageUrl(listing.processedImage || listing.originalImage || '');
+  // A URL to one of our own draft images: read it from the database instead of over HTTP.
+  const draftId = /\/api\/drafts\/([a-f0-9]{24})\/image\.jpg/i.exec(source)?.[1];
+  if (draftId) {
+    const draft = await ListingDraft.findOne({ _id: draftId, uid: listing.uid }).select('image').lean();
+    if (typeof (draft as any)?.image === 'string') source = (draft as any).image;
+  }
   const match = /^data:([^;]+);base64,(.+)$/.exec(source);
   if (match) return match[2].length <= MAX_IMAGE_BASE64_CHARS ? { data: match[2], mimeType: normalizeMime(match[1]) } : undefined;
   if (!/^https:\/\//i.test(source)) return undefined;
@@ -209,6 +244,8 @@ interface AutofillField {
  * the server whatever the client sends. The client only sends fields the seller left empty.
  */
 router.post('/marketplace-autofill', authMiddleware, async (req, res) => {
+  const startedAt = Date.now();
+  const timing: AiTiming = { geminiMs: 0 };
   await ensureConnected();
   const uid = uidOf(req);
   const { listingId, marketplace, fields } = req.body || {};
@@ -280,8 +317,8 @@ router.post('/marketplace-autofill', authMiddleware, async (req, res) => {
       schema: { type: 'object', properties },
       temperature: 0.2,
       maxOutputTokens: coinConfig.ai.autofillMaxOutputTokens,
-      minimalThinking: true,
-    }, { listingKey: listingId, marketplace }) as Record<string, unknown>;
+      thinkingLevel: coinConfig.ai.assistThinkingLevel,
+    }, { listingKey: listingId, marketplace }, timing) as Record<string, unknown>;
 
     const values: Record<string, string | number> = {};
     for (const field of allowed) {
@@ -301,7 +338,9 @@ router.post('/marketplace-autofill', authMiddleware, async (req, res) => {
       }
       values[field.key] = text.slice(0, 2000);
     }
-    res.json({ values, blocked, assists: await assistsLeft(uid, 'marketplace_autofill', listingId, marketplace) });
+    const assists = await assistsLeft(uid, 'marketplace_autofill', listingId, marketplace);
+    reportTiming(res, 'marketplace_autofill', startedAt, timing);
+    res.json({ values, blocked, assists });
   } catch (err) {
     await releaseAssist(uid, 'marketplace_autofill', listingId, marketplace);
     const message = err instanceof AiCallError ? err.message : 'The AI request failed. Please try again.';

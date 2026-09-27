@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AiFieldExtraction, formatGeminiError, GeminiService, isOutOfCoinsError } from '../../services/gemini';
 import { AssistsLeft, isBlockedAiField, WalletService, WalletSummary } from '../../services/wallet';
@@ -18,6 +18,18 @@ export type DraftSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 /** Edits are saved this long after the seller stops typing. */
 const SAVE_DEBOUNCE_MS = 1000;
+
+/** Longest side of the photo sent to the AI and stored with the draft (smaller = faster upload). */
+export const AI_IMAGE_MAX_PX = 1024;
+
+/** Progress messages while the listing is generated, by seconds elapsed (English / Hindi). */
+const PROGRESS_STEPS: { after: number; en: string; hi: string }[] = [
+  { after: 0, en: 'Reading your photo…', hi: 'आपकी photo पढ़ रहे हैं…' },
+  { after: 3, en: 'Writing the Amazon title and bullet points…', hi: 'Amazon title और bullet points लिख रहे हैं…' },
+  { after: 7, en: 'Writing Flipkart and Meesho details…', hi: 'Flipkart और Meesho details लिख रहे हैं…' },
+  { after: 11, en: 'Writing the Instagram caption and hashtags…', hi: 'Instagram caption और hashtags लिख रहे हैं…' },
+  { after: 15, en: 'Almost done…', hi: 'बस हो गया…' },
+];
 
 /**
  * Shared per-session state for the /optimize route tree: the product photo and every tab's
@@ -51,6 +63,15 @@ export class OptimizeSessionService {
 
   /** True while the single combined Gemini call for all tabs is in flight. */
   isGenerating = signal(false);
+  /** Seconds since generation started — drives the step-by-step progress text. */
+  private readonly generatingSeconds = signal(0);
+  private progressTimer: ReturnType<typeof setInterval> | null = null;
+  /** "Reading your photo…", "Writing the Amazon title…", … "Almost done…" (English/Hindi). */
+  readonly progressText = computed(() => {
+    const seconds = this.generatingSeconds();
+    const step = [...PROGRESS_STEPS].reverse().find((s) => seconds >= s.after) ?? PROGRESS_STEPS[0];
+    return this.i18n.t(step.en, step.hi);
+  });
   /** Set if the combined generation call failed; every tab surfaces the same error + retry. */
   generationError = signal<string | null>(null);
 
@@ -129,18 +150,29 @@ export class OptimizeSessionService {
   generateAll(): void {
     if (this.isGenerating()) return;
     this.generationError.set(null);
-    this.isGenerating.set(true);
+    this.startProgress();
+    const t0 = performance.now();
+    let tImage = t0;
+    let tAi = t0;
     this.ensureImageBytes()
-      .then(({ base64, mimeType }) => this.gemini.extractAllListings(base64, mimeType))
+      .then(({ base64, mimeType }) => {
+        tImage = performance.now();
+        return this.gemini.extractAllListings(base64, mimeType);
+      })
       .then((data) => {
+        tAi = performance.now();
         const next = this.enforceLimits(data as Partial<Record<OptimizeTabKey, TabResult>>);
         // Regenerating must not wipe what the seller typed (prices, stock).
         const previousGeneral = this.cache().general ?? {};
         const sellerValues = Object.fromEntries(SELLER_FIELD_KEYS.filter((k) => previousGeneral[k]).map((k) => [k, previousGeneral[k]]));
         this.cache.set({ ...next, general: { ...(next.general ?? {}), ...sellerValues } });
-        return this.saveNow();
+        // The listing is on screen now; the draft is saved in the background.
+        this.stopProgress();
+        const tSave = performance.now();
+        void this.saveNow().then(() => {
+          console.info(`[timing] listing: image ${Math.round(tImage - t0)}ms · AI request ${Math.round(tAi - tImage)}ms · shown after ${Math.round(tSave - t0)}ms · draft save ${Math.round(performance.now() - tSave)}ms`);
+        });
       })
-      .then(() => this.wallet.load())
       .catch((err) => {
         if (isOutOfCoinsError(err)) {
           const wallet = (err as ApiError).data as { wallet?: WalletSummary } | undefined;
@@ -153,9 +185,22 @@ export class OptimizeSessionService {
           return;
         }
         this.generationError.set(formatGeminiError(err));
-        void this.wallet.load();
       })
-      .finally(() => this.isGenerating.set(false));
+      .finally(() => this.stopProgress());
+  }
+
+  private startProgress(): void {
+    this.isGenerating.set(true);
+    this.generatingSeconds.set(0);
+    if (this.progressTimer) clearInterval(this.progressTimer);
+    const started = Date.now();
+    this.progressTimer = setInterval(() => this.generatingSeconds.set(Math.floor((Date.now() - started) / 1000)), 1000);
+  }
+
+  private stopProgress(): void {
+    if (this.progressTimer) clearInterval(this.progressTimer);
+    this.progressTimer = null;
+    this.isGenerating.set(false);
   }
 
   /** Loads a saved draft (from ?id= in the URL, or "Open" in My Listings). */
@@ -212,6 +257,7 @@ export class OptimizeSessionService {
   }
 
   reset(): void {
+    this.stopProgress();
     this.clearDraft();
     this.imagePreview.set(null);
     this.imageBase64.set(null);
@@ -336,7 +382,7 @@ export class OptimizeSessionService {
     const preview = this.imagePreview();
     if (!preview?.startsWith('data:')) return undefined;
     try {
-      return await resizeImage(preview, 1600, 1600, 0.85);
+      return await resizeImage(preview, AI_IMAGE_MAX_PX, AI_IMAGE_MAX_PX, 0.85);
     } catch {
       return preview;
     }
@@ -356,8 +402,9 @@ export class OptimizeSessionService {
       reader.onerror = () => reject(new Error('Could not read the product photo.'));
       reader.readAsDataURL(blob);
     });
-    const bytes = dataUrl.split(',')[1] ?? '';
-    const type = blob.type || 'image/jpeg';
+    const resized = await resizeImage(dataUrl, AI_IMAGE_MAX_PX, AI_IMAGE_MAX_PX, 0.85).catch(() => dataUrl);
+    const bytes = resized.split(',')[1] ?? '';
+    const type = resized.startsWith('data:image/jpeg') ? 'image/jpeg' : blob.type || 'image/jpeg';
     this.imageBase64.set(bytes);
     this.imageMimeType.set(type);
     return { base64: bytes, mimeType: type };

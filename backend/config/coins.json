@@ -27,9 +27,14 @@
   },
 
   "ai": {
-    "listingModel": "gemini-3-flash-preview",
+    "listingModel": "gemini-3.1-flash-lite",
+    "listingThinkingLevel": "MINIMAL",
+    "listingMaxOutputTokens": 12000,
     "assistModel": "gemini-3.1-flash-lite",
+    "assistThinkingLevel": "MINIMAL",
     "fieldFixMaxOutputTokens": 400,
+    "fieldFixHedgeAfterMs": 2000,
+    "fieldFixMaxBackups": 2,
     "autofillMaxOutputTokens": 1500,
     "usdToInr": 88,
     "pricePerMillionTokensUsd": {

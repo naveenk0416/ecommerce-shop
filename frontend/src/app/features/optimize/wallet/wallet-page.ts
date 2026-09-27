@@ -44,14 +44,26 @@ export function timeSavedText(i18n: LanguageService, hours: number, lastMonth = 
             </div>
             <ul class="balance__facts">
               <li><mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ i18n.t('1 AI listing = ' + w.listingCost + ' coin', '1 AI listing = ' + w.listingCost + ' coin') }}</li>
-              <li><mat-icon aria-hidden="true">event</mat-icon>{{ i18n.t('Free coins topped up to ' + w.monthlyTopUpTo + ' on', 'Free coins ' + w.monthlyTopUpTo + ' तक भरे जाएंगे:') }} {{ w.nextTopUpAt | date: 'd MMM y' : '+0530' }}</li>
+              <li class="topup" data-testid="next-topup">
+                <mat-icon aria-hidden="true">event</mat-icon>
+                <span>
+                  {{ nextTopUpText(w.monthlyTopUpTo, (w.nextTopUpAt | date: 'd MMM' : '+0530') ?? '') }}
+                  <small class="topup__note">
+                    <mat-icon aria-hidden="true" inline="true">info</mat-icon>
+                    {{ i18n.t('Only if your free coins are below ' + w.monthlyTopUpTo + '.', 'सिर्फ़ तब, जब आपके free coins ' + w.monthlyTopUpTo + ' से कम हों।') }}
+                  </small>
+                </span>
+              </li>
               <li><mat-icon aria-hidden="true">bolt</mat-icon>{{ i18n.t('"✨ Improve" and "Fill empty fields with AI" are free (fair use)', '"✨ Improve" और "Fill empty fields with AI" free हैं (fair use)') }}</li>
             </ul>
           </div>
-          <p class="time-saved" data-testid="time-saved">
-            <mat-icon aria-hidden="true">schedule</mat-icon>
-            {{ timeSaved(w.timeSaved.hours) }}
-          </p>
+          <!-- Hidden until there's something worth saying (at least half an hour). -->
+          @if (w.timeSaved.hours >= 0.5) {
+            <p class="time-saved" data-testid="time-saved">
+              <mat-icon aria-hidden="true">schedule</mat-icon>
+              {{ timeSaved(w.timeSaved.hours) }}
+            </p>
+          }
         </app-ui-card>
 
         <div class="wallet__grid">
@@ -82,7 +94,7 @@ export function timeSavedText(i18n: LanguageService, hours: number, lastMonth = 
                   @for (row of w.ledger; track row.id) {
                     <tr>
                       <td class="nowrap">{{ row.createdAt | date: 'd MMM, h:mm a' : '+0530' }}</td>
-                      <td>{{ typeLabel(row.type) }}<span class="history__reason">{{ row.reason }}</span></td>
+                      <td>{{ typeLabel(row.type) }}<span class="history__reason">{{ row.type === 'monthly_topup' ? topUpDoneText(w.monthlyTopUpTo, (row.createdAt | date: 'd MMM' : '+0530') ?? '') : row.reason }}</span></td>
                       <td class="num" [class.plus]="row.amount > 0" [class.minus]="row.amount < 0">{{ row.amount > 0 ? '+' : '' }}{{ row.amount }}</td>
                       <td class="num">{{ row.balanceAfter ?? '—' }}</td>
                     </tr>
@@ -125,6 +137,10 @@ export function timeSavedText(i18n: LanguageService, hours: number, lastMonth = 
     .balance__facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #334155; }
     .balance__facts li { display: flex; align-items: center; gap: 8px; }
     .balance__facts mat-icon { font-size: 18px; width: 18px; height: 18px; color: #ea580c; flex-shrink: 0; }
+    .topup { align-items: flex-start !important; }
+    .topup > span { display: flex; flex-direction: column; gap: 2px; }
+    .topup__note { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #64748b; }
+    .topup__note mat-icon { font-size: 14px; width: 14px; height: 14px; color: #94a3b8; }
     .time-saved { margin: 16px 0 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #eff6ff; color: #1e3a8a; font-weight: 700; font-size: 14px; }
     .history__title { margin: 0 0 12px; font-size: 16px; font-weight: 800; color: #0f172a; }
     .history__empty { margin: 0; color: #64748b; font-size: 13px; }
@@ -159,6 +175,16 @@ export class WalletPage {
 
   retry(): void {
     void this.walletService.load();
+  }
+
+  /** "Next free top-up: up to 3 coins on 1 Oct" */
+  nextTopUpText(target: number, date: string): string {
+    return this.i18n.t(`Next free top-up: up to ${target} coins on ${date}`, `अगला free top-up: ${date} को ${target} coins तक`);
+  }
+
+  /** History line for a top-up that actually happened: "Topped up to 3 free coins on 1 Oct". */
+  topUpDoneText(target: number, date: string): string {
+    return this.i18n.t(`Topped up to ${target} free coins on ${date}`, `${date} को ${target} free coins तक top-up हुआ`);
   }
 
   timeSaved(hours: number): string {

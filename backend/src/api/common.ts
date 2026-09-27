@@ -216,6 +216,8 @@ const aiUsageSchema = new mongoose.Schema({
   outputTokens: { type: Number, default: 0 },
   costInr: { type: Number, default: 0 },
   coinsCharged: { type: Number, default: 0 },
+  /** How long the Gemini call took. */
+  durationMs: { type: Number },
   listingKey: { type: String },
   marketplace: { type: String },
   error: { type: String },

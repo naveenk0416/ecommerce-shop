@@ -182,6 +182,7 @@ test('saving a mobile number gives +2 once; first Save to Inventory gives +3 onc
 
   res = await api('POST', '/listings', { name: 'Kurti', sellingPrice: 499, costPrice: 200, quantity: 4 }, { token });
   assert.equal(res.status, 200);
+  assert.equal(res.headers.get('x-coin-balance'), '15,0', 'the save response carries the new balance (header updates instantly)');
   assert.equal(await total(token), 15);
   await api('POST', '/listings', { name: 'Kurti 2', sellingPrice: 499, costPrice: 200, quantity: 4 }, { token });
   assert.equal(await total(token), 15, 'second save gives nothing');
@@ -455,4 +456,64 @@ test('admin stats: catalog-size distribution, activation, CSV without emails; no
   assert.ok(!/passwordHash|token/i.test(String(csv.data)));
   const summary = await api('GET', '/admin/stats.csv?type=summary', undefined, { token: admin.token });
   assert.match(String(summary.data), /activationPct/);
+});
+
+// ---- Speed/images batch ----
+
+test('AI listing response carries the new balance and Server-Timing; uses the fast model with minimal thinking', async () => {
+  const { token } = await existingUser();
+  await wallet(token);
+  const before = geminiCalls.length;
+  const res = await fetch(base + '/ai/listing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ prompt: 'x', schema: { type: 'object' } }),
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('x-coin-balance'), '9,0');
+  assert.match(res.headers.get('server-timing') || '', /gemini;dur=\d+,total;dur=\d+/);
+  assert.equal(geminiCalls[before].model, 'gemini-3.1-flash-lite');
+});
+
+test('Save to Inventory from a draft stores the image itself, never a (Render) URL', async () => {
+  const { uid, token } = await existingUser();
+  const draft = await common.ListingDraft.create({ uid, image: 'data:image/jpeg;base64,/9j/AAAA' });
+  const renderUrl = `https://ecommerce-shop-dins.onrender.com/api/drafts/${draft._id}/image.jpg?v=1`;
+  const res = await api('POST', '/listings', { name: 'From draft', sellingPrice: 100, costPrice: 50, quantity: 1, originalImage: renderUrl }, { token });
+  assert.equal(res.status, 200);
+  const stored = await common.Listing.findById(res.data.id).lean();
+  assert.equal(stored.originalImage, 'data:image/jpeg;base64,/9j/AAAA');
+  assert.ok(!JSON.stringify(res.data).includes('onrender'), 'response has no onrender URL');
+
+  const orphan = await common.Listing.create({ uid, name: 'Old', originalImage: 'https://ecommerce-shop-dins.onrender.com/api/drafts/5f0000000000000000000000/image.jpg' });
+  const list = await api('GET', '/listings?mine=true', undefined, { token });
+  const row = list.data.find((l: any) => l.id === orphan._id.toString());
+  assert.ok(row.originalImage.startsWith('https://') && !row.originalImage.includes('onrender'), row.originalImage);
+});
+
+test('field fix: a slow AI reply is covered by one backup request (answer arrives fast)', async () => {
+  const { uid, token } = await existingUser();
+  const draft = await common.ListingDraft.create({ uid, title: 'Kurti' });
+  coins.coinConfig.ai.fieldFixHedgeAfterMs = 100;
+  let calls = 0;
+  gemini.setGeminiGeneratorForTests(async () => {
+    calls += 1;
+    if (calls === 1) await new Promise((r) => setTimeout(r, 3000));
+    return { text: JSON.stringify({ value: `answer ${calls}` }), inputTokens: 10, outputTokens: 5 };
+  });
+  try {
+    const t0 = Date.now();
+    const res = await api('POST', '/ai/field-fix', { listingKey: draft._id.toString(), tab: 'amazon', fieldKey: 'seoTitle', label: 'SEO Title', value: 'kurti' }, { token });
+    assert.equal(res.status, 200);
+    assert.equal(res.data.value, 'answer 2');
+    assert.ok(Date.now() - t0 < 1500, `took ${Date.now() - t0}ms`);
+    assert.equal(res.data.assists.left, 9, 'the backup request does not use an extra assist');
+  } finally {
+    coins.coinConfig.ai.fieldFixHedgeAfterMs = 2000;
+    gemini.setGeminiGeneratorForTests(async (req: any) => {
+      geminiCalls.push({ model: req.model, prompt: req.prompt, maxOutputTokens: req.maxOutputTokens });
+      if (geminiFails) throw new Error('{"error":{"status":"UNAVAILABLE","message":"overloaded"}}');
+      return { text: geminiReply(req.prompt), inputTokens: 1000, outputTokens: 200 };
+    });
+  }
 });

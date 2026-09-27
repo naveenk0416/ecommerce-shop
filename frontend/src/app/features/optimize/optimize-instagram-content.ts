@@ -5,6 +5,7 @@ import { UiCard } from '../listing-workspace/ui/card/card';
 import { UiSection } from '../listing-workspace/ui/section/section';
 import { AiTabStatus } from '../listing-workspace/ui/ai-tab-status/ai-tab-status';
 import { OptimizeSessionService } from './optimize-session.service';
+import { WalletService } from '../../services/wallet';
 
 @Component({
   selector: 'app-optimize-instagram-content',
@@ -16,6 +17,7 @@ import { OptimizeSessionService } from './optimize-session.service';
 })
 export class OptimizeInstagramContent {
   protected readonly session = inject(OptimizeSessionService);
+  protected readonly wallet = inject(WalletService);
 
   protected readonly sections = INSTAGRAM_CONTENT_SECTIONS;
 

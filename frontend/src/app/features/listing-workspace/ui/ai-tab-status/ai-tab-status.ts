@@ -23,6 +23,8 @@ export class AiTabStatus {
   isAnalyzing = input(false);
   error = input<string | null>(null);
   analyzingLabel = input('Analyzing image with Gemini AI…');
+  /** "Uses 1 coin · 14 left" shown under Retry, when the retry costs coins. */
+  retryNote = input<string | null>(null);
 
   retry = output<void>();
 }

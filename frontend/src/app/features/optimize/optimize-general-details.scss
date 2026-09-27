@@ -348,3 +348,35 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+// "Uses 1 coin · 14 left" next to anything that starts an AI listing.
+.cost-action {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.cost-note {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c2410c;
+}
+
+.photo-panel__no-coins {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  border: 2px dashed #fed7aa;
+  border-radius: 16px;
+  background: #fff7ed;
+  color: #7c2d12;
+  text-align: center;
+  font-size: 13px;
+
+  mat-icon {
+    color: #ea580c;
+  }
+}

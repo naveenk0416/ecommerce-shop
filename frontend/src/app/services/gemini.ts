@@ -521,10 +521,12 @@ export class GeminiService {
     const required: string[] = [];
 
     for (const group of groups) {
-      const fieldList = group.fields.map((f) => `- ${f.key}: ${f.label}`).join('\n');
+      // Long text fields get a single value — writing two full descriptions/captions was the
+      // biggest share of the output, and output length is what makes the call slow.
+      const fieldList = group.fields.map((f) => `- ${f.key}: ${f.label}${f.multiline ? ' (long text: v has exactly 1 value)' : ''}`).join('\n');
       prompt += `\n\n=== ${group.key.toUpperCase()} SECTION ===\n${group.instructions}\n\nFields:\n${fieldList}`;
 
-      const schema = this.fieldSchemaFor(group.fields);
+      const schema = this.compactFieldSchemaFor(group.fields);
       properties[group.key] = { type: 'object', properties: schema.properties, required: schema.required };
       required.push(group.key);
     }
@@ -532,16 +534,59 @@ export class GeminiService {
     prompt += `
 
       For every field in every section, return:
-      - "values": an array of exactly 3 plausible candidate strings, ordered from most to least
-        likely (index 0 is the primary/recommended value shown to the user).
-      - "confidence": your confidence in the primary value, a whole number from 0 to 100.
-      - "reason": one short sentence explaining how the value was determined or estimated.
+      - "v": exactly 2 candidate strings — index 0 is the best value shown to the seller, index 1
+        a genuinely different alternative. Fields marked (long text) have exactly 1 value.
+      - "c": your confidence in v[0], a whole number from 0 to 100.
+      - "r": how you determined it, in at most 6 words.
 
       Respond only with the requested JSON, covering all five sections: ${groups.map((g) => g.key).join(', ')}.
     `;
 
-    return this.generate<AllListingsResult>(prompt, { type: 'object', properties, required }, { data: base64Image, mimeType });
+    const compact = await this.generate<Record<string, Record<string, CompactField>>>(prompt, { type: 'object', properties, required }, { data: base64Image, mimeType });
+    return expandCompactResult(compact) as unknown as AllListingsResult;
   }
+
+  /**
+   * Same fields as fieldSchemaFor, with one-letter keys (v/c/r) and 2 candidates: the combined
+   * listing is ~60 fields, so the repeated long JSON keys, a third candidate and full-sentence
+   * reasons were a large share of the output — and output tokens are what make the call slow.
+   */
+  private compactFieldSchemaFor(fields: readonly FieldConfig[]): { properties: Record<string, unknown>; required: string[] } {
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+    for (const field of fields) {
+      properties[field.key] = {
+        type: 'object',
+        properties: { v: { type: 'array', items: { type: 'string' } }, c: { type: 'number' }, r: { type: 'string' } },
+        required: ['v', 'c', 'r'],
+      };
+      required.push(field.key);
+    }
+    return { properties, required };
+  }
+}
+
+/** One field in the compact listing response: v = candidates, c = confidence, r = short reason. */
+interface CompactField {
+  v?: string[];
+  c?: number;
+  r?: string;
+}
+
+/** Maps the compact response back to the { values, confidence, reason } shape every tab reads. */
+function expandCompactResult(compact: Record<string, Record<string, CompactField>>): Record<string, Record<string, AiFieldExtraction>> {
+  const out: Record<string, Record<string, AiFieldExtraction>> = {};
+  for (const [tab, fields] of Object.entries(compact ?? {})) {
+    out[tab] = {};
+    for (const [key, field] of Object.entries(fields ?? {})) {
+      out[tab][key] = {
+        values: Array.isArray(field?.v) ? field.v.map((x) => String(x)) : [],
+        confidence: typeof field?.c === 'number' ? field.c : 0,
+        reason: field?.r ? String(field.r) : '',
+      };
+    }
+  }
+  return out;
 }
 
 /** One combined Gemini response covering the general summary and every marketplace/content tab. */

@@ -26,6 +26,14 @@ export function clearAuthToken(): void {
   window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
+type CoinBalanceListener = (balance: { free: number; paid: number }) => void;
+let coinBalanceListener: CoinBalanceListener | null = null;
+
+/** WalletService registers here; the backend sends X-Coin-Balance: "free,paid" whenever coins may have changed. */
+export function onCoinBalance(listener: CoinBalanceListener): void {
+  coinBalanceListener = listener;
+}
+
 export interface ApiOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | unknown;
 }
@@ -63,6 +71,12 @@ export async function apiFetch<T = unknown>(path: string, options: ApiOptions = 
     headers,
     body,
   });
+
+  const coinHeader = response.headers.get('X-Coin-Balance');
+  if (coinHeader && coinBalanceListener) {
+    const [free, paid] = coinHeader.split(',').map(Number);
+    if (Number.isFinite(free) && Number.isFinite(paid)) coinBalanceListener({ free, paid });
+  }
 
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;

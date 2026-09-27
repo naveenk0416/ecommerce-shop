@@ -24,7 +24,7 @@ import { CoinPacks, EarnCoinsCard } from './wallet-ui';
         <p class="ooc__lead">
           <mat-icon aria-hidden="true">event</mat-icon>
           <span>
-            {{ i18n.t('Your free coins are topped up to ' + w.monthlyTopUpTo + ' on', 'आपके free coins ' + w.monthlyTopUpTo + ' तक भरे जाएंगे:') }}
+            {{ i18n.t('Next free top-up: up to ' + w.monthlyTopUpTo + ' coins on', 'अगला free top-up: ' + w.monthlyTopUpTo + ' coins तक, तारीख') }}
             <strong>{{ w.nextTopUpAt | date: 'd MMM y' : '+0530' }}</strong>.
             {{ i18n.t('Or earn coins now:', 'या अभी coins कमाएं:') }}
           </span>

@@ -2,20 +2,17 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { authMiddleware } from './auth.js';
 import { ensureConnected, Listing, ListingDraft } from './common.js';
+import { ownImageUrl, publicApiUrl } from '../utils/public-url.js';
 
 const router = express.Router();
 
 const MAX_IMAGE_CHARS = 8 * 1024 * 1024;
 const TABS = ['general', 'amazon', 'flipkart', 'meesho', 'instagram'];
 
-function backendUrl() {
-  return (process.env['BACKEND_URL'] || 'http://localhost:4000').replace(/\/$/, '');
-}
-
 function imageUrl(id: string, image: string | undefined, updatedAt?: Date) {
   if (!image) return null;
-  if (/^https?:\/\//i.test(image)) return image;
-  return `${backendUrl()}/api/drafts/${id}/image.jpg?v=${updatedAt ? new Date(updatedAt).getTime() : image.length}`;
+  if (/^https?:\/\//i.test(image)) return ownImageUrl(image);
+  return `${publicApiUrl()}/api/drafts/${id}/image.jpg?v=${updatedAt ? new Date(updatedAt).getTime() : image.length}`;
 }
 
 /** Only known tabs, each an object of field → { values, confidence, reason }. */
@@ -33,7 +30,8 @@ function validImage(image: unknown): string | null | undefined {
   if (image === undefined) return undefined;
   if (image === null || image === '') return '';
   if (typeof image !== 'string' || image.length > MAX_IMAGE_CHARS) return null;
-  if (/^data:image\/[a-z0-9.+-]+;base64,/i.test(image) || /^https?:\/\//i.test(image)) return image;
+  if (/^data:image\/[a-z0-9.+-]+;base64,/i.test(image)) return image;
+  if (/^https?:\/\//i.test(image)) return ownImageUrl(image);
   return null;
 }
 
@@ -213,7 +211,7 @@ router.get('/:id/image.jpg', async (req, res) => {
       return;
     }
     if (/^https?:\/\//i.test(source)) {
-      res.redirect(source);
+      res.redirect(ownImageUrl(source));
       return;
     }
     const match = /^data:([^;]+);base64,(.+)$/.exec(source);
@@ -222,7 +220,8 @@ router.get('/:id/image.jpg', async (req, res) => {
       return;
     }
     res.setHeader('Content-Type', match[1]);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // Versioned URLs (?v=…) change whenever the image changes, so browsers may keep them forever.
+    res.setHeader('Cache-Control', req.query['v'] ? 'public, max-age=31536000, immutable' : 'public, max-age=86400');
     res.send(Buffer.from(match[2], 'base64'));
   } catch (err) {
     console.error('Serve draft image error', err);

@@ -9,6 +9,7 @@ import { GSTIN_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, phoneLookupValues, s
 import { coinConfig, dayKey } from '../config/coins.js';
 import { deviceId, ipHash } from '../utils/request-identity.js';
 import { ensureWallet, grantBonus, reverseReferralOnDelete } from '../utils/wallet.js';
+import { setCoinBalanceHeader } from '../utils/coin-header.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env['JWT_SECRET'] || 'dev_jwt_secret_change_me';
@@ -566,6 +567,7 @@ router.get('/me', authMiddleware, async (req, res) => {
     res.status(401).json({ error: 'Not authenticated' });
     return;
   }
+  await setCoinBalanceHeader(res, user._id.toString());
   res.json({
     user: {
       uid: user._id.toString(),
@@ -735,6 +737,7 @@ router.patch('/users/:id', authMiddleware, async (req, res) => {
     const selfId = authUser._id.toString();
     if (user.phoneNumber && selfId === String(id)) {
       await ensureWallet(selfId).then(() => grantBonus(selfId, 'mobile')).catch((err) => console.error('[wallet] mobile bonus failed', err));
+      await setCoinBalanceHeader(res, selfId);
     }
     res.json({ ok: true });
   } catch (err: any) {

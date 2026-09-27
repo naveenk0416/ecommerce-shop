@@ -1,6 +1,7 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
-import { apiFetch } from './api';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { apiFetch, onCoinBalance } from './api';
 import { AuthService } from './auth';
+import { LanguageService } from './language';
 import { loadRazorpay } from '../utils/razorpay';
 
 export type BonusId = 'welcome' | 'mobile' | 'firstInventorySave' | 'firstPublish';
@@ -89,16 +90,51 @@ export function isBlockedAiField(key: string, label: string, patterns: readonly 
 @Injectable({ providedIn: 'root' })
 export class WalletService {
   private readonly auth = inject(AuthService);
+  private readonly i18n = inject(LanguageService);
 
   readonly wallet = signal<WalletSummary | null>(null);
   readonly loading = signal(false);
   /** Set when the wallet couldn't be loaded, so the page can show it instead of loading forever. */
   readonly loadError = signal<string | null>(null);
-  readonly balance = computed(() => this.wallet()?.balance.total ?? null);
+  /** Latest balance from any API response (X-Coin-Balance header) — updates the header pill immediately. */
+  private readonly live = signal<{ free: number; paid: number } | null>(null);
+  readonly balance = computed(() => {
+    const live = this.live();
+    return live ? live.free + live.paid : this.wallet()?.balance.total ?? null;
+  });
+  readonly listingCost = computed(() => this.wallet()?.listingCost ?? 1);
+  /** True once the balance is known and too low for an AI listing. */
+  readonly cannotAffordListing = computed(() => {
+    const balance = this.balance();
+    return balance !== null && balance < this.listingCost();
+  });
+  /** "Uses 1 coin · 14 left" (Hindi: "1 coin लगेगा · 14 बचे"), or null until the balance is known. */
+  readonly costNote = computed(() => {
+    const balance = this.balance();
+    if (balance === null) return null;
+    const cost = this.listingCost();
+    return this.i18n.t(`Uses ${cost} coin${cost === 1 ? '' : 's'} · ${balance} left`, `${cost} coin लगेगा · ${balance} बचे`);
+  });
   /** Set when an AI listing was refused for lack of coins — the out-of-coins screen opens. */
   readonly outOfCoins = signal(false);
 
+  /** English/Hindi text for templates that already use the wallet. */
+  i18nText(en: string, hi: string): string {
+    return this.i18n.t(en, hi);
+  }
+
   private inflight: Promise<WalletSummary | null> | null = null;
+
+  constructor() {
+    onCoinBalance((balance) => this.setBalance(balance));
+    // Signed out → forget the previous seller's balance.
+    effect(() => {
+      if (!this.auth.user()) {
+        this.live.set(null);
+        this.wallet.set(null);
+      }
+    });
+  }
 
   /** Loads (or reloads) the wallet. Concurrent callers share one request. */
   async load(): Promise<WalletSummary | null> {
@@ -108,6 +144,7 @@ export class WalletService {
     this.inflight = apiFetch<WalletSummary>('/wallet')
       .then((wallet) => {
         this.wallet.set(wallet);
+        this.live.set({ free: wallet.balance.free, paid: wallet.balance.paid });
         this.loadError.set(null);
         return wallet;
       })
@@ -128,12 +165,14 @@ export class WalletService {
 
   /** After a spend the server returns the new balance — show it without a full reload. */
   setBalance(balance: { free: number; paid: number }): void {
+    this.live.set(balance);
     const current = this.wallet();
     if (current) this.wallet.set({ ...current, balance: { ...balance, total: balance.free + balance.paid } });
   }
 
   setWallet(wallet: WalletSummary): void {
     this.wallet.set(wallet);
+    this.live.set({ free: wallet.balance.free, paid: wallet.balance.paid });
   }
 
   async notifyMe(): Promise<void> {

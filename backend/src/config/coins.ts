@@ -27,8 +27,16 @@ export interface CoinConfig {
   freeAssists: { fieldFixPerListing: number; autofillPerListingPerMarketplace: number; perUserPerDay: number };
   ai: {
     listingModel: string;
+    /** MINIMAL | LOW | MEDIUM | HIGH — lower is faster. */
+    listingThinkingLevel: string;
+    listingMaxOutputTokens: number;
     assistModel: string;
+    assistThinkingLevel: string;
     fieldFixMaxOutputTokens: number;
+    /** Send one backup field-fix request if the first takes longer than this (0 = off). */
+    fieldFixHedgeAfterMs: number;
+    /** At most this many backup field-fix requests. */
+    fieldFixMaxBackups: number;
     autofillMaxOutputTokens: number;
     usdToInr: number;
     pricePerMillionTokensUsd: Record<string, { input: number; output: number }>;
@@ -55,9 +63,14 @@ const DEFAULTS: CoinConfig = {
   referral: { reward: 10, maxRewardsPerReferrerPerMonth: 20, reverseIfDeletedWithinDays: 7, baseUrl: 'https://sellassist.in/' },
   freeAssists: { fieldFixPerListing: 10, autofillPerListingPerMarketplace: 3, perUserPerDay: 60 },
   ai: {
-    listingModel: 'gemini-3-flash-preview',
+    listingModel: 'gemini-3.1-flash-lite',
+    listingThinkingLevel: 'MINIMAL',
+    listingMaxOutputTokens: 12000,
     assistModel: 'gemini-3.1-flash-lite',
+    assistThinkingLevel: 'MINIMAL',
     fieldFixMaxOutputTokens: 400,
+    fieldFixHedgeAfterMs: 2000,
+    fieldFixMaxBackups: 2,
     autofillMaxOutputTokens: 1500,
     usdToInr: 88,
     pricePerMillionTokensUsd: {},

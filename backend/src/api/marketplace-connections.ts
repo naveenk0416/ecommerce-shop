@@ -4,6 +4,8 @@ import { authMiddleware } from './auth.js';
 import { ensureConnected, AmazonAuthState, MarketplaceConnection, Listing } from './common.js';
 import { encryptToken } from '../utils/token-crypto.js';
 import { grantBonusSafely } from '../utils/wallet.js';
+import { publicApiUrl } from '../utils/public-url.js';
+import { setCoinBalanceHeader } from '../utils/coin-header.js';
 import { User } from './common.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
@@ -597,7 +599,7 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
     // Always set by the backend (never taken from the dialog) so it can't be overridden by a
     // malformed form value.
     if (listing.processedImage || listing.originalImage) {
-      attributes['main_product_image_locator'] = buildMainImageLocator(`${backendUrl()}/api/listings/${listing._id.toString()}/image.jpg`);
+      attributes['main_product_image_locator'] = buildMainImageLocator(`${publicApiUrl()}/api/listings/${listing._id.toString()}/image.jpg`);
     }
 
     const result = await createAmazonListing(
@@ -646,6 +648,7 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
     await Listing.findOneAndUpdate({ _id: listing._id }, { $set: { sku, source: 'amazon', listingStatus: 'ACTIVE' } });
     // +5 coins for the first successful publish (only reached after the marketplace accepted it).
     await grantBonusSafely(uid, 'firstPublish');
+    await setCoinBalanceHeader(res, uid);
     res.json({ ok: true, sku });
   } catch (err: any) {
     if (err instanceof AmazonReauthorizationRequiredError) {
@@ -719,7 +722,7 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
     // never actually attached on Amazon's side self-heal on the next Publish click — see the
     // imageUrl param's comment in updateAmazonListingPriceAndQuantity for why that can happen.
     const imageUrl = (listing.processedImage || listing.originalImage)
-      ? `${backendUrl()}/api/listings/${listing._id.toString()}/image.jpg`
+      ? `${publicApiUrl()}/api/listings/${listing._id.toString()}/image.jpg`
       : undefined;
 
     const result = await updateAmazonListingPriceAndQuantity(
@@ -742,6 +745,7 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
     }
     // +5 coins for the first successful publish (only reached after the marketplace accepted it).
     await grantBonusSafely(uid, 'firstPublish');
+    await setCoinBalanceHeader(res, uid);
     res.json({ ok: true });
   } catch (err: any) {
     if (err instanceof AmazonReauthorizationRequiredError) {
@@ -785,6 +789,7 @@ router.post('/flipkart/publish/:listingId', authMiddleware, async (req, res) => 
     }
     // +5 coins for the first successful publish (only reached after the marketplace accepted it).
     await grantBonusSafely(uid, 'firstPublish');
+    await setCoinBalanceHeader(res, uid);
     res.json({ ok: true });
   } catch (err: any) {
     if (err instanceof FlipkartReauthorizationRequiredError) {

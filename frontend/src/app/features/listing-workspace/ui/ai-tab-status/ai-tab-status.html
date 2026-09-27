@@ -13,7 +13,7 @@
   <app-ui-card [elevated]="true">
     <div class="ai-tab-status">
       <mat-spinner diameter="28" />
-      <p>{{ analyzingLabel() }}</p>
+      <p role="status" aria-live="polite">{{ analyzingLabel() }}</p>
     </div>
   </app-ui-card>
 } @else if (error()) {
@@ -25,6 +25,9 @@
         <mat-icon>refresh</mat-icon>
         Retry
       </button>
+      @if (retryNote()) {
+        <span class="ai-tab-status__note">{{ retryNote() }}</span>
+      }
     </div>
   </app-ui-card>
 }

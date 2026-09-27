@@ -3,12 +3,11 @@ import { authMiddleware } from './auth.js';
 import { ensureConnected, Listing, ListingDraft, Sale } from './common.js';
 import { gstFieldsFor, normalizeListingNumbers, parseAmount } from '../utils/listing-fields.js';
 import { ensureWallet, grantBonus } from '../utils/wallet.js';
+import { ownImageUrl, publicApiUrl } from '../utils/public-url.js';
+import { setCoinBalanceHeader } from '../utils/coin-header.js';
 
 const router = express.Router();
 
-function backendUrl() {
-  return (process.env['BACKEND_URL'] || 'http://localhost:4000').replace(/\/$/, '');
-}
 
 // Matches URLs produced by listImageUrl below — used to stop a client that echoes a listing
 // fetched from the list endpoint back in a PATCH from overwriting the stored base64 image with
@@ -16,7 +15,26 @@ function backendUrl() {
 const OWN_IMAGE_URL = /\/api\/listings\/[^/]+\/image\.jpg/;
 
 function listImageUrl(id: string, variant: 'original' | 'processed', version: number) {
-  return `${backendUrl()}/api/listings/${id}/image.jpg?variant=${variant}&v=${version}`;
+  return `${publicApiUrl()}/api/listings/${id}/image.jpg?variant=${variant}&v=${version}`;
+}
+
+// A draft's own image URL (…/api/drafts/<id>/image.jpg, on any host).
+const DRAFT_IMAGE_URL = /\/api\/drafts\/([a-f0-9]{24})\/image\.jpg/i;
+
+/**
+ * "Save to Inventory" from an opened listing sends the draft's image URL. Store a copy of the
+ * draft's actual image instead, so the inventory item never depends on another URL (or host);
+ * any other stored URL on the old Render host is moved to our own domain.
+ */
+async function resolveImageField(value: unknown, uid: string): Promise<unknown> {
+  if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return value;
+  const draftId = DRAFT_IMAGE_URL.exec(value)?.[1];
+  if (draftId) {
+    const draft = await ListingDraft.findOne({ _id: draftId, uid }).select('image').lean();
+    const image = (draft as any)?.image;
+    if (typeof image === 'string' && image.startsWith('data:')) return image;
+  }
+  return ownImageUrl(value);
 }
 
 // For a stored image field: base64 data URIs are swapped for a marker + length inside Mongo so
@@ -40,7 +58,7 @@ function toClientListing(doc: any) {
   const obj = typeof doc?.toObject === 'function' ? doc.toObject({ virtuals: true }) : { ...doc };
   const id = obj._id?.toString();
   const asUrl = (variant: 'original' | 'processed', value: unknown) =>
-    typeof value === 'string' && value.startsWith('data:') ? listImageUrl(id, variant, value.length) : value;
+    typeof value === 'string' && value.startsWith('data:') ? listImageUrl(id, variant, value.length) : ownImageUrl(value);
   return { ...obj, id, originalImage: asUrl('original', obj.originalImage), processedImage: asUrl('processed', obj.processedImage) };
 }
 
@@ -67,7 +85,7 @@ router.get('/', authMiddleware, async (req, res) => {
       { $addFields: { originalImage: imageProjection('originalImage'), processedImage: imageProjection('processedImage') } },
     ]);
     const toUrl = (id: string, variant: 'original' | 'processed', value: any) =>
-      value && typeof value === 'object' && '__dataLen' in value ? listImageUrl(id, variant, value.__dataLen) : value;
+      value && typeof value === 'object' && '__dataLen' in value ? listImageUrl(id, variant, value.__dataLen) : ownImageUrl(value);
     res.json(listings.map((listing) => {
       const id = listing._id?.toString();
       return {
@@ -144,7 +162,7 @@ router.get('/:id/image.jpg', async (req, res) => {
     }
 
     if (/^https?:\/\//i.test(source)) {
-      res.redirect(source);
+      res.redirect(ownImageUrl(source));
       return;
     }
 
@@ -155,7 +173,8 @@ router.get('/:id/image.jpg', async (req, res) => {
     }
     const [, contentType, base64Data] = match;
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // Versioned URLs (?v=…) change whenever the image changes, so browsers may keep them forever.
+    res.setHeader('Cache-Control', req.query['v'] ? 'public, max-age=31536000, immutable' : 'public, max-age=86400');
     res.send(Buffer.from(base64Data, 'base64'));
   } catch (err: any) {
     console.error('Serve listing image error', err);
@@ -184,6 +203,9 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 
   try {
+    for (const field of ['originalImage', 'processedImage']) {
+      if (body[field] !== undefined) body[field] = await resolveImageField(body[field], authUser._id.toString());
+    }
     const listing = new Listing({
       ...body,
       ...values,
@@ -195,6 +217,7 @@ router.post('/', authMiddleware, async (req, res) => {
     // +3 coins for the first product saved to inventory (once per account).
     const uid = authUser._id.toString();
     await ensureWallet(uid).then(() => grantBonus(uid, 'firstInventorySave')).catch((err) => console.error('[wallet] inventory bonus failed', err));
+    await setCoinBalanceHeader(res, uid);
     res.json(toClientListing(listing));
   } catch (err: any) {
     console.error('Save listing error', err);
@@ -232,6 +255,9 @@ router.patch('/:id', authMiddleware, async (req, res) => {
       if (typeof (updates as any)[field] === 'string' && OWN_IMAGE_URL.test((updates as any)[field])) {
         delete (updates as any)[field];
       }
+    }
+    for (const field of ['originalImage', 'processedImage']) {
+      if ((updates as any)[field] !== undefined) (updates as any)[field] = await resolveImageField((updates as any)[field], authUser._id.toString());
     }
 
     for (const field of SERVER_GST_FIELDS) delete (updates as any)[field];

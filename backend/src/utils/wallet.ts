@@ -206,7 +206,7 @@ export async function ensureWallet(uid: string): Promise<void> {
         await credit(uid, {
           type: 'monthly_topup',
           amount: target - before.free,
-          reason: `Monthly free coins (topped up to ${target})`,
+          reason: `Topped up to ${target} free coins on ${new Intl.DateTimeFormat('en-IN', { timeZone: coinConfig.timezone, day: 'numeric', month: 'short' }).format(new Date())}`,
           key: `topup:${month}`,
         });
       }

@@ -179,6 +179,7 @@ async function computeStats(filters: Filters) {
       inputTokens: { $sum: '$inputTokens' },
       outputTokens: { $sum: '$outputTokens' },
       costInr: { $sum: '$costInr' },
+      avgMs: { $avg: '$durationMs' },
     } },
     { $sort: { _id: 1 } },
   ]);
@@ -235,6 +236,7 @@ async function computeStats(filters: Filters) {
         inputTokens: row.inputTokens,
         outputTokens: row.outputTokens,
         costInr: Math.round(row.costInr * 100) / 100,
+        avgSeconds: row.avgMs ? Math.round(row.avgMs / 100) / 10 : null,
       })),
     },
   };
