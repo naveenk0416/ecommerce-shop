@@ -534,14 +534,16 @@ export class CreateAmazonListingDialog {
 
   /** Builds the JSON schema Gemini must answer against — one property per currently-rendered
    * input, keyed to line back up with fieldValues/quantityAttributes/compositeAttributes in
-   * applyAiSuggestions. Select-kind fields get a JSON-schema enum so Gemini can only pick one of
-   * Amazon's own allowed values rather than inventing something invalid. */
+   * applyAiSuggestions. Deliberately no JSON-schema enums: Amazon's option lists are large (e.g.
+   * ~250 country codes) and across a few dozen fields Gemini rejects the schema outright with a
+   * bare "Request contains an invalid argument." The prompt already lists each field's allowed
+   * options, and applyAiSuggestions drops any answer that isn't one of them. */
   private buildAiSchema(): { properties: Record<string, unknown>; required: string[] } {
     const properties: Record<string, unknown> = {};
     const required: string[] = [];
 
     for (const field of this.requiredFields()) {
-      properties[field.name] = field.options?.length ? { type: 'string', enum: field.options } : { type: 'string' };
+      properties[field.name] = { type: 'string' };
       required.push(field.name);
     }
     for (const qa of this.quantityAttributes()) {
@@ -551,7 +553,7 @@ export class CreateAmazonListingDialog {
         required.push(valueKey);
         if (axis.unitOptions.length > 1) {
           const unitKey = `${valueKey}__unit`;
-          properties[unitKey] = { type: 'string', enum: axis.unitOptions };
+          properties[unitKey] = { type: 'string' };
           required.push(unitKey);
         }
       }
@@ -559,7 +561,7 @@ export class CreateAmazonListingDialog {
     for (const ca of this.compositeAttributes()) {
       for (const sf of ca.subFields) {
         const key = `${ca.name}__${sf.key}`;
-        properties[key] = sf.options?.length ? { type: 'string', enum: sf.options } : { type: sf.kind === 'number' ? 'number' : 'string' };
+        properties[key] = { type: sf.kind === 'number' ? 'number' : 'string' };
         required.push(key);
       }
     }
@@ -636,13 +638,24 @@ export class CreateAmazonListingDialog {
     return lines.join('\n');
   }
 
+  /** Maps a Gemini answer onto one of the field's allowed options (case-insensitively, returning
+   * Amazon's exact spelling), or undefined when it isn't one — the schema no longer enforces
+   * enums, so this is what keeps invented values out of select fields. Free-text fields (no
+   * options) pass through as-is. */
+  private matchOption(suggestion: string | number | undefined, options?: string[]): string | undefined {
+    if (suggestion === undefined || suggestion === null) return undefined;
+    const value = String(suggestion).trim();
+    if (!options?.length) return value;
+    return options.find((o) => o === value) ?? options.find((o) => o.toLowerCase() === value.toLowerCase());
+  }
+
   private applyAiSuggestions(result: Record<string, string | number>): void {
     this.fieldValues.update((values) => {
       const next = { ...values };
       for (const field of this.requiredFields()) {
         if ((next[field.name] || '').trim()) continue; // don't clobber what's already filled in
-        const suggestion = result[field.name];
-        if (suggestion !== undefined) next[field.name] = String(suggestion);
+        const suggestion = this.matchOption(result[field.name], field.options);
+        if (suggestion !== undefined) next[field.name] = suggestion;
       }
       return next;
     });
@@ -652,7 +665,7 @@ export class CreateAmazonListingDialog {
       axes: qa.axes.map((axis) => {
         const valueKey = `${qa.name}__${axis.key}`;
         const suggestedValue = result[valueKey];
-        const suggestedUnit = result[`${valueKey}__unit`];
+        const suggestedUnit = axis.unitOptions.length > 1 ? this.matchOption(result[`${valueKey}__unit`], axis.unitOptions) : undefined;
         return {
           ...axis,
           value: axis.value > 0 ? axis.value : (typeof suggestedValue === 'number' ? suggestedValue : axis.value),
@@ -665,8 +678,8 @@ export class CreateAmazonListingDialog {
       ...ca,
       subFields: ca.subFields.map((sf) => {
         if (sf.value.trim()) return sf; // don't clobber what's already filled in
-        const suggestion = result[`${ca.name}__${sf.key}`];
-        return suggestion !== undefined ? { ...sf, value: String(suggestion) } : sf;
+        const suggestion = this.matchOption(result[`${ca.name}__${sf.key}`], sf.options);
+        return suggestion !== undefined ? { ...sf, value: suggestion } : sf;
       }),
     })));
   }
