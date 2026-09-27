@@ -7,6 +7,7 @@ import {
 import { Listing, ListingService, Sale } from './services/listing';
 import { AuthService } from './services/auth';
 import { parsePrice } from './utils/price';
+import { ALL_GST_RATES } from './config/gst-rates';
 import { addIcons } from 'ionicons';
 import {
   cube, cubeOutline, search, refresh,
@@ -28,6 +29,7 @@ import {
   styleUrl: './products.css'
 })
 export class Products {
+  readonly gstRates = ALL_GST_RATES;
   public auth = inject(AuthService);
   private listingService = inject(ListingService);
   private toastController = inject(ToastController, { optional: true });

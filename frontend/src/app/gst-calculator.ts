@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { chevronDown, swapVertical } from 'ionicons/icons';
+import { GST_EFFECTIVE_DATE, GST_SLABS } from './config/gst-rates';
 
 @Component({
   selector: 'app-gst-calculator',
@@ -46,13 +47,11 @@ import { chevronDown, swapVertical } from 'ionicons/icons';
               <label for="gst-pct-select" class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 ml-1">GST Logic</label>
               <div class="relative">
                 <select id="gst-pct-select"
-                        (change)="gstRate.set($any($event).target.value)"
+                        (change)="gstRate.set(+$any($event).target.value)"
                         class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 text-xl font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-950/5 focus:bg-white transition-all appearance-none cursor-pointer">
-                  <option value="0">0% Zero Rated</option>
-                  <option value="5" selected>5% Basic</option>
-                  <option value="12">12% Standard</option>
-                  <option value="18">18% Standard+</option>
-                  <option value="28">28% Luxury</option>
+                  @for (slab of slabs; track slab.rate) {
+                    <option [value]="slab.rate" [selected]="slab.rate === gstRate()">{{ slab.label }}</option>
+                  }
                 </select>
                 <div class="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
                    <ion-icon name="chevron-down" class="text-slate-400"></ion-icon>
@@ -189,7 +188,7 @@ import { chevronDown, swapVertical } from 'ionicons/icons';
         <article class="space-y-4 pt-8 border-t border-slate-100">
           <h2 class="text-2xl font-black text-slate-900 tracking-tight">More on GST</h2>
           <p class="text-slate-600 leading-relaxed font-medium">
-            GST was implemented primarily to bring uniformity to tax collection. Under the GST regime, tax is collected cumulatively at the final stage of the production of goods or services. As per the GST 2.0 updates, there are four GST slabs—0%, 5%, 18%, and 40% with different goods and services taxed at different rates.
+            GST was implemented primarily to bring uniformity to tax collection. Under the GST regime, tax is collected cumulatively at the final stage of the production of goods or services. Under GST 2.0 (effective {{ effectiveDate }}; 12% and 28% were removed for almost all goods), there are four GST slabs—0%, 5%, 18%, and 40% with different goods and services taxed at different rates.
           </p>
         </article>
       </div>
@@ -200,6 +199,9 @@ export class GstCalculator {
   constructor() {
     addIcons({ chevronDown, swapVertical });
   }
+
+  readonly slabs = GST_SLABS;
+  readonly effectiveDate = GST_EFFECTIVE_DATE;
 
   amount = signal<number>(0);
   gstRate = signal<number>(18);

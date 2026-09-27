@@ -20,6 +20,21 @@ const userSchema = new mongoose.Schema({
   displayName: { type: String },
   phoneNumber: { type: String, unique: true, sparse: true },
   gstNumber: { type: String },
+  state: { type: String },
+  city: { type: String },
+  sellsOn: { type: [String], default: undefined },
+  termsAcceptedAt: { type: Date },
+  signupAt: { type: Date },
+  // First-touch campaign attribution captured on the landing URL (e.g. utm_campaign=surat_hindi).
+  attribution: {
+    utm_source: { type: String },
+    utm_medium: { type: String },
+    utm_campaign: { type: String },
+    utm_content: { type: String },
+    fbclid: { type: String },
+    landingPath: { type: String },
+    capturedAt: { type: String },
+  },
   role: { type: String, default: 'FREE' },
   usageCount: { type: Number, default: 0 },
   dailyStats: {

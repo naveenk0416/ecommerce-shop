@@ -54,7 +54,7 @@
               "sourceMap": true
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "production"
         },
         "build-static": {
           "builder": "@angular/build:application",

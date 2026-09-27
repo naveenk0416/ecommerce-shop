@@ -51,12 +51,12 @@
 
   .hero-section::before {
     content: "";
-    @apply absolute -top-40 -right-40 w-[600px] h-[600px] bg-orange-100 rounded-full blur-[120px] opacity-40;
+    @apply absolute -top-40 -right-40 w-[600px] h-[600px] bg-orange-100 rounded-full blur-[120px] opacity-40 pointer-events-none;
   }
 
   .hero-section::after {
     content: "";
-    @apply absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-red-100 rounded-full blur-[120px] opacity-30;
+    @apply absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-red-100 rounded-full blur-[120px] opacity-30 pointer-events-none;
   }
 
   .badge {

@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect, computed, isDevMode } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Title, Meta } from '@angular/platform-browser';
-import { Router, NavigationEnd, RouterOutlet } from '@angular/router';
+import { Router, NavigationEnd, RouterOutlet, RouterLink } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { IonApp, IonHeader, IonToolbar, IonContent,
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle,
@@ -11,7 +11,7 @@ import { IonApp, IonHeader, IonToolbar, IonContent,
   ToastController, AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, personCircle, pencil, save, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, eyeOff, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, storefront, linkOutline, unlink, heart, trendingUp } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, menu, logoWhatsapp, personCircle, pencil, save, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, eyeOff, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, storefront, linkOutline, unlink, heart, trendingUp } from 'ionicons/icons';
 import { GeminiService, ProductDetails } from './services/gemini';
 import { AuthService } from './services/auth';
 import { ListingService, Listing } from './services/listing';
@@ -27,13 +27,17 @@ import { parsePrice } from './utils/price';
 import { apiFetch, ApiError } from './services/api';
 import { PasswordField } from './ui/password-field/password-field';
 import { PasswordStrength } from './ui/password-strength/password-strength';
+import { loadRazorpay } from './utils/razorpay';
+import { AnalyticsService } from './services/analytics';
+import { GSTIN_RE, INDIAN_MOBILE_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS } from './config/signup-options';
+import { BUSINESS, WHATSAPP_NUMBER, WHATSAPP_PREFILL } from './config/site-config';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, Landing, Products, AdminComponent, GstCalculator, ImageEditor, RouterOutlet,
+    CommonModule, FormsModule, Landing, Products, AdminComponent, GstCalculator, ImageEditor, RouterOutlet, RouterLink,
     IonApp, IonHeader, IonToolbar, IonContent,
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle,
     IonLabel, IonSpinner,
@@ -55,6 +59,7 @@ export class App {
   private titleService = inject(Title);
   private metaService = inject(Meta);
   private router = inject(Router);
+  private analytics = inject(AnalyticsService);
 
   showLanding = signal(true);
   selectedImage = signal<string | null>(null);
@@ -67,7 +72,8 @@ export class App {
   isSaving = signal(false);
   productDetails = signal<ProductDetails | null>(null);
   activeTab = signal<string>('details');
-  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst' | 'workspace'>('home');
+  /** 'page' = public routed content (legal pages, contact, 404) rendered through <router-outlet>. */
+  mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst' | 'workspace' | 'page'>('home');
   currentPath = signal<string>('');
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
@@ -84,21 +90,29 @@ export class App {
   // Auth Form State
   email = signal('');
   password = signal('');
-  confirmPassword = signal('');
   rememberMe = signal(true);
 
   // Additional Registration Fields
   regName = signal('');
   regPhone = signal('');
   regGST = signal('');
+  regState = signal('');
+  regCity = signal('');
+  regSellsOn = signal<string[]>([]);
+  regTermsAccepted = signal(false);
+  readonly indianStates = INDIAN_STATES_AND_UTS;
+  readonly sellingChannels = SELLING_CHANNELS;
 
-  // Real-time validation — only shown once a field has been touched, so errors don't appear
-  // before the user has had a chance to type anything.
+  // Errors are never shown before the user interacts: a field's format error appears once it
+  // has been blurred with something typed in it, and "required" errors only after a submit
+  // attempt (autofocus + clicking elsewhere must not flash "Email is required").
   emailTouched = signal(false);
   passwordTouched = signal(false);
   nameTouched = signal(false);
   phoneTouched = signal(false);
-  confirmPasswordTouched = signal(false);
+  gstTouched = signal(false);
+  cityTouched = signal(false);
+  submitAttempted = signal(false);
 
   emailError = computed(() => {
     const value = this.email().trim();
@@ -109,32 +123,49 @@ export class App {
 
   nameError = computed(() => (this.regName().trim().length < 2 ? 'Enter your full name.' : ''));
 
-  /** Mobile number is optional (matches the backend), but its format is validated when provided. */
+  /** Mobile number is optional (matches the backend), but must be a valid Indian mobile if given. */
   phoneError = computed(() => {
     const digits = this.regPhone().replace(/\D/g, '');
     if (!digits) return '';
-    if (digits.length !== 10) return 'Mobile number must be exactly 10 digits.';
+    if (!INDIAN_MOBILE_RE.test(digits)) return 'Enter a valid 10-digit Indian mobile number.';
     return '';
   });
+
+  /** GST number is optional, but must be a well-formed GSTIN if given. */
+  gstError = computed(() => {
+    const value = this.regGST().trim().toUpperCase();
+    if (!value) return '';
+    return GSTIN_RE.test(value) ? '' : 'Enter a valid 15-character GSTIN (e.g. 24ABCDE1234F1Z5).';
+  });
+
+  stateError = computed(() => (this.indianStates.includes(this.regState()) ? '' : 'Select your state.'));
+  cityError = computed(() => (this.regCity().trim() ? '' : 'Enter your city.'));
+  termsError = computed(() => (this.regTermsAccepted() ? '' : 'Please agree to the Terms and Privacy Policy.'));
 
   /** Kept in sync with the backend's STRONG_PASSWORD_RE in auth.ts. */
   passwordValid = computed(() => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(this.password()));
 
-  confirmPasswordError = computed(() => {
-    if (!this.confirmPassword()) return '';
-    return this.confirmPassword() !== this.password() ? 'Passwords do not match.' : '';
-  });
-
-  /** Gates the register button — every rule must pass before submission is allowed. */
+  /** Every rule must pass before the registration request is sent. */
   registrationValid = computed(
     () =>
       !this.emailError() &&
       !this.nameError() &&
       !this.phoneError() &&
-      this.passwordValid() &&
-      this.confirmPassword() === this.password() &&
-      !!this.confirmPassword(),
+      !this.gstError() &&
+      !this.stateError() &&
+      !this.cityError() &&
+      !this.termsError() &&
+      this.passwordValid(),
   );
+
+  /** Whether a field's error may be shown yet: after a submit attempt, or after blur with input. */
+  showFieldError(touched: boolean, value: string): boolean {
+    return this.submitAttempted() || (touched && value.trim().length > 0);
+  }
+
+  toggleSellsOn(channel: string, checked: boolean) {
+    this.regSellsOn.update((list) => (checked ? [...new Set([...list, channel])] : list.filter((c) => c !== channel)));
+  }
 
   loginValid = computed(() => !this.emailError() && this.password().length > 0);
 
@@ -176,25 +207,15 @@ export class App {
   pendingAmazonLogin = signal<{ callbackUri: string; state: string } | null>(null);
   resumingAmazonLogin = signal(false);
 
-  private async ensureRazorpayScript() {
-    if (!isPlatformBrowser(this.platformId)) {
-      throw new Error('Checkout is only available in the browser.');
-    }
+  readonly business = BUSINESS;
+  readonly currentYear = new Date().getFullYear();
+  readonly whatsappUrl = WHATSAPP_NUMBER
+    ? `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_PREFILL)}`
+    : '';
+  mobileMenuOpen = signal(false);
 
-    if ((window as Window & { Razorpay?: new (options: unknown) => { open: () => void } }).Razorpay) {
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-
-    await new Promise<void>((resolve, reject) => {
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Unable to load Razorpay checkout script.'));
-      document.body.appendChild(script);
-    });
-  }
+  /** The "Pay ₹499" Razorpay test box is for developers only — never rendered in production builds. */
+  readonly showPaymentDemo = isDevMode();
 
   async startRazorpayCheckout() {
     if (!isPlatformBrowser(this.platformId)) {
@@ -205,7 +226,7 @@ export class App {
     this.checkoutMessage.set(null);
 
     try {
-      await this.ensureRazorpayScript();
+      const RazorpayConstructor = await loadRazorpay();
 
       const { key_id } = await apiFetch<{ key_id: string }>('/razorpay-config');
 
@@ -249,10 +270,6 @@ export class App {
         },
       };
 
-      const RazorpayConstructor = (window as Window & { Razorpay?: new (options: unknown) => { open: () => void } }).Razorpay;
-      if (!RazorpayConstructor) {
-        throw new Error('Razorpay is not available.');
-      }
       const razorpay = new RazorpayConstructor(options);
       razorpay.open();
     } catch (error) {
@@ -263,7 +280,8 @@ export class App {
     }
   }
 
-  private syncViewWithUrl(path: string) {
+  private syncViewWithUrl(url: string) {
+    const path = url.split(/[?#]/)[0] || '/';
     this.currentPath.set(path);
     if (path === '/' || path === '/home') {
       this.showLanding.set(true);
@@ -276,8 +294,12 @@ export class App {
       else if (path === '/settings') { this.mainView.set('settings'); this.loadMarketplaceConnections(); }
       else if (path.startsWith('/optimize')) this.mainView.set('workspace');
       else if (path.startsWith('/workspace/')) this.mainView.set('workspace');
+      else if (!App.SHELL_PATHS.has(path)) this.mainView.set('page');
     }
   }
+
+  /** Paths the shell renders itself from window.location; everything else unknown is a routed page (legal pages or the 404). */
+  private static readonly SHELL_PATHS = new Set(['/reset-password', '/forgot-password', '/verify-email']);
 
   async sendPasswordResetEmail() {
     this.authError.set(null);
@@ -351,7 +373,7 @@ export class App {
   }
 
   constructor() {
-    addIcons({calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,arrowForward,sparkles,cloudUpload,colorPalette,image,pencil,save,time,add,albumsOutline,search,logoAmazon,storefront,linkOutline,unlink,flash,heart,eye,eyeOff,trash,trendingUp,logoFacebook,logoInstagram,logoTwitter,list,camera,pricetag,copy,checkmark,logIn,logOutOutline,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
+    addIcons({menu,logoWhatsapp,calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,arrowForward,sparkles,cloudUpload,colorPalette,image,pencil,save,time,add,albumsOutline,search,logoAmazon,storefront,linkOutline,unlink,flash,heart,eye,eyeOff,trash,trendingUp,logoFacebook,logoInstagram,logoTwitter,list,camera,pricetag,copy,checkmark,logIn,logOutOutline,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
     
     // Subscribe to route changes
     this.router.events.pipe(
@@ -361,6 +383,8 @@ export class App {
     });
 
     if (isPlatformBrowser(this.platformId)) {
+      this.analytics.init();
+
       // URL Sync Logic
       this.syncViewWithUrl(window.location.pathname);
 
@@ -446,6 +470,8 @@ export class App {
       effect(() => {
         const view = this.mainView();
         const landing = this.showLanding();
+        // Routed pages set their own title via the route's `title`.
+        if (view === 'page' && !landing) return;
         let title = 'SellAssist - AI-Powered Selling Partner';
         let description = 'Empowering Indian sellers with AI-driven product optimization and inventory management.';
 
@@ -865,8 +891,7 @@ export class App {
   }
 
   async loginWithEmail() {
-    this.emailTouched.set(true);
-    this.passwordTouched.set(true);
+    this.submitAttempted.set(true);
     this.authError.set(null);
     this.showResendVerification.set(false);
     // Inline field errors (from the touched flags above) already cover this — no need to repeat
@@ -890,15 +915,11 @@ export class App {
   }
 
   async register() {
-    this.emailTouched.set(true);
-    this.passwordTouched.set(true);
-    this.nameTouched.set(true);
-    this.phoneTouched.set(true);
-    this.confirmPasswordTouched.set(true);
+    this.submitAttempted.set(true);
     this.authError.set(null);
 
-    // Inline field errors (from the touched flags above) already cover this — no need to repeat
-    // the same message in the alert box below.
+    // Inline field errors (shown now that submitAttempted is set) already cover this — no need
+    // to repeat the same message in the alert box below.
     if (!this.registrationValid()) {
       return;
     }
@@ -909,8 +930,14 @@ export class App {
       await this.auth.registerWithEmail(registeredEmail, this.password(), {
         displayName: this.regName().trim(),
         phoneNumber: this.regPhone().replace(/\D/g, ''),
-        gstNumber: this.regGST().trim(),
+        gstNumber: this.regGST().trim().toUpperCase(),
+        state: this.regState(),
+        city: this.regCity().trim(),
+        sellsOn: this.regSellsOn(),
+        termsAccepted: this.regTermsAccepted(),
+        attribution: this.analytics.getAttribution(),
       });
+      this.analytics.trackSignUp();
       this.resetAuthForm();
       this.verificationPendingEmail.set(registeredEmail);
     } catch (error: unknown) {
@@ -1012,16 +1039,21 @@ export class App {
   private resetAuthForm() {
     this.email.set('');
     this.password.set('');
-    this.confirmPassword.set('');
     this.regName.set('');
     this.regPhone.set('');
     this.regGST.set('');
+    this.regState.set('');
+    this.regCity.set('');
+    this.regSellsOn.set([]);
+    this.regTermsAccepted.set(false);
     this.isRegistering.set(false);
     this.emailTouched.set(false);
     this.passwordTouched.set(false);
     this.nameTouched.set(false);
     this.phoneTouched.set(false);
-    this.confirmPasswordTouched.set(false);
+    this.gstTouched.set(false);
+    this.cityTouched.set(false);
+    this.submitAttempted.set(false);
   }
 
   private getAuthErrorMessage(code: string): string {
@@ -1050,8 +1082,24 @@ export class App {
     }
   }
 
+  openSignIn() {
+    this.showLanding.set(false);
+    this.isRegistering.set(false);
+    this.submitAttempted.set(false);
+    this.mainView.set('home');
+  }
+
+  /** Every "Start Free / Get Started / Create your free account" button lands here. */
+  startSignup(source: string) {
+    this.analytics.trackLead(source);
+    this.showLanding.set(false);
+    this.isRegistering.set(true);
+    this.mainView.set('home');
+  }
+
   toggleRegister() {
     this.isRegistering.set(!this.isRegistering());
+    this.submitAttempted.set(false);
     this.authError.set(null);
     this.showResendVerification.set(false);
     this.resendVerificationSent.set(false);

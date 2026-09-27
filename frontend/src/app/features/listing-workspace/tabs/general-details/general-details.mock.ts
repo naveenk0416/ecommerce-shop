@@ -122,7 +122,7 @@ export const GENERAL_DETAILS_SUGGESTIONS: Record<string, string[]> = {
   packer: ['Sellassist Manufacturing Co.', 'Sellassist Packing Unit', 'Generic Packer'],
   countryOfOrigin: ['India', 'China', 'Vietnam'],
   hsn: ['9615', '9615 10', '9615 90'],
-  gst: ['18%', '12%', '5%'],
+  gst: ['5%', '18%'],
   mrp: ['699', '749', '649'],
   sellingPrice: ['499', '529', '469'],
   discountPercent: ['29%', '25%', '33%'],

@@ -396,10 +396,9 @@
                     <div class="relative group" [class.opacity-50]="!auth.isPro()">
                       <select id="tax-index" [(ngModel)]="newProduct.gstRate" [disabled]="!auth.isPro()" 
                               class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold appearance-none focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
-                        <option value="5%">5% GST</option>
-                        <option value="12%">12% GST</option>
-                        <option value="18%">18% GST</option>
-                        <option value="28%">28% GST</option>
+                        @for (rate of gstRates; track rate) {
+                          <option [value]="rate + '%'">{{ rate }}% GST</option>
+                        }
                       </select>
                       <ion-icon name="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></ion-icon>
                     </div>

@@ -9,6 +9,7 @@ import { MEESHO_LISTING_SECTIONS } from '../features/listing-workspace/tabs/mees
 import { INSTAGRAM_CONTENT_SECTIONS } from '../features/listing-workspace/tabs/instagram-content/instagram-content.mock';
 import { FieldConfig } from '../features/listing-workspace/models/field-section.model';
 import { LISTING_SUMMARY_FIELDS } from '../features/optimize/listing-summary.model';
+import { gstPromptGuidance } from '../config/gst-rates';
 
 /**
  * Turns a Gemini SDK error (often a raw JSON error body as the Error message) into a short,
@@ -114,6 +115,11 @@ export class GeminiService {
     });
 
     prompt += `\nReturn the data in the specified JSON format. Ensure HSN code is consistently chosen based on the most accurate Indian GST classification for this specific product category.`;
+    if (isPro) {
+      prompt += `
+
+${gstPromptGuidance()}`;
+    }
 
     // Build Dynamic Schema
     const properties: Record<string, unknown> = {};
@@ -297,7 +303,8 @@ export class GeminiService {
         category).
       - hsn: determine from category, sub-category, product type, and material with high
         confidence.
-      - gst: determine the applicable GST percentage based on the HSN code.
+      - gst: determine the applicable GST percentage based on the HSN code, following the GST 2.0
+        rules below.
       - category, subCategory, productType: classify with high confidence based on visual
         inspection.
       - material: estimate the most likely material (for example Brass, Cotton, Plastic, Steel,
@@ -327,6 +334,8 @@ export class GeminiService {
       - "reason": one short sentence explaining how the value was determined or estimated.
 
       Never omit a field and never return an empty string as a primary value.
+
+      ${gstPromptGuidance()}
 
       Fields:
       ${fieldList}

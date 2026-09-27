@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonBadge } from '@ionic/angular/standalone';
 import { AuthService } from './services/auth';
 import { apiFetch } from './services/api';
+import { loadRazorpay } from './utils/razorpay';
 import { addIcons } from 'ionicons';
 import { checkmarkCircle, sparkles, rocket, flash, star, close } from 'ionicons/icons';
 
@@ -143,12 +144,8 @@ export class Pricing {
       return;
     }
 
-    if (typeof Razorpay === 'undefined') {
-      alert('Payment system is loading. Please try again in a few seconds.');
-      return;
-    }
-
     try {
+      const Razorpay = await loadRazorpay();
       const { key_id } = await apiFetch<{ key_id: string }>('/razorpay-config');
       if (!key_id) {
         alert('Payment system is not configured. Please contact support.');

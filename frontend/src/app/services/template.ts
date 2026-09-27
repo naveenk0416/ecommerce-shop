@@ -33,7 +33,7 @@ const DEFAULT_TEMPLATES: PlatformTemplate[] = [
       { id: 'priceINR', label: 'Price (INR)', enabled: true, order: 2, type: 'string' },
       { id: 'sellingPrice', label: 'Selling Price (Raw Number)', enabled: true, order: 3, type: 'string' },
       { id: 'costPrice', label: 'Cost Price (Raw Number)', enabled: false, order: 4, type: 'string' },
-      { id: 'gstRate', label: 'GST Rate', enabled: true, order: 5, type: 'string' },
+      { id: 'gstRate', label: 'GST Rate', enabled: true, order: 5, type: 'string', customPrompt: 'GST 2.0 rate (0%, 5%, 18% or 40%; 3% for jewellery) as a percentage like "5%"' },
       { id: 'hsnCode', label: 'HSN Code', enabled: true, order: 6, type: 'string', customPrompt: 'Accurate 6 or 8 digit Indian HSN code based on product category' },
       { id: 'material', label: 'Material', enabled: true, order: 7, type: 'string' },
       { id: 'variations', label: 'Variations', enabled: true, order: 8, type: 'array' },

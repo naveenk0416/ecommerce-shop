@@ -5,36 +5,56 @@
     <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
       <div class="hero-content animate-in fade-in slide-in-from-bottom-4">
 
-        <div class="badge">
-          <ion-icon name="school" class="mr-1"></ion-icon>
-          Made for Indian Sellers »
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="badge">
+            <ion-icon name="school" class="mr-1"></ion-icon>
+            {{ lang() === 'hi' ? 'Indian sellers के लिए बना »' : 'Made for Indian Sellers »' }}
+          </div>
+          <div class="lang-toggle" role="group" aria-label="Language">
+            <button type="button" [class.lang-toggle__on]="lang() === 'en'" [attr.aria-pressed]="lang() === 'en'" (click)="lang.set('en')">English</button>
+            <button type="button" [class.lang-toggle__on]="lang() === 'hi'" [attr.aria-pressed]="lang() === 'hi'" (click)="lang.set('hi')" lang="hi">हिंदी</button>
+          </div>
         </div>
 
-        <h1 class="hero-title">
-          Snap a photo.<br>
-          <span class="text-orange">Sell smarter</span><br>
-          in seconds.
-        </h1>
+        @if (lang() === 'hi') {
+          <h1 class="hero-title" lang="hi">
+            एक photo खींचो.<br>
+            <span class="text-orange">Listing तैयार,</span><br>
+            सेकंडों में.
+          </h1>
 
-        <p class="hero-description">
-          The AI toolkit built for Indian sellers. Upload a product photo and get marketplace-ready listings for
-          <strong class="text-slate-900">Amazon, Meesho &amp; Flipkart</strong> — with HSN codes, GST rates, and social captions included.
-        </p>
+          <p class="hero-description" lang="hi">
+            Product की photo upload करो और <strong class="text-slate-900">Amazon, Meesho &amp; Flipkart</strong> के लिए
+            listing तुरंत पाओ — HSN code, GST rate और Instagram caption के साथ. अपना stock भी एक ही जगह manage करो.
+          </p>
+        } @else {
+          <h1 class="hero-title">
+            Snap a photo.<br>
+            <span class="text-orange">Sell smarter</span><br>
+            in seconds.
+          </h1>
+
+          <p class="hero-description">
+            The AI toolkit built for Indian sellers. Upload a product photo and get marketplace-ready listings for
+            <strong class="text-slate-900">Amazon, Meesho &amp; Flipkart</strong> — with HSN codes, GST rates, and social captions included.
+            Then track your stock and sales in one place.
+          </p>
+        }
 
         <div class="hero-actions">
           @if (isLoggedIn()) {
             <button (click)="goDashboard.emit()" class="btn-orange-premium">
-              Go to Dashboard
+              {{ lang() === 'hi' ? 'Dashboard पर जाओ' : 'Go to Dashboard' }}
               <ion-icon name="rocket" class="ml-2"></ion-icon>
             </button>
           } @else {
-            <button (click)="getStarted.emit()" class="btn-orange-premium">
-              Start Free — No Card Needed
+            <button (click)="getStarted.emit('hero')" class="btn-orange-premium">
+              {{ lang() === 'hi' ? 'Free में शुरू करो — कोई card नहीं' : 'Start Free — No Card Needed' }}
               <ion-icon name="arrow-forward" class="ml-2"></ion-icon>
             </button>
           }
-          <button class="btn-secondary">
-            See how it works
+          <button class="btn-secondary" (click)="scrollToSection($event, 'how-it-works')">
+            {{ lang() === 'hi' ? 'कैसे काम करता है' : 'See how it works' }}
           </button>
         </div>
 
@@ -105,24 +125,16 @@
   <!-- Trust Bar -->
   <section class="trust-section">
     <div class="max-w-7xl mx-auto px-6">
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-14">
-        <div class="stat-item">
-          <div class="stat-value">50k+</div>
-          <div class="stat-label">Listings Created</div>
+      @if (showStats) {
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-14">
+          @for (stat of stats; track stat.label) {
+            <div class="stat-item">
+              <div class="stat-value">{{ stat.value }}</div>
+              <div class="stat-label">{{ stat.label }}</div>
+            </div>
+          }
         </div>
-        <div class="stat-item">
-          <div class="stat-value">12k+</div>
-          <div class="stat-label">Active Sellers</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value">98%</div>
-          <div class="stat-label">GST Accuracy</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value">4.9★</div>
-          <div class="stat-label">Seller Rating</div>
-        </div>
-      </div>
+      }
 
       <div class="partner-strip">
         <span class="partner-label">Works with</span>
@@ -137,7 +149,7 @@
   </section>
 
   <!-- How It Works -->
-  <section class="how-section py-24 bg-white">
+  <section id="how-it-works" class="how-section py-24 bg-white">
     <div class="max-w-5xl mx-auto px-6">
       <div class="text-center mb-16">
         <p class="section-eyebrow">Simple by design</p>
@@ -186,7 +198,7 @@
   </section>
 
   <!-- Features Grid -->
-  <section class="features-section py-24 bg-slate-50">
+  <section id="features" class="features-section py-24 bg-slate-50">
     <div class="max-w-7xl mx-auto px-6">
       <div class="text-center mb-16">
         <p class="section-eyebrow">Everything included</p>
@@ -224,7 +236,7 @@
             <ion-icon name="cash"></ion-icon>
           </div>
           <h3 class="feature-title !text-white">HSN + GST</h3>
-          <p class="feature-text !text-orange-100">Get the correct HSN code and GST rate (5/12/18/28%) with a clear explanation — every time.</p>
+          <p class="feature-text !text-orange-100">Get the HSN code and GST rate under the new GST 2.0 slabs (0/5/18/40%, from 22 Sep 2025) with a clear explanation.</p>
         </div>
 
         <div class="feature-card">
@@ -242,6 +254,59 @@
           <h3 class="feature-title">History &amp; Reuse</h3>
           <p class="feature-text">Every listing is saved. Browse, copy, and re-use anytime from your dashboard.</p>
         </div>
+
+        <div class="feature-card">
+          <div class="feature-icon bg-amber-100 text-amber-600">
+            <ion-icon name="cube"></ion-icon>
+          </div>
+          <h3 class="feature-title">Inventory &amp; Stock</h3>
+          <p class="feature-text">Track stock for every product, get low-stock alerts, and log sales — all next to your listings.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Inventory Management — only features that exist in the app today. -->
+  <section id="inventory" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-16">
+        <p class="section-eyebrow">Inventory management</p>
+        <h2 class="section-title">Know your stock. Sell without surprises.</h2>
+        <p class="section-subtitle">Keep products, stock and sales in the same place you create your listings.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="feature-card">
+          <div class="feature-icon bg-orange-100 text-orange-500">
+            <ion-icon name="cube"></ion-icon>
+          </div>
+          <h3 class="feature-title">Stock tracking</h3>
+          <p class="feature-text">Quantity, cost and selling price for every product, with your total inventory value and potential profit.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon bg-red-100 text-red-500">
+            <ion-icon name="alert-circle"></ion-icon>
+          </div>
+          <h3 class="feature-title">Low-stock alerts</h3>
+          <p class="feature-text">Products running low are flagged on your inventory dashboard so you can restock in time.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon bg-blue-100 text-blue-500">
+            <ion-icon name="sync"></ion-icon>
+          </div>
+          <h3 class="feature-title">Amazon &amp; Flipkart sync</h3>
+          <p class="feature-text">Import your catalogue and stock from Amazon and Flipkart, and push price and stock updates back in one click.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon bg-emerald-100 text-emerald-500">
+            <ion-icon name="receipt"></ion-icon>
+          </div>
+          <h3 class="feature-title">Sales log</h3>
+          <p class="feature-text">Record each sale with its platform and price — stock updates automatically.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -253,14 +318,14 @@
         <div class="cta-glow"></div>
         <p class="cta-eyebrow">Free to start. No credit card.</p>
         <h2 class="cta-title">Ready to sell smarter?</h2>
-        <p class="cta-text">Join thousands of Indian sellers using SellAssist to list faster and earn more.</p>
+        <p class="cta-text">Join Indian sellers using SellAssist to list faster and manage stock in one place.</p>
         @if (isLoggedIn()) {
           <button (click)="goDashboard.emit()" class="btn-cta-primary">
             Go to Dashboard
             <ion-icon name="rocket" class="ml-2"></ion-icon>
           </button>
         } @else {
-          <button (click)="getStarted.emit()" class="btn-cta-primary">
+          <button (click)="getStarted.emit('cta')" class="btn-cta-primary">
             Create your free account
             <ion-icon name="arrow-forward" class="ml-2"></ion-icon>
           </button>
@@ -301,28 +366,33 @@
         </div>
 
         <div>
-          <h4 class="footer-heading">Social Tools</h4>
+          <h4 class="footer-heading">Tools</h4>
           <ul class="footer-links">
-            <li><a href="#">Instagram Captions</a></li>
-            <li><a href="#">Facebook Posts</a></li>
-            <li><a href="#">WhatsApp Catalogs</a></li>
-            <li><a href="#">GST Calculator</a></li>
+            <li><a routerLink="/gst-calculator">GST Calculator</a></li>
+            <li><a href="/home" (click)="scrollToSection($event, 'features')">AI Listing Generator</a></li>
+            <li><a href="/home" (click)="scrollToSection($event, 'features')">Instagram &amp; Facebook Captions</a></li>
+            <li><a href="/home" (click)="scrollToSection($event, 'inventory')">Inventory Management</a></li>
           </ul>
         </div>
 
         <div>
-          <h4 class="footer-heading">Platform</h4>
+          <h4 class="footer-heading">Company</h4>
           <ul class="footer-links">
-            <li><a href="#">Privacy Policy</a></li>
-            <li><a href="#">Terms of Service</a></li>
-            <li><a href="#">Support Helpdesk</a></li>
+            <li><a routerLink="/privacy">Privacy Policy</a></li>
+            <li><a routerLink="/terms">Terms of Service</a></li>
+            <li><a routerLink="/refund-policy">Refund Policy</a></li>
+            <li><a routerLink="/contact">Contact Us</a></li>
+          </ul>
+          <ul class="footer-links mt-4">
+            <li><a [href]="'mailto:' + business.supportEmail">{{ business.supportEmail }}</a></li>
+            <li>{{ business.phoneDisplay }}</li>
           </ul>
         </div>
       </div>
 
       <div class="pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
         <p class="text-xs text-slate-400 font-medium">
-          © 2025 SellAssist. All rights reserved. Built for Bharat's sellers.
+          © {{ currentYear }} SellAssist. All rights reserved. Built for Bharat's sellers.
         </p>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { Injectable, signal, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { apiFetch, ApiError, clearAuthToken, getAuthToken, setAuthToken } from './api';
+import type { Attribution } from './analytics';
 
 export type UserRole = 'FREE' | 'PAID_PRO' | 'ADMIN';
 
@@ -20,6 +21,11 @@ export interface AdditionalUserData {
   displayName?: string | null;
   phoneNumber?: string;
   gstNumber?: string;
+  state?: string;
+  city?: string;
+  sellsOn?: string[];
+  termsAccepted?: boolean;
+  attribution?: Attribution | null;
 }
 
 export interface AuthUser {
@@ -84,7 +90,18 @@ export class AuthService {
     try {
       await apiFetch<{ requiresVerification: true; email: string }>('/register', {
         method: 'POST',
-        body: { email, password, displayName: additionalData.displayName, phoneNumber: additionalData.phoneNumber, gstNumber: additionalData.gstNumber },
+        body: {
+          email,
+          password,
+          displayName: additionalData.displayName,
+          phoneNumber: additionalData.phoneNumber,
+          gstNumber: additionalData.gstNumber,
+          state: additionalData.state,
+          city: additionalData.city,
+          sellsOn: additionalData.sellsOn,
+          termsAccepted: additionalData.termsAccepted,
+          attribution: additionalData.attribution ?? undefined,
+        },
       });
     } catch (error) {
       const apiError = error as ApiError & { code?: string };

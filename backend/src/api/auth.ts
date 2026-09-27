@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { ensureConnected, User } from './common.js';
 import { sendMail } from '../utils/mailer.js';
+import { GSTIN_RE, INDIAN_MOBILE_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, sanitizeAttribution } from '../utils/signup-fields.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env['JWT_SECRET'] || 'dev_jwt_secret_change_me';
@@ -122,7 +123,13 @@ router.post('/register', registerLimiter, async (req, res) => {
     return;
   }
 
-  const { email, password, displayName, phoneNumber, gstNumber } = req.body || {};
+  const { email, password, displayName, phoneNumber, termsAccepted, attribution } = req.body || {};
+  const gstNumber = req.body?.gstNumber ? String(req.body.gstNumber).trim().toUpperCase() : undefined;
+  const state = String(req.body?.state || '').trim();
+  const city = String(req.body?.city || '').trim();
+  const sellsOn = Array.isArray(req.body?.sellsOn)
+    ? Array.from(new Set((req.body.sellsOn as unknown[]).filter((c): c is string => typeof c === 'string' && SELLING_CHANNELS.includes(c))))
+    : [];
 
   if (!email || !password) {
     res.status(400).json({ error: 'Email and password required' });
@@ -134,8 +141,28 @@ router.post('/register', registerLimiter, async (req, res) => {
     return;
   }
 
-  if (phoneNumber && !/^\d{10}$/.test(String(phoneNumber))) {
-    res.status(400).json({ error: 'Mobile number must be exactly 10 digits.' });
+  if (phoneNumber && !INDIAN_MOBILE_RE.test(String(phoneNumber))) {
+    res.status(400).json({ error: 'Enter a valid 10-digit Indian mobile number.' });
+    return;
+  }
+
+  if (gstNumber && !GSTIN_RE.test(gstNumber)) {
+    res.status(400).json({ error: 'Enter a valid 15-character GSTIN, or leave it blank.' });
+    return;
+  }
+
+  if (!INDIAN_STATES_AND_UTS.includes(state)) {
+    res.status(400).json({ error: 'Select your state.' });
+    return;
+  }
+
+  if (!city || city.length > 80) {
+    res.status(400).json({ error: 'Enter your city.' });
+    return;
+  }
+
+  if (termsAccepted !== true) {
+    res.status(400).json({ error: 'You must agree to the Terms and Privacy Policy.' });
     return;
   }
 
@@ -161,13 +188,20 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const now = new Date();
     const user = new User({
       email,
       passwordHash,
       displayName,
       phoneNumber,
       gstNumber,
-      lastLogin: new Date().toISOString(),
+      state,
+      city,
+      sellsOn,
+      termsAcceptedAt: now,
+      signupAt: now,
+      attribution: sanitizeAttribution(attribution),
+      lastLogin: now.toISOString(),
       emailVerified: false,
     });
 
