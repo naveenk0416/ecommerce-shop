@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/ensure-gemini-env.js && ng serve --host 0.0.0.0 --port 3000 --live-reload=false",
+    "dev": "ng serve --host 0.0.0.0 --port 3000 --live-reload=false",
     "build": "ng build",
     "build:static": "ng run app:build-static",
     "watch": "ng build --watch --configuration development",
@@ -20,7 +20,6 @@
     "@angular/platform-browser": "^21.2.8",
     "@angular/platform-browser-dynamic": "^21.2.8",
     "@angular/router": "^21.0.0",
-    "@google/genai": "^1.27.0",
     "@ionic/angular": "^8.8.3",
     "@ionic/core": "^8.8.3",
     "@zxing/browser": "^0.2.1",
