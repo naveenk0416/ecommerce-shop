@@ -2,7 +2,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
-import { META_PIXEL_ID } from '../config/site-config';
+import { META_PIXEL_IDS } from '../config/site-config';
 import { ConsentService } from './consent';
 
 /** First-touch marketing attribution captured from the landing URL. */
@@ -27,7 +27,7 @@ type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) 
  * Ad tracking for paid campaigns: Meta Pixel (PageView on every SPA route change, Lead,
  * CompleteRegistration), GA4 `sign_up`, and dataLayer events so GTM-managed tags can react to
  * the same moments. The pixel is loaded directly because tags aren't managed in code via GTM;
- * with META_PIXEL_ID empty nothing is loaded and every call is a no-op.
+ * with META_PIXEL_IDS empty nothing is loaded and every call is a no-op.
  */
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
@@ -67,10 +67,10 @@ export class AnalyticsService {
   }
 
   private startPixel(): void {
-    if (!META_PIXEL_ID || this.pixelStarted) return;
+    if (META_PIXEL_IDS.length === 0 || this.pixelStarted) return;
     this.pixelStarted = true;
     this.loadPixel();
-    this.fbq('init', META_PIXEL_ID);
+    for (const id of META_PIXEL_IDS) this.fbq('init', id);
     this.fbq('track', 'PageView');
   }
 
@@ -130,7 +130,7 @@ export class AnalyticsService {
   }
 
   private fbq(...args: unknown[]): void {
-    if (!this.isBrowser || !META_PIXEL_ID || !this.pixelStarted) return;
+    if (!this.isBrowser || META_PIXEL_IDS.length === 0 || !this.pixelStarted) return;
     (window as unknown as { fbq?: Fbq }).fbq?.(...args);
   }
 
