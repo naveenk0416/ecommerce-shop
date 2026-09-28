@@ -45,9 +45,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
   padding: 14px 16px;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
+
+  &-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: auto;
+  }
 
   &-label {
     display: flex;
@@ -71,5 +82,27 @@
   &--ready {
     background: #dcfce7;
     color: #15803d;
+  }
+}
+
+// "Copy these details into Flipkart Seller Hub. Direct publishing coming soon."
+.tab-shell__copy-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 14px;
+  line-height: 1.45;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
   }
 }

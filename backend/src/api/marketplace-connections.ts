@@ -6,6 +6,7 @@ import { encryptToken } from '../utils/token-crypto.js';
 import { grantBonusSafely } from '../utils/wallet.js';
 import { publicApiUrl } from '../utils/public-url.js';
 import { setCoinBalanceHeader } from '../utils/coin-header.js';
+import { publishEnabled, PUBLISH_CHANNEL_LABELS, type PublishChannel } from '../config/features.js';
 import { User } from './common.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
@@ -800,6 +801,24 @@ router.post('/flipkart/publish/:listingId', authMiddleware, async (req, res) => 
     res.status(500).json({ error: err?.message || 'Failed to publish to Flipkart.' });
   }
 });
+
+// Publishing a NEW listing to Flipkart / Meesho / Instagram isn't built yet. These paths refuse
+// with a clear message while the channel's *_PUBLISH_ENABLED flag is off, so nothing can create a
+// listing there by calling the API directly. The price/stock push above (/flipkart/publish) is
+// separate: it only updates listings that were synced from Flipkart and stays live.
+function comingSoon(channel: PublishChannel): express.RequestHandler {
+  return (_req, res) => {
+    const label = PUBLISH_CHANNEL_LABELS[channel];
+    if (!publishEnabled(channel)) {
+      res.status(403).json({ error: `${label} publishing is coming soon`, code: 'COMING_SOON', channel });
+      return;
+    }
+    res.status(501).json({ error: `Publishing new listings to ${label} isn't available in this version yet.` });
+  };
+}
+router.post('/flipkart/create-listing/:listingId', authMiddleware, comingSoon('flipkart'));
+router.post(['/meesho/publish/:listingId', '/meesho/create-listing/:listingId'], authMiddleware, comingSoon('meesho'));
+router.post(['/instagram/publish/:listingId', '/instagram/create-listing/:listingId'], authMiddleware, comingSoon('instagram'));
 
 // Flipkart's "Authorization Code Flow (For Third Party Application)" — same shape as Amazon's
 // seller-initiated entry point above (JSON-returning POST, since a raw navigation can't carry

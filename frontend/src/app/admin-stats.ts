@@ -17,6 +17,8 @@ interface AdminStatsData {
   aiListingsPerActiveUserFirst30Days: number;
   usedAllFreeCoinsPct: number;
   notifyMe: { clicks: number; users: number };
+  /** Sellers who asked to be told when a not-yet-live feature launches, by feature. */
+  featureNotifyMe?: Record<string, number>;
   bonusCompletionPct: Record<string, number>;
   referrals: { referredSignups: number; pending: number; rewarded: number; blocked: number; blockedReasons: Record<string, number>; reversed: number; signupsFromReferralLinks: number };
   packs: {
@@ -40,6 +42,12 @@ const PURPOSE_LABELS: Record<string, string> = {
   listing: 'AI listings (1 coin each)',
   field_fix: '✨ Field fixes (free)',
   marketplace_autofill: 'Fill empty fields with AI (free)',
+};
+
+const FEATURE_LABELS: Record<string, string> = {
+  flipkart_publish: 'Flipkart publishing',
+  meesho_publish: 'Meesho publishing',
+  instagram_publish: 'Instagram publishing',
 };
 
 const BONUS_LABELS: Record<string, string> = {
@@ -125,6 +133,9 @@ function isoDay(date: Date): string {
                 <tr><td>Referrals rewarded / pending / blocked</td><td class="num">{{ s.referrals.rewarded }} / {{ s.referrals.pending }} / {{ s.referrals.blocked }}</td></tr>
                 <tr><td>Referral rewards reversed</td><td class="num">{{ s.referrals.reversed }}</td></tr>
                 <tr><td>"Notify me" clicks (sellers)</td><td class="num">{{ s.notifyMe.clicks }} ({{ s.notifyMe.users }})</td></tr>
+                @for (row of featureNotifyRows(); track row.feature) {
+                  <tr><td>"Notify me": {{ row.label }} (sellers)</td><td class="num">{{ row.count }}</td></tr>
+                }
               </tbody>
             </table>
           </div>
@@ -219,6 +230,7 @@ export class AdminStats {
   importedRows = computed(() => Object.entries(this.stats()?.catalogSizeImported.buckets ?? {}).map(([band, count]) => ({ band, count })));
   bonusRows = computed(() => Object.entries(this.stats()?.bonusCompletionPct ?? {}).map(([id, pct]) => ({ label: BONUS_LABELS[id] ?? id, pct })));
   packRows = computed(() => Object.entries(this.stats()?.packs.purchasesByPack ?? {}).map(([id, row]) => ({ id, ...row })));
+  featureNotifyRows = computed(() => Object.entries(this.stats()?.featureNotifyMe ?? {}).map(([feature, count]) => ({ feature, label: FEATURE_LABELS[feature] ?? feature, count })));
 
   constructor() {
     void this.load();

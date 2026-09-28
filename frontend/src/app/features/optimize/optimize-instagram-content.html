@@ -34,5 +34,12 @@
         </app-ui-section>
       </app-ui-card>
     }
+
+    @if (!features.isLive('instagram')) {
+      <p class="tab-shell__copy-note" data-testid="copy-note">
+        <mat-icon aria-hidden="true">content_copy</mat-icon>
+        <span>{{ i18n.t('Copy this caption and hashtags into Instagram. Direct posting coming soon.', 'ये caption और hashtags Instagram में copy करें। Direct posting जल्द आ रहा है।') }}</span>
+      </p>
+    }
   }
 </div>

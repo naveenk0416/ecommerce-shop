@@ -11,7 +11,14 @@
                 <app-marketplace-icon [marketplace]="row.marketplace" [size]="18" />
                 {{ row.label }}
               </span>
-              @if (row.published) {
+              @if (!row.live) {
+                <span class="tab-shell__row-actions" [attr.data-testid]="'publish-row-' + row.marketplace">
+                  <button mat-stroked-button color="primary" disabled [attr.aria-label]="i18n.t('Publish to ' + row.label + ' — coming soon', row.label + ' पर publish — जल्द आ रहा है')">
+                    {{ i18n.t('Publish to ' + row.label, row.label + ' पर publish करें') }}
+                  </button>
+                  <app-coming-soon-publish [channel]="$any(row.marketplace)" />
+                </span>
+              } @else if (row.published) {
                 <span class="tab-shell__badge tab-shell__badge--ready">
                   <mat-icon inline="true">check_circle</mat-icon>
                   Published

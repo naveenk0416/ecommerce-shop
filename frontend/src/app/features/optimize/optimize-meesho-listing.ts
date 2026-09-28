@@ -8,18 +8,27 @@ import { SeoScoreCard } from '../listing-workspace/ui/seo-score-card/seo-score-c
 import { AiTabStatus } from '../listing-workspace/ui/ai-tab-status/ai-tab-status';
 import { OptimizeSessionService } from './optimize-session.service';
 import { WalletService } from '../../services/wallet';
+import { MatIconModule } from '@angular/material/icon';
+import { FeatureService } from '../../services/features';
+import { LanguageService } from '../../services/language';
 
 @Component({
   selector: 'app-optimize-meesho-listing',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [UiCard, UiSection, EditableField, SeoScoreCard, AiTabStatus],
+  imports: [UiCard, UiSection, EditableField, SeoScoreCard, AiTabStatus, MatIconModule],
   templateUrl: './optimize-meesho-listing.html',
   styleUrls: ['../listing-workspace/tabs/tab-shell.scss'],
 })
 export class OptimizeMeeshoListing {
   protected readonly session = inject(OptimizeSessionService);
   protected readonly wallet = inject(WalletService);
+  protected readonly features = inject(FeatureService);
+  protected readonly i18n = inject(LanguageService);
+
+  constructor() {
+    void this.features.load();
+  }
 
   protected readonly sections = MEESHO_LISTING_SECTIONS;
 

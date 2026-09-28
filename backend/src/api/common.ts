@@ -13,7 +13,7 @@ export async function ensureConnected() {
   await mongoose.connect(mongoUri, { autoIndex: true });
   // The wallet's "exactly once" guarantees rely on these unique indexes existing before the
   // first write, so wait for them instead of letting autoIndex build them in the background.
-  await Promise.all([User.init(), CoinLedger.init(), AssistCounter.init(), GstLookup.init(), CoinOrder.init()]);
+  await Promise.all([User.init(), CoinLedger.init(), AssistCounter.init(), GstLookup.init(), CoinOrder.init(), FeatureInterest.init()]);
   connected = true;
 }
 
@@ -261,6 +261,15 @@ const packInterestSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 export const PackInterest = (mongoose.models as any).PackInterest || mongoose.model('PackInterest', packInterestSchema);
+
+// "Notify me" for features that aren't live yet (e.g. flipkart_publish) — one row per seller per feature.
+const featureInterestSchema = new mongoose.Schema({
+  uid: { type: String, required: true },
+  feature: { type: String, required: true },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+featureInterestSchema.index({ uid: 1, feature: 1 }, { unique: true });
+
+export const FeatureInterest = (mongoose.models as any).FeatureInterest || mongoose.model('FeatureInterest', featureInterestSchema);
 
 // GST rate lookups by signed-in sellers, one row per HSN per day — for "time saved".
 const gstLookupSchema = new mongoose.Schema({

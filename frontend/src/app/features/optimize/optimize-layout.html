@@ -115,9 +115,29 @@
           New Product
         </button>
         <button mat-stroked-button [disabled]="!session.hasImage()" (click)="openPreview()">Preview</button>
-        <a mat-flat-button color="primary" routerLink="publish" queryParamsHandling="preserve">
-          Publish to {{ readyCount() }} channel{{ readyCount() === 1 ? '' : 's' }}
-        </a>
+        <button mat-flat-button color="primary" type="button" [matMenuTriggerFor]="publishMenu" data-testid="publish-channels">
+          {{ publishLabel() }}
+          <mat-icon iconPositionEnd aria-hidden="true">arrow_drop_down</mat-icon>
+        </button>
+        <mat-menu #publishMenu="matMenu" xPosition="before">
+          @for (row of publishMenuRows(); track row.marketplace) {
+            @if (row.live) {
+              <a mat-menu-item routerLink="publish" queryParamsHandling="preserve" [attr.data-testid]="'publish-menu-' + row.marketplace">
+                <app-marketplace-icon [marketplace]="row.marketplace" [size]="18" style="margin-right: 12px" />
+                <span>{{ row.label }} · {{ row.ready ? i18n.t('Ready', 'तैयार') : i18n.t('Generate content first', 'पहले content बनाएं') }}</span>
+              </a>
+            } @else {
+              <button mat-menu-item disabled type="button" [attr.data-testid]="'publish-menu-' + row.marketplace">
+                <app-marketplace-icon [marketplace]="row.marketplace" [size]="18" style="margin-right: 12px" />
+                <span>{{ row.label }} · {{ i18n.t('Coming soon', 'जल्द आ रहा है') }}</span>
+              </button>
+            }
+          }
+          <a mat-menu-item routerLink="publish" queryParamsHandling="preserve">
+            <mat-icon aria-hidden="true">publish</mat-icon>
+            <span>{{ i18n.t('Open Publish Center', 'Publish Center खोलें') }}</span>
+          </a>
+        </mat-menu>
       </div>
     </header>
 

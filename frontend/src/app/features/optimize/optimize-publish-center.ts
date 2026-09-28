@@ -12,6 +12,9 @@ import { UiSection } from '../listing-workspace/ui/section/section';
 import { MarketplaceIcon, MarketplaceId } from '../listing-workspace/ui/marketplace-icon/marketplace-icon';
 import { AiTabStatus } from '../listing-workspace/ui/ai-tab-status/ai-tab-status';
 import { OptimizeSessionService, OptimizeTabKey } from './optimize-session.service';
+import { FeatureService } from '../../services/features';
+import { LanguageService } from '../../services/language';
+import { ComingSoonPublish } from './coming-soon/coming-soon-publish';
 
 interface PublishRow {
   tab: OptimizeTabKey;
@@ -31,13 +34,19 @@ const ROWS: readonly PublishRow[] = [
   selector: 'app-optimize-publish-center',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [UiCard, UiSection, MarketplaceIcon, AiTabStatus, MatButtonModule, MatIconModule],
+  imports: [UiCard, UiSection, MarketplaceIcon, AiTabStatus, MatButtonModule, MatIconModule, ComingSoonPublish],
   templateUrl: './optimize-publish-center.html',
   styleUrls: ['../listing-workspace/tabs/tab-shell.scss'],
 })
 export class OptimizePublishCenter {
   protected readonly session = inject(OptimizeSessionService);
+  protected readonly features = inject(FeatureService);
+  protected readonly i18n = inject(LanguageService);
   private readonly injector = inject(Injector);
+
+  constructor() {
+    void this.features.load();
+  }
 
   private readonly published = signal<Set<OptimizeTabKey>>(new Set());
 
@@ -47,14 +56,16 @@ export class OptimizePublishCenter {
     return ROWS.map((row) => {
       const result = all[row.tab];
       const ready = result ? (row.checks ? computeSeoScore(result, row.checks).score >= 70 : true) : false;
-      return { ...row, ready, published: publishedSet.has(row.tab) };
+      // Channels whose publishing isn't live (FLIPKART_/MEESHO_/INSTAGRAM_PUBLISH_ENABLED) show "Coming soon".
+      const live = this.features.isLive(row.marketplace as 'amazon' | 'flipkart' | 'meesho' | 'instagram');
+      return { ...row, ready, live, published: publishedSet.has(row.tab) };
     });
   });
 
   /** Always confirms first, listing exactly what would be published for that channel. */
   publish(tab: OptimizeTabKey): void {
     const row = ROWS.find((r) => r.tab === tab);
-    if (!row) return;
+    if (!row || !this.features.isLive(row.marketplace as 'amazon' | 'flipkart' | 'meesho' | 'instagram')) return;
     const result = this.session.getResult(tab) ?? {};
     const general = this.session.getResult('general') ?? {};
     const get = (r: Record<string, { values?: string[] }>, key: string) => r[key]?.values?.[0]?.trim() ?? '';

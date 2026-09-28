@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
@@ -19,12 +20,15 @@ import { LogSaleDialog, LogSaleResult } from './log-sale-dialog';
 import { CreateAmazonListingDialog } from './create-amazon-listing-dialog';
 import { ConfirmActionData, ConfirmActionDialog } from '../confirm-action-dialog';
 import { WalletService } from '../../../services/wallet';
+import { FeatureService, NotifyFeature } from '../../../services/features';
+import { LanguageService } from '../../../services/language';
+import { CHANNEL_LABELS, ComingSoonChannel } from '../coming-soon/coming-soon-publish';
 
 @Component({
   selector: 'app-optimize-inventory',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, DecimalPipe, MatButtonModule, MatIconModule, MatTooltipModule, UiCard],
+  imports: [FormsModule, DecimalPipe, MatButtonModule, MatIconModule, MatTooltipModule, MatMenuModule, UiCard],
   templateUrl: './optimize-inventory.html',
   styleUrl: './optimize-inventory.scss',
 })
@@ -36,6 +40,15 @@ export class OptimizeInventory {
   private readonly injector = inject(Injector);
   /** Coin balance changes after the first publish (+5) — refreshed on success. */
   private readonly wallet = inject(WalletService);
+  protected readonly features = inject(FeatureService);
+  protected readonly i18n = inject(LanguageService);
+
+  /** New-listing channels that aren't live yet — shown as "Coming soon" in the per-product publish menu. */
+  protected readonly comingSoonChannels = computed(() =>
+    (Object.keys(CHANNEL_LABELS) as ComingSoonChannel[])
+      .filter((channel) => !this.features.isLive(channel))
+      .map((channel) => ({ channel, label: CHANNEL_LABELS[channel], requested: this.features.notified().has(`${channel}_publish`) })),
+  );
 
   protected readonly defaultThreshold = DEFAULT_LOW_STOCK_THRESHOLD;
   protected readonly formatInr = formatInrCompact;
@@ -82,6 +95,7 @@ export class OptimizeInventory {
   lowStockCount = computed(() => this.uniqueListings().filter((l) => isLowStock(l)).length);
 
   constructor() {
+    void this.features.load();
     effect((onCleanup) => {
       const user = this.auth.user();
       if (!user) {
@@ -243,6 +257,16 @@ export class OptimizeInventory {
   /** Opens the multi-step "find product type -> fill required attributes" flow for creating a
    * brand-new Amazon listing from a manually-added product (one with no `source` yet). That
    * dialog is itself the confirmation: nothing is sent until its final "Create listing" step. */
+  /** "Notify me" from the per-product publish menu — recorded once per seller on the server. */
+  async notifyPublish(channel: ComingSoonChannel): Promise<void> {
+    try {
+      await this.features.notifyMe(`${channel}_publish` as NotifyFeature);
+      this.snackBar.open(this.i18n.t('We’ll let you know', 'हम आपको बताएंगे'), 'OK', { duration: 3000 });
+    } catch {
+      this.snackBar.open(this.i18n.t('Couldn’t save — please try again.', 'Save नहीं हुआ — फिर से try करें।'), 'Dismiss', { duration: 4000 });
+    }
+  }
+
   openCreateAmazonListingDialog(listing: Listing): void {
     this.dialog
       .open<CreateAmazonListingDialog, Listing, boolean>(CreateAmazonListingDialog, { data: listing, width: '560px', maxWidth: '95vw' })

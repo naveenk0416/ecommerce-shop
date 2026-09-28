@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
-import { AmazonAuthState, AssistCounter, CoinLedger, ensureConnected, Feedback, GstLookup, Listing, ListingDraft, MarketplaceConnection, PackInterest, Sale, TemplateConfig, User } from './common.js';
+import { AmazonAuthState, AssistCounter, CoinLedger, ensureConnected, FeatureInterest, Feedback, GstLookup, Listing, ListingDraft, MarketplaceConnection, PackInterest, Sale, TemplateConfig, User } from './common.js';
 import { MAIL_UNAVAILABLE_MESSAGE, MailDeliveryError, sendMail } from '../utils/mailer.js';
 import { GSTIN_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, phoneLookupValues, sanitizeAttribution, toIndianE164 } from '../utils/signup-fields.js';
 import { coinConfig, dayKey } from '../config/coins.js';
@@ -640,6 +640,7 @@ router.delete('/me', authMiddleware, accountChangeLimiter, async (req, res) => {
       CoinLedger.deleteMany({ uid }),
       AssistCounter.deleteMany({ uid }),
       PackInterest.deleteMany({ uid }),
+      FeatureInterest.deleteMany({ uid }),
       GstLookup.deleteMany({ uid }),
       Listing.deleteMany({ uid }),
       Sale.deleteMany({ uid }),

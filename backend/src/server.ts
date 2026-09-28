@@ -14,6 +14,7 @@ import gstRouter from './api/gst.js';
 import aiRouter from './api/ai.js';
 import walletRouter from './api/wallet.js';
 import adminStatsRouter from './api/admin-stats.js';
+import featuresRouter from './api/features.js';
 import marketplaceConnectionsRouter, { amazonOAuthRouter, flipkartOAuthRouter } from './api/marketplace-connections.js';
 
 // Origins allowed to call this API in addition to localhost dev servers. Configure the deployed
@@ -65,6 +66,7 @@ app.use('/api/admin', adminStatsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/wallet', walletRouter);
+app.use('/api/features', featuresRouter);
 app.use('/api/listings', listingRouter);
 app.use('/api/drafts', draftsRouter);
 app.use('/api/gst', gstRouter);

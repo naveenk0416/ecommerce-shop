@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } fr
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
+import { MatMenuModule } from '@angular/material/menu';
 import { MarketplaceIcon } from '../listing-workspace/ui/marketplace-icon/marketplace-icon';
 import { computeMarketplaceRows } from './optimize-readiness.util';
 import { OptimizeSessionService } from './optimize-session.service';
@@ -11,12 +12,13 @@ import { ListingPreviewDialog } from './listing-preview-dialog';
 import { WalletService } from '../../services/wallet';
 import { LanguageService } from '../../services/language';
 import { WalletNudges } from './wallet/wallet-nudges';
+import { FeatureService } from '../../services/features';
 
 @Component({
   selector: 'app-optimize-layout',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, MatButtonModule, MatIconModule, MarketplaceIcon, WalletNudges],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, MatButtonModule, MatIconModule, MatMenuModule, MarketplaceIcon, WalletNudges],
   templateUrl: './optimize-layout.html',
   styleUrl: './optimize-layout.scss',
 })
@@ -25,11 +27,19 @@ export class OptimizeLayout {
   protected readonly auth = inject(AuthService);
   protected readonly wallet = inject(WalletService);
   protected readonly i18n = inject(LanguageService);
+  protected readonly features = inject(FeatureService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
 
   marketplaceRows = computed(() => computeMarketplaceRows(this.session.allResults()));
-  readyCount = computed(() => this.marketplaceRows().filter((row) => row.ready).length);
+  /** Every channel with whether it can really be published to today (see FeatureService). */
+  publishMenuRows = computed(() => this.marketplaceRows().map((row) => ({ ...row, live: this.features.isLive(row.marketplace as 'amazon' | 'flipkart' | 'meesho' | 'instagram') })));
+  /** Only channels that are live AND ready count — "Coming soon" channels never do. */
+  readyCount = computed(() => this.publishMenuRows().filter((row) => row.ready && row.live).length);
+  publishLabel = computed(() => {
+    const n = this.readyCount();
+    return this.i18n.t(`Publish to ${n} channel${n === 1 ? '' : 's'}`, `${n} channel पर publish करें`);
+  });
 
   productTitle = computed(() => {
     const result = this.session.getResult('general');
@@ -77,6 +87,7 @@ export class OptimizeLayout {
       }
     });
     inject(DestroyRef).onDestroy(() => sub.unsubscribe());
+    void this.features.load();
   }
 
   scoreTier(score: number): 'high' | 'medium' | 'low' {

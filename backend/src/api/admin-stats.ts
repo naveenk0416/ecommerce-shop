@@ -1,7 +1,8 @@
 import express from 'express';
 import { authMiddleware } from './auth.js';
-import { AiUsage, CoinLedger, CoinOrder, ensureConnected, PackInterest, User } from './common.js';
+import { AiUsage, CoinLedger, CoinOrder, ensureConnected, FeatureInterest, PackInterest, User } from './common.js';
 import { coinConfig, dayKey } from '../config/coins.js';
+import { NOTIFY_FEATURES } from '../config/features.js';
 
 /**
  * Admin-only growth, coin and AI-cost stats, filterable by sign-up date range and
@@ -184,6 +185,15 @@ async function computeStats(filters: Filters) {
     { $sort: { _id: 1 } },
   ]);
 
+  // "Notify me" for features that aren't live yet, requested within the date range (and by the
+  // campaign / referral cohort when one is set) — one row per seller per feature.
+  const featureRows = await FeatureInterest.aggregate([
+    { $match: { createdAt: { $gte: filters.from, $lte: filters.to }, ...(filters.campaign || filters.ref ? { uid: { $in: uids } } : {}) } },
+    { $group: { _id: '$feature', sellers: { $sum: 1 } } },
+  ]);
+  const featureNotifyMe: Record<string, number> = Object.fromEntries(NOTIFY_FEATURES.map((f) => [f, 0]));
+  for (const row of featureRows) featureNotifyMe[row._id] = row.sellers;
+
   const summary = {
     filters: { from: filters.from.toISOString(), to: filters.to.toISOString(), campaign: filters.campaign ?? null, ref: filters.ref ?? null },
     signups,
@@ -203,6 +213,7 @@ async function computeStats(filters: Filters) {
     aiListingsPerActiveUserFirst30Days: activated.length ? Math.round((activated.reduce((s, u) => s + u.aiListingsFirst30Days, 0) / activated.length) * 100) / 100 : 0,
     usedAllFreeCoinsPct: pct(perUser.filter((u) => u.usedAllFreeCoins).length, verified),
     notifyMe: { clicks: clicks.length, users: new Set(clicks.map((c) => c.uid)).size },
+    featureNotifyMe,
     bonusCompletionPct: {
       welcome: pct(perUser.filter((u) => u.bonusWelcome).length, verified),
       mobile: pct(perUser.filter((u) => u.bonusMobile).length, verified),

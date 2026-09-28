@@ -38,5 +38,12 @@
         </app-ui-section>
       </app-ui-card>
     }
+
+    @if (!features.isLive('meesho')) {
+      <p class="tab-shell__copy-note" data-testid="copy-note">
+        <mat-icon aria-hidden="true">content_copy</mat-icon>
+        <span>{{ i18n.t('Copy these details into the Meesho Supplier Panel. Direct publishing coming soon.', 'ये details Meesho Supplier Panel में copy करें। Direct publishing जल्द आ रहा है।') }}</span>
+      </p>
+    }
   }
 </div>

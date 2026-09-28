@@ -124,12 +124,36 @@
                     } @else {
                       <button
                         mat-icon-button
-                        (click)="openCreateAmazonListingDialog(listing)"
-                        matTooltip="Publish as a new Amazon listing"
-                        [attr.aria-label]="'Publish ' + listing.name + ' as a new Amazon listing'"
+                        [matMenuTriggerFor]="publishMenu"
+                        matTooltip="Publish as a new listing"
+                        [attr.aria-label]="'Publish ' + listing.name + ' as a new listing'"
+                        data-testid="publish-new-menu"
                       >
                         <mat-icon>publish</mat-icon>
                       </button>
+                      <mat-menu #publishMenu="matMenu" xPosition="before">
+                        <button mat-menu-item type="button" (click)="openCreateAmazonListingDialog(listing)" data-testid="publish-new-amazon">
+                          <mat-icon aria-hidden="true">publish</mat-icon>
+                          <span>{{ i18n.t('Publish to Amazon', 'Amazon पर publish करें') }}</span>
+                        </button>
+                        @for (item of comingSoonChannels(); track item.channel) {
+                          <button mat-menu-item type="button" disabled [attr.data-testid]="'publish-new-' + item.channel">
+                            <mat-icon aria-hidden="true">schedule</mat-icon>
+                            <span>{{ i18n.t('Publish to ' + item.label, item.label + ' पर publish करें') }} · {{ i18n.t('Coming soon', 'जल्द आ रहा है') }}</span>
+                          </button>
+                          @if (item.requested) {
+                            <button mat-menu-item type="button" disabled [attr.data-testid]="'notify-done-' + item.channel">
+                              <mat-icon aria-hidden="true">check_circle</mat-icon>
+                              <span>{{ i18n.t('We’ll let you know', 'हम आपको बताएंगे') }} ({{ item.label }})</span>
+                            </button>
+                          } @else {
+                            <button mat-menu-item type="button" (click)="notifyPublish(item.channel)" [attr.data-testid]="'notify-me-' + item.channel">
+                              <mat-icon aria-hidden="true">notifications</mat-icon>
+                              <span>{{ i18n.t('Notify me', 'मुझे बताएं') }} ({{ item.label }})</span>
+                            </button>
+                          }
+                        }
+                      </mat-menu>
                     }
                     @if (listing.draftId) {
                       <button mat-icon-button (click)="openFullListing(listing)" matTooltip="Open full listing" [attr.aria-label]="'Open full listing for ' + listing.name">
