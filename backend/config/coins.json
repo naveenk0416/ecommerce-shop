@@ -3,13 +3,16 @@
 
   "listingCost": 1,
   "welcomeBonus": 10,
+  "_welcomeImmediate": "Of the welcome bonus, this many coins arrive right at sign-up; the rest after the email is verified (Google sign-ups get all of it at once).",
+  "welcomeImmediate": 3,
   "monthlyFreeTopUpTo": 3,
   "timezone": "Asia/Kolkata",
 
   "earnedBonuses": {
     "mobile": 2,
     "firstInventorySave": 3,
-    "firstPublish": 5
+    "firstPublish": 5,
+    "businessDetails": 2
   },
   "mobileBonusOnSignup": true,
 
@@ -75,5 +78,24 @@
     "gstLookup": 2
   },
 
-  "catalogSizeBands": ["1-10", "11-50", "51-200", "200+"]
+  "catalogSizeBands": ["1-10", "11-50", "51-200", "200+"],
+
+  "signup": {
+    "_comment": "Abuse limits. Welcome coins only for the first account created on a device, and for at most maxSignupsPerIpPerDay accounts per network per 24h; later accounts can still sign up but get no welcome coins.",
+    "welcomeAccountsPerDevice": 1,
+    "maxSignupsPerIpPerDay": 3,
+    "mxCheck": true,
+    "verificationReminderAfterHours": 24,
+    "verificationReminderMaxAgeDays": 7,
+    "unverifiedCleanupListAfterDays": 30
+  },
+
+  "guest": {
+    "_comment": "\"Try 1 listing free — no sign-up\" on the landing page.",
+    "enabled": true,
+    "perDevice": 1,
+    "perIpPerDay": 3,
+    "globalPerDay": 200,
+    "draftTtlHours": 24
+  }
 }

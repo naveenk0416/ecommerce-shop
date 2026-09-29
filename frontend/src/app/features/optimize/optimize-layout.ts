@@ -12,13 +12,14 @@ import { ListingPreviewDialog } from './listing-preview-dialog';
 import { WalletService } from '../../services/wallet';
 import { LanguageService } from '../../services/language';
 import { WalletNudges } from './wallet/wallet-nudges';
+import { AccountNudges } from './onboarding/account-nudges';
 import { FeatureService } from '../../services/features';
 
 @Component({
   selector: 'app-optimize-layout',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, MatButtonModule, MatIconModule, MatMenuModule, MarketplaceIcon, WalletNudges],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, MatButtonModule, MatIconModule, MatMenuModule, MarketplaceIcon, WalletNudges, AccountNudges],
   templateUrl: './optimize-layout.html',
   styleUrl: './optimize-layout.scss',
 })

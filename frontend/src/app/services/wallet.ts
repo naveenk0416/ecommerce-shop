@@ -1,10 +1,10 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { apiFetch, onCoinBalance } from './api';
+import { apiFetch, ApiError, onCoinBalance } from './api';
 import { AuthService } from './auth';
 import { LanguageService } from './language';
 import { loadRazorpay } from '../utils/razorpay';
 
-export type BonusId = 'welcome' | 'mobile' | 'firstInventorySave' | 'firstPublish';
+export type BonusId = 'welcome' | 'mobile' | 'firstInventorySave' | 'firstPublish' | 'businessDetails';
 
 export interface CoinPack {
   id: string;
@@ -36,6 +36,9 @@ export interface TimeSaved {
 /** GET /api/wallet — every number comes from the backend's config/coins.json. */
 export interface WalletSummary {
   balance: { free: number; paid: number; total: number };
+  emailVerified?: boolean;
+  /** Welcome coins that arrive when the email is verified (0 if none). */
+  pendingWelcome?: number;
   listingCost: number;
   monthlyTopUpTo: number;
   nextTopUpAt: string;
@@ -198,7 +201,14 @@ export class WalletService {
    * coins are credited, false if the seller closed checkout. The price always comes from the server.
    */
   async buyPack(packId: string): Promise<boolean> {
-    const order = await apiFetch<{ orderId: string; amount: number; currency: string; keyId: string; pack: CoinPack }>(`/wallet/packs/${encodeURIComponent(packId)}/order`, { method: 'POST' });
+    const order = await apiFetch<{ orderId: string; amount: number; currency: string; keyId: string; pack: CoinPack }>(`/wallet/packs/${encodeURIComponent(packId)}/order`, { method: 'POST' })
+      .catch((error: ApiError) => {
+        // Coin packs need a verified email.
+        if ((error.data as { code?: string } | undefined)?.code === 'EMAIL_NOT_VERIFIED') {
+          error.message = this.i18n.t('Verify your email first.', 'पहले अपना email verify करें।');
+        }
+        throw error;
+      });
     const Razorpay = await loadRazorpay();
     const user = this.auth.user();
     return new Promise<boolean>((resolve, reject) => {

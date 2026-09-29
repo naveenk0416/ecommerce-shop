@@ -87,6 +87,10 @@ async function resolvePack(uid: string, packId: string): Promise<{ pack: CoinPac
 router.post('/packs/:id/order', authMiddleware, async (req, res) => {
   await ensureConnected();
   const uid = uidOf(req);
+  if (!(req as any).authUser.emailVerified) {
+    res.status(403).json({ error: 'Verify your email first.', code: 'EMAIL_NOT_VERIFIED' });
+    return;
+  }
   const resolved = await resolvePack(uid, String(req.params['id']));
   if ('error' in resolved) {
     res.status(resolved.status).json({ error: resolved.error });

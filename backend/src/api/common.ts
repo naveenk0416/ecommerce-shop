@@ -13,7 +13,7 @@ export async function ensureConnected() {
   await mongoose.connect(mongoUri, { autoIndex: true });
   // The wallet's "exactly once" guarantees rely on these unique indexes existing before the
   // first write, so wait for them instead of letting autoIndex build them in the background.
-  await Promise.all([User.init(), CoinLedger.init(), AssistCounter.init(), GstLookup.init(), CoinOrder.init(), FeatureInterest.init()]);
+  await Promise.all([User.init(), CoinLedger.init(), AssistCounter.init(), GstLookup.init(), CoinOrder.init(), FeatureInterest.init(), GuestDraft.init(), GuestUsage.init()]);
   connected = true;
 }
 
@@ -98,6 +98,25 @@ const userSchema = new mongoose.Schema({
   catalogSizeImported: { type: Number },
   catalogSizeImportedAt: { type: Date },
   catalogSizeImportedFrom: { type: String },
+
+  // ---- Short sign-up (2026-09) ----
+  /** 'email' or 'google'. Accounts created before this field existed have none. */
+  signupMethod: { type: String },
+  /** Google account id ("sub") for "Continue with Google". */
+  googleSub: { type: String, unique: true, sparse: true },
+  /** Split welcome bonus (part at sign-up, rest after verification). Unset on older accounts,
+   * which keep the single 10-coin welcome after verification. */
+  welcomeSplit: { type: Boolean },
+  /** false when the device/network limits say this account gets no welcome coins. */
+  welcomeEligible: { type: Boolean },
+  welcomeBlockedReason: { type: String },
+  /** Bonuses earned while the email was unverified — granted once it's verified. */
+  pendingBonuses: { type: [String], default: undefined },
+  /** "Tell us about your business" card. */
+  businessCardDismissedAt: { type: Date },
+  businessDetailsAt: { type: Date },
+  verificationReminderSentAt: { type: Date },
+  firstListingAt: { type: Date },
 }, { timestamps: true });
 
 export const User = (mongoose.models as any).User || mongoose.model('User', userSchema);
@@ -209,7 +228,7 @@ export const CoinLedger = (mongoose.models as any).CoinLedger || mongoose.model(
 // "time saved" and the admin AI cost page.
 const aiUsageSchema = new mongoose.Schema({
   uid: { type: String, required: true, index: true },
-  purpose: { type: String, required: true, enum: ['listing', 'field_fix', 'marketplace_autofill'] },
+  purpose: { type: String, required: true, enum: ['listing', 'field_fix', 'marketplace_autofill', 'guest_listing'] },
   model: { type: String },
   success: { type: Boolean, default: false },
   inputTokens: { type: Number, default: 0 },
@@ -270,6 +289,61 @@ const featureInterestSchema = new mongoose.Schema({
 featureInterestSchema.index({ uid: 1, feature: 1 }, { unique: true });
 
 export const FeatureInterest = (mongoose.models as any).FeatureInterest || mongoose.model('FeatureInterest', featureInterestSchema);
+
+// "Try 1 listing free — no sign-up": the full AI result, kept for 24h behind a random token until
+// the visitor signs up and claims it (it then becomes a normal ListingDraft).
+const guestDraftSchema = new mongoose.Schema({
+  tokenHash: { type: String, required: true, unique: true },
+  image: { type: String, default: '' },
+  results: { type: mongoose.Schema.Types.Mixed, default: {} },
+  deviceId: { type: String },
+  ipHash: { type: String },
+  claimedByUid: { type: String },
+  claimedDraftId: { type: String },
+  expiresAt: { type: Date, required: true },
+}, { timestamps: true, minimize: false });
+guestDraftSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+export const GuestDraft = (mongoose.models as any).GuestDraft || mongoose.model('GuestDraft', guestDraftSchema);
+
+// Guest generation counts (kept after the 24h drafts expire) — enforces the per-device, per-IP
+// and global daily caps.
+const guestUsageSchema = new mongoose.Schema({
+  deviceId: { type: String },
+  ipHash: { type: String },
+  day: { type: String, required: true },
+  status: { type: String, enum: ['reserved', 'success', 'failed'], default: 'reserved' },
+}, { timestamps: true });
+guestUsageSchema.index({ deviceId: 1 });
+guestUsageSchema.index({ ipHash: 1, day: 1 });
+guestUsageSchema.index({ day: 1 });
+
+export const GuestUsage = (mongoose.models as any).GuestUsage || mongoose.model('GuestUsage', guestUsageSchema);
+
+// Sign-up funnel events (landing_view → signup_view → sign_up_start → sign_up → first listing),
+// keyed by the browser id so steps can be counted per visitor and per campaign.
+const funnelEventSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  deviceId: { type: String },
+  uid: { type: String },
+  utm_source: { type: String },
+  utm_campaign: { type: String },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+funnelEventSchema.index({ createdAt: 1, name: 1 });
+
+export const FunnelEvent = (mongoose.models as any).FunnelEvent || mongoose.model('FunnelEvent', funnelEventSchema);
+
+// Suspicious sign-up patterns for the admin page (never shown to sellers).
+const abuseEventSchema = new mongoose.Schema({
+  type: { type: String, required: true },
+  emailDomain: { type: String },
+  deviceId: { type: String },
+  ipHash: { type: String },
+  uid: { type: String },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+abuseEventSchema.index({ createdAt: 1, type: 1 });
+
+export const AbuseEvent = (mongoose.models as any).AbuseEvent || mongoose.model('AbuseEvent', abuseEventSchema);
 
 // GST rate lookups by signed-in sellers, one row per HSN per day — for "time saved".
 const gstLookupSchema = new mongoose.Schema({

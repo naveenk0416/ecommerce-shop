@@ -433,6 +433,13 @@ export class GeminiService {
    * from 5 down to 1 — each tab reads its slice of the same combined response.
    */
   async extractAllListings(base64Image: string, mimeType: string): Promise<AllListingsResult> {
+    const { prompt, schema } = this.buildAllListingsRequest();
+    const compact = await this.generate<Record<string, Record<string, CompactField>>>(prompt, schema, { data: base64Image, mimeType });
+    return expandCompactResult(compact) as unknown as AllListingsResult;
+  }
+
+  /** The combined listing prompt + response schema — also used by the landing page's guest try. */
+  buildAllListingsRequest(): { prompt: string; schema: Record<string, unknown> } {
     const groups: { key: keyof AllListingsResult; fields: readonly FieldConfig[]; instructions: string }[] = [
       {
         key: 'general',
@@ -542,8 +549,7 @@ export class GeminiService {
       Respond only with the requested JSON, covering all five sections: ${groups.map((g) => g.key).join(', ')}.
     `;
 
-    const compact = await this.generate<Record<string, Record<string, CompactField>>>(prompt, { type: 'object', properties, required }, { data: base64Image, mimeType });
-    return expandCompactResult(compact) as unknown as AllListingsResult;
+    return { prompt, schema: { type: 'object', properties, required } };
   }
 
   /**

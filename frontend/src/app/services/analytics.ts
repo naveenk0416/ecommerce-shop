@@ -4,6 +4,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { META_PIXEL_IDS } from '../config/site-config';
 import { ConsentService } from './consent';
+import { apiFetch } from './api';
 
 /** First-touch marketing attribution captured from the landing URL. */
 export interface Attribution {
@@ -20,6 +21,17 @@ export interface Attribution {
 
 const ATTRIBUTION_KEY = 'sa_attribution';
 const ATTRIBUTION_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'fbclid'] as const;
+
+/** Sign-up funnel steps (GA4 events; the browser-side ones are also stored on the server). */
+export type FunnelStep =
+  | 'landing_view' | 'signup_view' | 'sign_up_start' | 'signup_submit' | 'sign_up' | 'email_verified'
+  | 'first_listing_created' | 'onboarding_details_added'
+  | 'guest_try_start' | 'guest_try_success' | 'guest_try_signup_click';
+
+/** Steps the server can't see on its own — sent to POST /api/events. */
+const STORED_FROM_BROWSER = new Set<FunnelStep>(['landing_view', 'signup_view', 'sign_up_start', 'signup_submit', 'guest_try_start', 'guest_try_success', 'guest_try_signup_click']);
+/** Counted once per page load (views and "started typing"). */
+const ONCE_PER_PAGE_LOAD = new Set<FunnelStep>(['landing_view', 'signup_view', 'sign_up_start']);
 
 type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) => void; queue?: unknown[]; loaded?: boolean; version?: string; push?: unknown };
 
@@ -81,11 +93,52 @@ export class AnalyticsService {
   }
 
   /** Called once the backend has accepted a new registration. */
-  trackSignUp(): void {
+  trackSignUp(method: 'email' | 'google' = 'email'): void {
     this.fbq('track', 'CompleteRegistration');
     const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
-    gtag?.('event', 'sign_up', { method: 'email' });
-    this.pushDataLayer({ event: 'sign_up', method: 'email' });
+    gtag?.('event', 'sign_up', { method, ...this.utmParams() });
+    this.pushDataLayer({ event: 'sign_up', method, ...this.utmParams() });
+  }
+
+  private sentThisPageLoad = new Set<FunnelStep>();
+
+  /**
+   * One funnel step: a GA4 event with utm_source / utm_campaign, and — for steps only the browser
+   * sees — a row on the server for the admin funnel table. Never throws.
+   */
+  track(step: FunnelStep, params: Record<string, unknown> = {}): void {
+    if (!this.isBrowser) return;
+    if (ONCE_PER_PAGE_LOAD.has(step)) {
+      if (this.sentThisPageLoad.has(step)) return;
+      this.sentThisPageLoad.add(step);
+    }
+    const utm = this.utmParams();
+    const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
+    gtag?.('event', step, { ...utm, ...params });
+    this.pushDataLayer({ event: step, ...utm, ...params });
+    if (STORED_FROM_BROWSER.has(step)) {
+      apiFetch('/events', { method: 'POST', body: { name: step, ...utm }, keepalive: true }).catch(() => undefined);
+    }
+  }
+
+  /** "Free account बनाएं — पूरी listing देखें" under the guest preview: a Meta Lead too. */
+  trackGuestSignupClick(): void {
+    this.fbq('track', 'Lead', { content_name: 'guest_try' });
+    this.track('guest_try_signup_click');
+  }
+
+  private utmParams(): { utm_source?: string; utm_campaign?: string } {
+    const attribution = this.getAttribution();
+    let source = attribution?.utm_source;
+    let campaign = attribution?.utm_campaign;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      source = source || params.get('utm_source') || undefined;
+      campaign = campaign || params.get('utm_campaign') || undefined;
+    } catch {
+      // No URL access — use what was stored.
+    }
+    return { ...(source ? { utm_source: source } : {}), ...(campaign ? { utm_campaign: campaign } : {}) };
   }
 
   getAttribution(): Attribution | null {

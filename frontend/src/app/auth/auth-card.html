@@ -1,0 +1,133 @@
+<section class="auth-card" [attr.lang]="i18n.lang()" [attr.aria-labelledby]="'auth-title'">
+  @if (googlePending(); as g) {
+    <!-- New Google account: only mobile + terms -->
+    <h1 id="auth-title" class="auth-card__title">{{ t('One last step', 'बस एक step बाकी') }}</h1>
+    <p class="auth-card__sub">{{ t('Signed in with Google as', 'Google से sign in:') }} <strong>{{ g.email }}</strong></p>
+  } @else if (mode() === 'signup') {
+    <h1 id="auth-title" class="auth-card__title">{{ t('Create your free account', 'Free account बनाएं') }}</h1>
+    <p class="auth-card__perk" data-testid="signup-perk">✨ {{ t('10 free AI listings · No card needed', '10 free AI listings · कोई card नहीं') }}</p>
+    @if (guestPending()) {
+      <p class="auth-card__note">{{ t('Your listing will be saved to your account.', 'आपकी listing आपके account में save हो जाएगी।') }}</p>
+    }
+  } @else {
+    <h1 id="auth-title" class="auth-card__title">{{ t('Welcome back', 'फिर से स्वागत है') }}</h1>
+    <p class="auth-card__sub">{{ t('Login to continue with your listings.', 'अपनी listings पर आगे बढ़ने के लिए Login करें।') }}</p>
+  }
+
+  @if (googleEnabled && !googlePending()) {
+    <div class="auth-card__google" data-testid="google-button">
+      <div #googleSlot class="auth-card__google-slot"></div>
+      @if (googleLoading()) {
+        <p class="auth-card__hint">{{ t('Signing in with Google…', 'Google से sign in हो रहा है…') }}</p>
+      }
+    </div>
+    <div class="auth-card__or" role="separator"><span>{{ t('or', 'या') }}</span></div>
+  }
+
+  <form class="auth-card__form" (submit)="$event.preventDefault(); submit()" novalidate>
+    @if (mode() === 'signup' && !googlePending()) {
+      <label class="field">
+        <span class="field__label">{{ t('Full name', 'पूरा नाम') }}</span>
+        <input type="text" autocomplete="name" [value]="name()" (input)="name.set($any($event.target).value)" (focus)="focusField()" (blur)="blur('name')"
+          [attr.aria-invalid]="show('name') && !!nameError()" [placeholder]="t('Your name', 'आपका नाम')" data-testid="signup-name" />
+        @if (show('name') && nameError()) { <span class="field__error" role="alert">{{ nameError() }}</span> }
+      </label>
+    }
+
+    @if (mode() === 'signup' || googlePending()) {
+      <label class="field">
+        <span class="field__label">{{ t('Mobile number', 'Mobile number') }}</span>
+        <span class="field__phone">
+          <span class="field__prefix" aria-hidden="true">+91</span>
+          <input type="tel" inputmode="numeric" autocomplete="tel-national" [value]="phone()" (input)="phone.set($any($event.target).value)" (focus)="focusField()" (blur)="blur('phone')"
+            [attr.aria-invalid]="show('phone') && !!phoneError()" [placeholder]="t('10-digit mobile number', '10 अंकों का mobile number')" data-testid="signup-phone" />
+        </span>
+        @if (show('phone') && phoneError()) { <span class="field__error" role="alert">{{ phoneError() }}</span> }
+      </label>
+      <label class="auth-card__check auth-card__check--small">
+        <input type="checkbox" [checked]="whatsapp()" (change)="whatsapp.set($any($event.target).checked)" data-testid="signup-whatsapp" />
+        <span>{{ t('Send me updates on WhatsApp', 'WhatsApp पर updates भेजें') }}</span>
+      </label>
+    }
+
+    @if (!googlePending()) {
+      <label class="field">
+        <span class="field__label">{{ t('Email', 'Email') }}</span>
+        <input type="email" autocomplete="email" inputmode="email" [value]="email()" (input)="setEmail($any($event.target).value)" (focus)="focusField()" (blur)="blur('email')"
+          [attr.aria-invalid]="(show('email') && !!emailError()) || !!emailServer()" placeholder="you@gmail.com" data-testid="auth-email" />
+        @if (show('email') && emailError()) {
+          <span class="field__error" role="alert">{{ emailError() }}</span>
+        } @else if (emailServer(); as check) {
+          <span class="field__error" role="alert" data-testid="email-check">
+            @if (check.suggestion) {
+              <button type="button" class="field__suggest" (click)="useSuggestion()">{{ check.error }}</button>
+            } @else {
+              {{ check.error }}
+            }
+          </span>
+        }
+      </label>
+
+      <label class="field">
+        <span class="field__label">{{ t('Password', 'Password') }}</span>
+        <span class="field__password">
+          <input [type]="showPassword() ? 'text' : 'password'" [attr.autocomplete]="mode() === 'signup' ? 'new-password' : 'current-password'" [value]="password()"
+            (input)="password.set($any($event.target).value)" (focus)="focusField()" (blur)="blur('password')" [attr.aria-invalid]="show('password') && !!passwordError()"
+            [placeholder]="mode() === 'signup' ? t('8+ characters', '8+ characters') : '••••••••'" data-testid="auth-password" />
+          <button type="button" class="field__toggle" (click)="showPassword.set(!showPassword())" [attr.aria-pressed]="showPassword()"
+            [attr.aria-label]="showPassword() ? t('Hide password', 'Password छिपाएं') : t('Show password', 'Password दिखाएं')">
+            {{ showPassword() ? t('Hide', 'छिपाएं') : t('Show', 'दिखाएं') }}
+          </button>
+        </span>
+        @if (show('password') && passwordError()) { <span class="field__error" role="alert">{{ passwordError() }}</span> }
+      </label>
+    }
+
+    @if (mode() === 'signup' || googlePending()) {
+      <label class="auth-card__check">
+        <input type="checkbox" [checked]="terms()" (change)="terms.set($any($event.target).checked)" data-testid="signup-terms" />
+        @if (i18n.lang() === 'hi') {
+          <span>मैं <a href="/terms" target="_blank" rel="noopener">Terms</a> और <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a> से सहमत हूँ</span>
+        } @else {
+          <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a></span>
+        }
+      </label>
+      @if (submitted() && termsError()) { <span class="field__error" role="alert">{{ termsError() }}</span> }
+    } @else {
+      <div class="auth-card__row">
+        <label class="auth-card__check auth-card__check--small">
+          <input type="checkbox" [checked]="rememberMe()" (change)="rememberMe.set($any($event.target).checked)" />
+          <span>{{ t('Remember me', 'मुझे याद रखें') }}</span>
+        </label>
+        <a routerLink="/forgot-password" class="auth-card__link">{{ t('Forgot password?', 'Password भूल गए?') }}</a>
+      </div>
+    }
+
+    @if (formError()) {
+      <p class="auth-card__alert" role="alert" data-testid="auth-error">
+        {{ formError() }}
+        @if (phoneTaken() || emailTaken()) {
+          <a routerLink="/login" queryParamsHandling="preserve" class="auth-card__link">{{ t('Login', 'Login करें') }}</a>
+        }
+      </p>
+    }
+
+    <button type="submit" class="auth-card__submit" [disabled]="busy()" data-testid="auth-submit">
+      @if (busy()) {
+        {{ t('Please wait…', 'रुकिए…') }}
+      } @else if (mode() === 'login' && !googlePending()) {
+        {{ t('Login', 'Login करें') }}
+      } @else {
+        {{ t('Create free account', 'Free account बनाएं') }}
+      }
+    </button>
+  </form>
+
+  @if (googlePending()) {
+    <button type="button" class="auth-card__switch" (click)="cancelGoogle()">{{ t('Use a different account', 'दूसरा account use करें') }}</button>
+  } @else if (mode() === 'signup') {
+    <a routerLink="/login" queryParamsHandling="preserve" class="auth-card__switch" data-testid="to-login">{{ t('Already have an account? Login', 'पहले से account है? Login करें') }}</a>
+  } @else {
+    <a routerLink="/signup" queryParamsHandling="preserve" class="auth-card__switch" data-testid="to-signup">{{ t('New here? Create a free account', 'नए हैं? Free account बनाएं') }}</a>
+  }
+</section>

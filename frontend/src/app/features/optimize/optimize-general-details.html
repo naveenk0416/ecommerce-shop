@@ -58,7 +58,7 @@
         } @else {
           <label class="photo-panel__dropzone">
             <mat-icon>add_a_photo</mat-icon>
-            <span>Upload a photo to get started</span>
+            <span data-testid="upload-title">{{ (auth.profile()?.usageCount ?? 0) === 0 ? wallet.i18nText('Upload your first product photo', 'अपनी पहली product photo upload करें') : wallet.i18nText('Upload a photo to get started', 'शुरू करने के लिए photo upload करें') }}</span>
             @if (wallet.costNote(); as note) {
               <span class="cost-note" data-testid="upload-cost">{{ note }}</span>
             }

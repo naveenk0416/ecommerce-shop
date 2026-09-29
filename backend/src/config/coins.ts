@@ -19,9 +19,11 @@ export interface CoinPack {
 export interface CoinConfig {
   listingCost: number;
   welcomeBonus: number;
+  /** Part of welcomeBonus given right at sign-up; the rest after email verification. */
+  welcomeImmediate: number;
   monthlyFreeTopUpTo: number;
   timezone: string;
-  earnedBonuses: { mobile: number; firstInventorySave: number; firstPublish: number };
+  earnedBonuses: { mobile: number; firstInventorySave: number; firstPublish: number; businessDetails: number };
   mobileBonusOnSignup: boolean;
   referral: { reward: number; maxRewardsPerReferrerPerMonth: number; reverseIfDeletedWithinDays: number; baseUrl: string };
   freeAssists: { fieldFixPerListing: number; autofillPerListingPerMarketplace: number; perUserPerDay: number };
@@ -51,14 +53,28 @@ export interface CoinConfig {
   };
   timeSavedMinutes: { aiListing: number; marketplaceAutofill: number; gstLookup: number };
   catalogSizeBands: string[];
+  signup: {
+    /** Accounts per device (sa_device_id) that may receive welcome coins. */
+    welcomeAccountsPerDevice: number;
+    /** Sign-ups per network (IP) per 24h that may receive welcome coins. */
+    maxSignupsPerIpPerDay: number;
+    /** Reject email domains without MX records. */
+    mxCheck: boolean;
+    verificationReminderAfterHours: number;
+    /** Reminders are only sent to accounts younger than this (so old accounts aren't mailed). */
+    verificationReminderMaxAgeDays: number;
+    unverifiedCleanupListAfterDays: number;
+  };
+  guest: { enabled: boolean; perDevice: number; perIpPerDay: number; globalPerDay: number; draftTtlHours: number };
 }
 
 const DEFAULTS: CoinConfig = {
   listingCost: 1,
   welcomeBonus: 10,
+  welcomeImmediate: 3,
   monthlyFreeTopUpTo: 3,
   timezone: 'Asia/Kolkata',
-  earnedBonuses: { mobile: 2, firstInventorySave: 3, firstPublish: 5 },
+  earnedBonuses: { mobile: 2, firstInventorySave: 3, firstPublish: 5, businessDetails: 2 },
   mobileBonusOnSignup: true,
   referral: { reward: 10, maxRewardsPerReferrerPerMonth: 20, reverseIfDeletedWithinDays: 7, baseUrl: 'https://sellassist.in/' },
   freeAssists: { fieldFixPerListing: 10, autofillPerListingPerMarketplace: 3, perUserPerDay: 60 },
@@ -85,6 +101,15 @@ const DEFAULTS: CoinConfig = {
   },
   timeSavedMinutes: { aiListing: 20, marketplaceAutofill: 10, gstLookup: 2 },
   catalogSizeBands: ['1-10', '11-50', '51-200', '200+'],
+  signup: {
+    welcomeAccountsPerDevice: 1,
+    maxSignupsPerIpPerDay: 3,
+    mxCheck: true,
+    verificationReminderAfterHours: 24,
+    verificationReminderMaxAgeDays: 7,
+    unverifiedCleanupListAfterDays: 30,
+  },
+  guest: { enabled: true, perDevice: 1, perIpPerDay: 3, globalPerDay: 200, draftTtlHours: 24 },
 };
 
 function deepMerge<T>(base: T, override: unknown): T {
@@ -113,6 +138,9 @@ function loadConfig(): CoinConfig {
   const config = deepMerge(DEFAULTS, fileConfig);
   const envPacks = process.env['COIN_PACKS_ENABLED'];
   if (envPacks !== undefined && envPacks !== '') config.packs.enabled = /^(1|true|yes|on)$/i.test(envPacks.trim());
+  // EMAIL_MX_CHECK=false turns the MX lookup off (tests, offline development).
+  const envMx = process.env['EMAIL_MX_CHECK'];
+  if (envMx !== undefined && envMx !== '') config.signup.mxCheck = /^(1|true|yes|on)$/i.test(envMx.trim());
   return config;
 }
 

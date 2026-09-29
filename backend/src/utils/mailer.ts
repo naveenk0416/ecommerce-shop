@@ -35,7 +35,16 @@ export class MailDeliveryError extends Error {
 /** Friendly text for the end user whenever a transactional email couldn't be sent. */
 export const MAIL_UNAVAILABLE_MESSAGE = "We couldn't send the email right now, please try again shortly.";
 
-export async function sendMail(options: { to: string; subject: string; html: string }) {
+type MailOptions = { to: string; subject: string; html: string };
+let testSender: ((options: MailOptions) => Promise<void>) | null = null;
+
+/** Tests capture outgoing mail instead of calling Resend. */
+export function setMailSenderForTests(fn: ((options: MailOptions) => Promise<void>) | null): void {
+  testSender = fn;
+}
+
+export async function sendMail(options: MailOptions) {
+  if (testSender) return testSender(options);
   const from = process.env['RESEND_FROM'] || 'onboarding@resend.dev';
   const replyTo = process.env['RESEND_REPLY_TO'] || undefined;
 

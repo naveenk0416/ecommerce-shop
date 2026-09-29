@@ -11,19 +11,24 @@ import { activeFestivePacks, coinConfig, dayKey, monthKey, monthStart, nextTopUp
  * Spending takes free coins first, then paid ones.
  */
 
-export type BonusId = 'mobile' | 'firstInventorySave' | 'firstPublish';
+export type BonusId = 'mobile' | 'firstInventorySave' | 'firstPublish' | 'businessDetails';
 
 const BONUS_KEYS: Record<BonusId, string> = {
   mobile: 'bonus:mobile',
   firstInventorySave: 'bonus:first_inventory_save',
   firstPublish: 'bonus:first_publish',
+  businessDetails: 'bonus:business_details',
 };
 
 const BONUS_REASONS: Record<BonusId, string> = {
   mobile: 'Mobile number added to your profile',
   firstInventorySave: 'First product saved to inventory',
   firstPublish: 'First product published to Amazon or Flipkart',
+  businessDetails: 'Business details added',
 };
+
+/** Ledger keys of the welcome bonus: one row on older accounts, two on split (new) accounts. */
+export const WELCOME_KEYS = { single: 'welcome', part1: 'welcome:part1', verified: 'welcome:verified' } as const;
 
 type LedgerType = 'welcome_bonus' | 'monthly_topup' | 'earned_bonus' | 'referral' | 'referral_reversal' | 'spend' | 'refund' | 'purchase' | 'admin_adjust';
 
@@ -136,7 +141,17 @@ async function maybeStartStarterOffer(uid: string): Promise<void> {
   );
 }
 
+/**
+ * Earned bonuses need a verified email. Earned before that, the bonus is remembered and granted
+ * when the email is verified (see ensureWallet).
+ */
 export async function grantBonus(uid: string, bonus: BonusId): Promise<boolean> {
+  const user = await User.findById(uid).select('emailVerified').lean();
+  if (!user) return false;
+  if (!user.emailVerified) {
+    await User.updateOne({ _id: uid }, { $addToSet: { pendingBonuses: bonus } });
+    return false;
+  }
   return credit(uid, {
     type: 'earned_bonus',
     amount: coinConfig.earnedBonuses[bonus],
@@ -157,16 +172,43 @@ function newReferralCode(): string {
 }
 
 /**
- * Brings a (verified) account's wallet up to date. Safe to call on every wallet read:
+ * Whether a new account may receive welcome coins: only the first account created on a device
+ * (sa_device_id), and at most maxSignupsPerIpPerDay accounts per network in 24h. Decided from the
+ * accounts created before this one, so asking again later gives the same answer.
+ */
+export async function welcomeEligibility(user: any): Promise<{ eligible: boolean; reason?: 'device' | 'ip' }> {
+  const createdAt = new Date(user.createdAt ?? user.signupAt ?? Date.now());
+  const limits = coinConfig.signup;
+  if (user.signupDeviceId) {
+    const earlier = await User.countDocuments({ _id: { $ne: user._id }, signupDeviceId: user.signupDeviceId, welcomeEligible: { $ne: false }, createdAt: { $lt: createdAt } });
+    if (earlier >= limits.welcomeAccountsPerDevice) return { eligible: false, reason: 'device' };
+  }
+  if (user.signupIpHash) {
+    const earlier = await User.countDocuments({
+      _id: { $ne: user._id }, signupIpHash: user.signupIpHash,
+      createdAt: { $lt: createdAt, $gte: new Date(createdAt.getTime() - 24 * 3600 * 1000) },
+    });
+    if (earlier >= limits.maxSignupsPerIpPerDay) return { eligible: false, reason: 'ip' };
+  }
+  return { eligible: true };
+}
+
+/**
+ * Brings an account's wallet up to date. Safe to call on every wallet read:
  * - first time: coins initialised, referral code created;
- * - welcome bonus once (existing accounts keep whatever welcome they already got);
+ * - welcome bonus once. New (split) accounts: welcomeImmediate coins at sign-up, the rest once the
+ *   email is verified — nothing if the device/network limits said no. Older accounts keep the
+ *   single welcome row they got (or get it on verification, as before);
+ * - bonuses earned while unverified, once verified;
  * - mobile bonus if a number is on the profile;
  * - monthly free top-up (free balance raised to the configured amount on the 1st, never above it);
  * - starter offer if the balance is 0.
  */
 export async function ensureWallet(uid: string): Promise<void> {
   let user = await User.findById(uid).lean();
-  if (!user || !user.emailVerified) return;
+  if (!user) return;
+  // Older accounts (before the split welcome) have no wallet until they verify, as before.
+  if (!user.emailVerified && !user.welcomeSplit) return;
 
   if (!user.walletInitAt) {
     await User.updateOne(
@@ -186,9 +228,26 @@ export async function ensureWallet(uid: string): Promise<void> {
     }
   }
 
-  await credit(uid, { type: 'welcome_bonus', amount: coinConfig.welcomeBonus, reason: 'Welcome bonus', key: 'welcome' });
+  if (user.welcomeSplit) {
+    if (user.welcomeEligible) {
+      const immediate = Math.min(coinConfig.welcomeImmediate, coinConfig.welcomeBonus);
+      await credit(uid, { type: 'welcome_bonus', amount: immediate, reason: 'Welcome bonus (part 1)', key: WELCOME_KEYS.part1 });
+      if (user.emailVerified) {
+        await credit(uid, { type: 'welcome_bonus', amount: coinConfig.welcomeBonus - immediate, reason: 'Email verified', key: WELCOME_KEYS.verified });
+      }
+    }
+  } else {
+    await credit(uid, { type: 'welcome_bonus', amount: coinConfig.welcomeBonus, reason: 'Welcome bonus', key: WELCOME_KEYS.single });
+  }
+
+  // Everything below needs a verified email.
+  if (!user.emailVerified) return;
 
   if (user.phoneNumber && coinConfig.mobileBonusOnSignup) await grantBonus(uid, 'mobile');
+  for (const pending of (user.pendingBonuses ?? []) as BonusId[]) {
+    if (pending in BONUS_KEYS) await grantBonus(uid, pending);
+  }
+  if (user.pendingBonuses?.length) await User.updateOne({ _id: uid }, { $unset: { pendingBonuses: 1 } });
 
   const month = monthKey();
   if (user.lastTopupMonth !== month) {
@@ -240,8 +299,10 @@ export function referralBlockReason(referred: any, referrer: any): string | null
 }
 
 /**
- * Called after a referred seller's first successful AI listing (they are verified by then, since
- * sign-in requires it). Both get the reward once; the referrer's side is capped per month.
+ * Called after a referred seller's successful AI listing, and again when they verify their email.
+ * Only verified accounts earn referral rewards: nothing happens while the referred seller is
+ * unverified, and an unverified referrer gets nothing. Both get the reward once; the referrer's
+ * side is capped per month.
  */
 export async function processReferralAfterListing(uid: string): Promise<void> {
   const referred = await User.findById(uid).lean();
@@ -274,7 +335,8 @@ export async function processReferralAfterListing(uid: string): Promise<void> {
     uid: referrerUid, type: 'referral', key: { $regex: '^referral:referrer:' }, createdAt: { $gte: monthStart() },
   });
   let referrerRewarded = false;
-  if (rewardedThisMonth < coinConfig.referral.maxRewardsPerReferrerPerMonth) {
+  const referrerVerified = !!referrer.emailVerified;
+  if (referrerVerified && rewardedThisMonth < coinConfig.referral.maxRewardsPerReferrerPerMonth) {
     await ensureWallet(referrerUid);
     referrerRewarded = await credit(referrerUid, {
       type: 'referral', amount: reward, reason: 'A seller you referred created their first listing',
@@ -282,7 +344,7 @@ export async function processReferralAfterListing(uid: string): Promise<void> {
     });
   }
   await User.updateOne({ _id: uid }, {
-    $set: { 'referral.referrerRewarded': referrerRewarded, ...(referrerRewarded ? {} : { 'referral.reason': 'referrer_monthly_limit' }) },
+    $set: { 'referral.referrerRewarded': referrerRewarded, ...(referrerRewarded ? {} : { 'referral.reason': referrerVerified ? 'referrer_monthly_limit' : 'referrer_unverified' }) },
   });
 }
 
@@ -391,7 +453,7 @@ export async function walletSummary(uid: string) {
   const paid = user.coins?.paid ?? 0;
 
   const ledgerKeys = new Set(
-    (await CoinLedger.find({ uid, key: { $in: ['welcome', ...Object.values(BONUS_KEYS), 'purchase:starter'] } }).select('key').lean())
+    (await CoinLedger.find({ uid, key: { $in: [...Object.values(WELCOME_KEYS), ...Object.values(BONUS_KEYS), 'purchase:starter'] } }).select('key').lean())
       .map((row: any) => row.key),
   );
 
@@ -423,14 +485,19 @@ export async function walletSummary(uid: string) {
 
   return {
     balance: { free, paid, total: free + paid },
+    emailVerified: !!user.emailVerified,
+    /** Coins that arrive when the email is verified (0 when not eligible or already received). */
+    pendingWelcome: !user.emailVerified && user.welcomeSplit && user.welcomeEligible
+      ? coinConfig.welcomeBonus - Math.min(coinConfig.welcomeImmediate, coinConfig.welcomeBonus) : 0,
     listingCost: coinConfig.listingCost,
     monthlyTopUpTo: coinConfig.monthlyFreeTopUpTo,
     nextTopUpAt: nextTopUpDate(now).toISOString(),
     bonuses: [
-      { id: 'welcome', coins: coinConfig.welcomeBonus, done: ledgerKeys.has('welcome') },
+      { id: 'welcome', coins: coinConfig.welcomeBonus, done: ledgerKeys.has(WELCOME_KEYS.single) || ledgerKeys.has(WELCOME_KEYS.verified) },
       { id: 'mobile', coins: coinConfig.earnedBonuses.mobile, done: ledgerKeys.has(BONUS_KEYS.mobile) },
       { id: 'firstInventorySave', coins: coinConfig.earnedBonuses.firstInventorySave, done: ledgerKeys.has(BONUS_KEYS.firstInventorySave) },
       { id: 'firstPublish', coins: coinConfig.earnedBonuses.firstPublish, done: ledgerKeys.has(BONUS_KEYS.firstPublish) },
+      { id: 'businessDetails', coins: coinConfig.earnedBonuses.businessDetails, done: ledgerKeys.has(BONUS_KEYS.businessDetails) },
     ],
     referral: {
       code: user.referralCode ?? null,

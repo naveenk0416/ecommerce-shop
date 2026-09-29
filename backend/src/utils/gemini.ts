@@ -147,7 +147,7 @@ export interface AiTiming {
  * Makes one Gemini call and logs it. Returns the parsed JSON (when a schema was given) or text.
  * Throws AiCallError with a friendly message on failure (the failure is logged too).
  */
-export async function callGemini(uid: string, purpose: 'listing' | 'field_fix' | 'marketplace_autofill', req: GeminiRequest, log: {
+export async function callGemini(uid: string, purpose: 'listing' | 'field_fix' | 'marketplace_autofill' | 'guest_listing', req: GeminiRequest, log: {
   listingKey?: string; marketplace?: string; coinsCharged?: number;
 } = {}, timing?: AiTiming): Promise<unknown> {
   const started = { uid, purpose, model: req.model, listingKey: log.listingKey, marketplace: log.marketplace };

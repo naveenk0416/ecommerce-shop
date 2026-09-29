@@ -5,8 +5,9 @@ import { AnalyticsService } from '../../services/analytics';
 import { LanguageService } from '../../services/language';
 
 /**
- * First-visit cookie consent bar. Kept deliberately short (two lines on a 375px phone) so it never
- * sits over the hero CTA; while it's visible the WhatsApp button is lifted above it (see app.css).
+ * First-visit cookie consent: a thin bar at the very bottom (≤ 64px on a phone). While it's
+ * visible the page gets matching bottom padding and the WhatsApp button sits above it (app.css),
+ * so it never covers form fields or buttons.
  */
 @Component({
   selector: 'app-cookie-banner',
@@ -15,14 +16,14 @@ import { LanguageService } from '../../services/language';
   imports: [RouterLink],
   template: `
     @if (consent.choice() === null) {
-      <div class="cookie-banner" role="region" aria-label="Cookie consent" [attr.lang]="i18n.lang()">
+      <div class="cookie-banner" role="region" [attr.aria-label]="i18n.t('Cookie consent', 'Cookie सहमति')" [attr.lang]="i18n.lang()" data-testid="cookie-banner">
         <p class="cookie-banner__text">
-          {{ i18n.t('We use cookies to improve SellAssist and measure our ads.', 'हम SellAssist को बेहतर बनाने और अपने ads मापने के लिए cookies का उपयोग करते हैं.') }}
-          <a routerLink="/privacy">{{ i18n.t('Privacy Policy', 'Privacy Policy') }}</a>
+          {{ i18n.t('We use cookies to improve SellAssist and measure ads.', 'हम cookies से SellAssist बेहतर बनाते हैं और ads मापते हैं।') }}
+          <a routerLink="/privacy">{{ i18n.t('Privacy', 'Privacy') }}</a>
         </p>
         <div class="cookie-banner__actions">
           <button type="button" class="cookie-banner__btn cookie-banner__btn--ghost" (click)="decline()">{{ i18n.t('Decline', 'मना करें') }}</button>
-          <button type="button" class="cookie-banner__btn cookie-banner__btn--primary" (click)="accept()">{{ i18n.t('Accept', 'स्वीकार करें') }}</button>
+          <button type="button" class="cookie-banner__btn cookie-banner__btn--primary" (click)="accept()">{{ i18n.t('Accept', 'ठीक है') }}</button>
         </div>
       </div>
     }
@@ -30,26 +31,30 @@ import { LanguageService } from '../../services/language';
   styles: `
     .cookie-banner {
       position: fixed;
-      left: 12px;
-      right: 12px;
-      bottom: calc(12px + env(safe-area-inset-bottom));
+      left: 0;
+      right: 0;
+      bottom: 0;
       z-index: 60;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 0.65rem 0.75rem 0.65rem 1rem;
-      border-radius: 1.1rem;
+      gap: 0.6rem;
+      min-height: 52px;
+      max-height: 64px;
+      padding: 0.4rem max(0.75rem, env(safe-area-inset-right)) calc(0.4rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
       background: #0f172a;
       color: #e2e8f0;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.3);
+      box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.2);
     }
     .cookie-banner__text {
       flex: 1;
-      margin: 0;
+      margin: 0 auto;
+      max-width: 640px;
       font-size: 12px;
-      line-height: 1.4;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
     .cookie-banner__text a {
       color: #fdba74;
@@ -63,7 +68,8 @@ import { LanguageService } from '../../services/language';
       flex-shrink: 0;
     }
     .cookie-banner__btn {
-      padding: 0.5rem 0.8rem;
+      min-height: 36px;
+      padding: 0 0.8rem;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 800;
@@ -78,26 +84,11 @@ import { LanguageService } from '../../services/language';
       background: linear-gradient(135deg, #f97316, #dc2626);
     }
     @media (max-width: 480px) {
-      .cookie-banner {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.5rem;
-        padding: 0.6rem 0.75rem;
-      }
-      .cookie-banner__actions {
-        justify-content: flex-end;
+      .cookie-banner__text {
+        font-size: 11.5px;
       }
       .cookie-banner__btn {
-        padding: 0.4rem 0.9rem;
-      }
-    }
-    /* Short phones (iPhone SE and similar): the hero's "Start Free" button sits in the bottom
-       band of the first screen, so a bottom bar would cover it. Dock under the header instead,
-       over the hero's empty top padding. Keep 72px in sync with the mobile header height. */
-    @media (max-width: 480px) and (max-height: 759px) {
-      .cookie-banner {
-        top: 72px;
-        bottom: auto;
+        padding: 0 0.65rem;
       }
     }
   `,

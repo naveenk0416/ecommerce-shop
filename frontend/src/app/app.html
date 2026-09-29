@@ -91,11 +91,12 @@
     </ion-toolbar>
   </ion-header>
 
-  <ion-content [fullscreen]="true">
+  <ion-content [fullscreen]="true" [class.has-cookie-bar]="consent.choice() === null">
     @if (showLanding()) {
       <app-landing 
         (login)="openSignIn()"
         (getStarted)="startSignup($event)"
+        (guestSignup)="openGuestSignup()"
         [isLoggedIn]="!!auth.user()"
         (goDashboard)="navigateTo('home')">
       </app-landing>
@@ -139,45 +140,45 @@
           <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card text-center">
             @if (emailVerificationState() === 'verifying') {
               <ion-spinner name="crescent" color="primary"></ion-spinner>
-              <p class="text-slate-500 mt-4 font-medium">Verifying your email…</p>
+              <p class="text-slate-500 mt-4 font-medium" [attr.lang]="i18n.lang()">{{ i18n.t('Verifying your email…', 'आपका email verify हो रहा है…') }}</p>
             } @else if (emailVerificationState() === 'success') {
               <div class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ion-icon name="checkmark" class="text-4xl text-emerald-500"></ion-icon>
               </div>
-              <h2 class="text-2xl font-black text-slate-900 tracking-tight">Email Verified</h2>
-              <p class="text-slate-500 mt-2 text-sm font-medium mb-6">Your account is active. Let's get your first listing optimized.</p>
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight" [attr.lang]="i18n.lang()">{{ i18n.t('Email verified', 'Email verify हो गया') }}</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium mb-6" [attr.lang]="i18n.lang()">{{ i18n.t('Your free coins are ready. Let’s create your next listing.', 'आपके free coins तैयार हैं। चलिए अगली listing बनाते हैं।') }}</p>
               <ion-button (click)="navigateTo('home')" expand="block" shape="round" class="btn-ion-orange h-14 font-black">
-                Continue
+                {{ i18n.t('Continue', 'आगे बढ़ें') }}
               </ion-button>
             } @else {
               <!-- Missing, invalid or expired verification link -->
               <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ion-icon name="close" class="text-4xl text-red-500"></ion-icon>
               </div>
-              <h2 class="text-2xl font-black text-slate-900 tracking-tight">This link is invalid or has expired</h2>
-              <p class="text-slate-500 mt-2 text-sm font-medium mb-6">
-                {{ emailVerificationError() || 'Verification links work once and expire after 24 hours.' }} Enter your email to get a new verification link.
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight" [attr.lang]="i18n.lang()">{{ i18n.t('This link is invalid or has expired', 'यह link गलत है या expire हो गया है') }}</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium mb-6" [attr.lang]="i18n.lang()">
+                {{ i18n.t('Verification links work once and expire after 24 hours. Enter your email to get a new verification link.', 'Verification link एक बार चलता है और 24 घंटे में expire हो जाता है। नया link पाने के लिए अपना email लिखें।') }}
               </p>
               <div class="space-y-3 text-left">
-                <ion-input type="email" autocomplete="email" [value]="resendEmailInput()" (ionInput)="resendEmailInput.set($any($event).target.value)" (keyup.enter)="resendVerificationEmail(resendEmailInput())" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 border border-slate-100" aria-label="Email address"></ion-input>
+                <ion-input type="email" autocomplete="email" [value]="resendEmailInput()" (ionInput)="resendEmailInput.set($any($event).target.value)" (keyup.enter)="resendVerificationEmail(resendEmailInput())" placeholder="you@gmail.com" class="bg-slate-50 rounded-2xl px-5 py-2 border border-slate-100" [attr.aria-label]="i18n.t('Email address', 'Email address')"></ion-input>
                 <ion-button (click)="resendVerificationEmail(resendEmailInput())" expand="block" shape="round" class="btn-ion-orange h-12 font-black" [disabled]="isResendingVerification() || resendCooldown() > 0">
                   @if (isResendingVerification()) {
                     <ion-spinner name="crescent" slot="start"></ion-spinner>
-                    Sending…
+                    {{ i18n.t('Sending…', 'भेज रहे हैं…') }}
                   } @else if (resendCooldown() > 0) {
-                    Resend in {{ resendCooldown() }}s
+                    {{ i18n.t('Resend in', 'फिर से भेजें:') }} {{ resendCooldown() }}s
                   } @else {
-                    Send new verification link
+                    {{ i18n.t('Send new verification link', 'नया verification link भेजें') }}
                   }
                 </ion-button>
               </div>
               @if (resendVerificationSent()) {
-                <p class="text-emerald-600 text-sm font-bold mt-4">If that account needs verification, a new link is on its way — check your inbox.</p>
+                <p class="text-emerald-600 text-sm font-bold mt-4">{{ i18n.t('If that account needs verification, a new link is on its way — check your inbox.', 'अगर उस account को verification चाहिए, तो नया link भेज दिया गया है — अपना inbox देखें।') }}</p>
               }
               @if (resendMessage()) {
                 <p class="field-error justify-center mt-4">{{ resendMessage() }}</p>
               }
-              <a routerLink="/login" class="inline-block text-sm text-orange-600 font-bold hover:underline mt-6">Back to Login</a>
+              <a routerLink="/login" class="inline-block text-sm text-orange-600 font-bold hover:underline mt-6">{{ i18n.t('Back to Login', 'Login पर वापस जाएं') }}</a>
             }
           </section>
         } @else if (verificationPendingEmail()) {
@@ -226,12 +227,12 @@
             <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <ion-icon name="lock-closed" class="text-4xl text-red-500"></ion-icon>
             </div>
-            <h2 class="text-2xl font-black text-slate-900 tracking-tight">This link is invalid or has expired</h2>
-            <p class="text-slate-500 mt-2 text-sm font-medium mb-6">Password reset links work once and expire after 30 minutes. Request a new one below.</p>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight" [attr.lang]="i18n.lang()">{{ i18n.t('This link is invalid or has expired', 'यह link गलत है या expire हो गया है') }}</h2>
+            <p class="text-slate-500 mt-2 text-sm font-medium mb-6" [attr.lang]="i18n.lang()">{{ i18n.t('Password reset links work once and expire after 30 minutes. Request a new one below.', 'Password reset link एक बार चलता है और 30 मिनट में expire हो जाता है। नीचे से नया link मंगाएं।') }}</p>
             <ion-button routerLink="/forgot-password" expand="block" shape="round" class="btn-ion-orange h-12 font-black">
-              Request a new reset link
+              {{ i18n.t('Request a new reset link', 'नया reset link मंगाएं') }}
             </ion-button>
-            <a routerLink="/login" class="inline-block text-sm text-orange-600 font-bold hover:underline mt-6">Back to Login</a>
+            <a routerLink="/login" class="inline-block text-sm text-orange-600 font-bold hover:underline mt-6">{{ i18n.t('Back to Login', 'Login पर वापस जाएं') }}</a>
           </section>
         } @else if (passwordResetMode() === 'forgot') {
           <!-- Forgot Password Section -->
@@ -243,25 +244,25 @@
               <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ion-icon name="lock-closed" class="text-4xl text-orange-500"></ion-icon>
               </div>
-              <h2 class="text-2xl font-black text-slate-900 tracking-tight">Reset Password</h2>
-              <p class="text-slate-500 mt-2 text-sm font-medium">
-                Enter your account email and we'll send you a link to reset your password.
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight" [attr.lang]="i18n.lang()">{{ i18n.t('Reset password', 'Password reset करें') }}</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium" [attr.lang]="i18n.lang()">
+                {{ i18n.t('Enter your account email and we’ll send you a link to reset your password.', 'अपने account का email लिखें — हम password reset करने का link भेजेंगे।') }}
               </p>
             </div>
 
             @if (forgotEmailSent()) {
               <div class="auth-alert auth-alert--success">
                 <span class="auth-alert__icon"></span>
-                <p>If an account exists for <strong>{{ email() }}</strong>, a reset link has been sent. Check your inbox.</p>
+                <p [attr.lang]="i18n.lang()">{{ i18n.t('If an account exists for this email, a reset link has been sent. Check your inbox:', 'अगर इस email का account है, तो reset link भेज दिया गया है। अपना inbox देखें:') }} <strong>{{ email() }}</strong></p>
               </div>
               <button (click)="backToLogin()" class="text-sm text-orange-600 font-bold hover:underline mt-6 block mx-auto">
-                Back to Login
+                {{ i18n.t('Back to Login', 'Login पर वापस जाएं') }}
               </button>
             } @else {
               <div class="space-y-4">
                 <div class="mb-2">
                   <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
-                  <ion-input type="email" autofocus [value]="email()" (ionInput)="email.set($any($event).target.value)" (keyup.enter)="sendPasswordResetEmail()" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
+                  <ion-input type="email" autofocus [value]="email()" (ionInput)="email.set($any($event).target.value)" (keyup.enter)="sendPasswordResetEmail()" placeholder="you@gmail.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
                 </div>
 
                 @if (authError()) {
@@ -274,15 +275,15 @@
                 <ion-button (click)="sendPasswordResetEmail()" expand="block" shape="round" class="btn-ion-orange h-14 font-black mt-4" [disabled]="isProcessing()">
                   @if (isProcessing()) {
                     <ion-spinner name="crescent" slot="start"></ion-spinner>
-                    Sending...
+                    {{ i18n.t('Sending…', 'भेज रहे हैं…') }}
                   } @else {
-                    Send Reset Link
+                    {{ i18n.t('Send reset link', 'Reset link भेजें') }}
                   }
                 </ion-button>
 
                 <div class="text-center py-2">
                   <button (click)="backToLogin()" class="text-sm text-orange-600 font-bold hover:underline">
-                    Back to Login
+                    {{ i18n.t('Back to Login', 'Login पर वापस जाएं') }}
                   </button>
                 </div>
               </div>
@@ -295,20 +296,20 @@
               <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ion-icon name="lock-closed" class="text-4xl text-orange-500"></ion-icon>
               </div>
-              <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ resetPasswordSuccess() ? 'Password Updated' : 'Set New Password' }}</h2>
-              <p class="text-slate-500 mt-2 text-sm font-medium">
-                {{ resetPasswordSuccess() ? 'Your password has been changed successfully.' : 'Choose a new password for your account.' }}
+              <h2 class="text-2xl font-black text-slate-900 tracking-tight" [attr.lang]="i18n.lang()">{{ resetPasswordSuccess() ? i18n.t('Password updated', 'Password बदल गया') : i18n.t('Set a new password', 'नया password बनाएं') }}</h2>
+              <p class="text-slate-500 mt-2 text-sm font-medium" [attr.lang]="i18n.lang()">
+                {{ resetPasswordSuccess() ? i18n.t('Your password has been changed successfully.', 'आपका password सफलतापूर्वक बदल गया है।') : i18n.t('Choose a new password for your account.', 'अपने account के लिए नया password चुनें।') }}
               </p>
             </div>
 
             @if (resetPasswordSuccess()) {
               <ion-button (click)="backToLogin()" expand="block" shape="round" class="btn-ion-orange h-14 font-black mt-4">
-                Go to Login
+                {{ i18n.t('Go to Login', 'Login पर जाएं') }}
               </ion-button>
             } @else {
               <div class="space-y-4">
                 <app-password-field
-                  label="New Password"
+                  [label]="i18n.t('New password', 'नया password')"
                   autocomplete="new-password"
                   [value]="newPassword()"
                   (valueChange)="newPassword.set($event)"
@@ -316,14 +317,14 @@
                 <app-password-strength [password]="newPassword()" />
 
                 <app-password-field
-                  label="Confirm Password"
+                  [label]="i18n.t('Confirm password', 'Password दोबारा लिखें')"
                   autocomplete="new-password"
                   [value]="confirmNewPassword()"
                   (valueChange)="confirmNewPassword.set($event)"
                   (enter)="submitPasswordReset()"
                 />
                 @if (confirmNewPassword() && newPassword() !== confirmNewPassword()) {
-                  <p class="field-error">Passwords do not match.</p>
+                  <p class="field-error">{{ i18n.t('Passwords do not match.', 'दोनों passwords एक जैसे नहीं हैं।') }}</p>
                 }
 
                 @if (authError()) {
@@ -336,9 +337,9 @@
                 <ion-button (click)="submitPasswordReset()" expand="block" shape="round" class="btn-ion-orange h-14 font-black mt-4" [disabled]="isProcessing()">
                   @if (isProcessing()) {
                     <ion-spinner name="crescent" slot="start"></ion-spinner>
-                    Updating...
+                    {{ i18n.t('Updating…', 'बदल रहे हैं…') }}
                   } @else {
-                    Update Password
+                    {{ i18n.t('Update password', 'Password बदलें') }}
                   }
                 </ion-button>
               </div>
@@ -371,201 +372,8 @@
           }
           <router-outlet></router-outlet>
         } @else if (!auth.user()) {
-            <!-- Login/Auth Section if not logged in -->
-            <section class="max-w-md mx-auto py-20 px-12 bg-white rounded-[3rem] shadow-sm border border-orange-50 login-card">
-              <div class="text-center mb-10 relative">
-                <button (click)="navigateTo('landing')" class="absolute -top-4 -right-4 p-2 text-slate-400 hover:text-slate-600">
-                  <ion-icon name="close" class="text-2xl"></ion-icon>
-                </button>
-                <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ion-icon name="person-circle" class="text-4xl text-orange-500"></ion-icon>
-                </div>
-                <h2 class="text-2xl font-black text-slate-900 tracking-tight">{{ isRegistering() ? 'Create Account' : 'Welcome Back' }}</h2>
-                <p class="text-slate-500 mt-2 text-sm font-medium">
-                  {{ isRegistering() ? 'Join Bharat\'s AI Growth Partner today.' : 'Sign in to start optimizing your listings.' }}
-                </p>
-              </div>
-
-              <div class="space-y-4">
-                @if (isRegistering()) {
-                  <div class="mb-2">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Full Name</ion-label>
-                    <ion-input type="text" autocomplete="name" [value]="regName()" (ionInput)="regName.set($any($event).target.value)" (ionBlur)="nameTouched.set(true)" placeholder="Your full name" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                    @if (showFieldError(nameTouched(), regName()) && nameError()) {
-                      <p class="field-error">{{ nameError() }}</p>
-                    }
-                  </div>
-                }
-
-                <div class="mb-2">
-                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
-                  <ion-input type="email" autocomplete="email" [value]="email()" (ionInput)="email.set($any($event).target.value)" (ionBlur)="emailTouched.set(true)" (keyup.enter)="isRegistering() ? register() : loginWithEmail()" placeholder="seller@example.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                  @if (showFieldError(emailTouched(), email()) && emailError()) {
-                    <p class="field-error">{{ emailError() }}</p>
-                  }
-                </div>
-
-                @if (isRegistering()) {
-                  <div class="mb-2">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Mobile Number</ion-label>
-                    <div class="flex items-center gap-2 mt-1">
-                      <span class="shrink-0 bg-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-600 border border-slate-100">+91</span>
-                      <!-- No maxlength: a pasted "+91 98765 43210" or "098765…" is normalised to 10 digits. -->
-                      <ion-input type="tel" inputmode="numeric" autocomplete="tel-national" [value]="regPhone()" (ionInput)="regPhone.set($any($event).target.value)" (ionBlur)="phoneTouched.set(true)" placeholder="10-digit mobile number" aria-describedby="reg-phone-help" class="bg-slate-50 rounded-2xl px-5 py-2 border border-slate-100"></ion-input>
-                    </div>
-                    <p id="reg-phone-help" class="text-[11px] text-slate-400 font-medium mt-1 ml-1" [attr.lang]="i18n.lang()">
-                      {{ i18n.t('For WhatsApp support & stock alerts. No spam.', 'WhatsApp support और stock alerts के लिए. कोई spam नहीं.') }}
-                    </p>
-                    @if (showFieldError(phoneTouched(), regPhone()) && phoneError()) {
-                      <p class="field-error">{{ phoneError() }}</p>
-                    }
-                    <label class="flex items-start gap-2 text-xs font-bold text-slate-500 cursor-pointer mt-2" [attr.lang]="i18n.lang()">
-                      <input type="checkbox" [checked]="regWhatsappOptIn()" (change)="regWhatsappOptIn.set($any($event.target).checked)" class="remember-me-checkbox mt-0.5" />
-                      <span>{{ i18n.t('Send me updates and stock alerts on WhatsApp', 'WhatsApp पर updates और stock alerts भेजें') }}</span>
-                    </label>
-                  </div>
-                }
-
-                <app-password-field
-                  label="Password"
-                  [autocomplete]="isRegistering() ? 'new-password' : 'current-password'"
-                  [value]="password()"
-                  (valueChange)="password.set($event)"
-                  (enter)="isRegistering() ? register() : loginWithEmail()"
-                />
-                @if (isRegistering()) {
-                  <app-password-strength [password]="password()" />
-                } @else if (submitAttempted() && !password()) {
-                  <p class="field-error">Enter your password.</p>
-                }
-
-                @if (isRegistering()) {
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label for="reg-state" class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">State</label>
-                      <select id="reg-state" autocomplete="address-level1" [value]="regState()" (change)="regState.set($any($event).target.value)" class="signup-select mt-1">
-                        <option value="" disabled [selected]="!regState()">Select state</option>
-                        @for (state of indianStates; track state) {
-                          <option [value]="state" [selected]="state === regState()">{{ state }}</option>
-                        }
-                      </select>
-                      @if (submitAttempted() && stateError()) {
-                        <p class="field-error">{{ stateError() }}</p>
-                      }
-                    </div>
-                    <div>
-                      <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">City</ion-label>
-                      <ion-input type="text" autocomplete="address-level2" maxlength="80" [value]="regCity()" (ionInput)="regCity.set($any($event).target.value)" (ionBlur)="cityTouched.set(true)" placeholder="e.g. Surat" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                      @if (submitAttempted() && cityError()) {
-                        <p class="field-error">{{ cityError() }}</p>
-                      }
-                    </div>
-                  </div>
-
-                  <fieldset class="mb-2" [attr.aria-invalid]="submitAttempted() && !!catalogSizeError()">
-                    <legend class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">{{ i18n.t('How many products do you sell?', 'आप कितने products बेचते हैं?') }}</legend>
-                    <div class="flex flex-wrap gap-2 mt-2" role="radiogroup" [attr.aria-label]="i18n.t('How many products do you sell?', 'आप कितने products बेचते हैं?')">
-                      @for (band of catalogSizeBands; track band.value) {
-                        <label class="signup-chip" [class.signup-chip--on]="regCatalogSize() === band.value">
-                          <input type="radio" name="catalogSizeBand" class="sr-only" [value]="band.value" [checked]="regCatalogSize() === band.value" (change)="regCatalogSize.set(band.value)" />
-                          {{ band.label }}
-                        </label>
-                      }
-                    </div>
-                    @if (submitAttempted() && catalogSizeError()) {
-                      <p class="field-error">{{ catalogSizeError() }}</p>
-                    }
-                  </fieldset>
-
-                  <fieldset class="mb-2">
-                    <legend class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Where do you sell? (Optional)</legend>
-                    <div class="flex flex-wrap gap-2 mt-2">
-                      @for (channel of sellingChannels; track channel) {
-                        <label class="signup-chip" [class.signup-chip--on]="regSellsOn().includes(channel)">
-                          <input type="checkbox" class="sr-only" [checked]="regSellsOn().includes(channel)" (change)="toggleSellsOn(channel, $any($event.target).checked)" />
-                          {{ channel }}
-                        </label>
-                      }
-                    </div>
-                  </fieldset>
-
-                  <div class="mb-2">
-                    <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">GST Number (Optional)</ion-label>
-                    <ion-input type="text" autocapitalize="characters" maxlength="15" [value]="regGST()" (ionInput)="regGST.set($any($event).target.value)" (ionBlur)="gstTouched.set(true)" placeholder="GSTIN" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
-                    @if (showFieldError(gstTouched(), regGST()) && gstError()) {
-                      <p class="field-error">{{ gstError() }}</p>
-                    }
-                  </div>
-
-                  <div>
-                    <label class="flex items-start gap-2 text-xs font-bold text-slate-500 cursor-pointer">
-                      <input type="checkbox" [checked]="regTermsAccepted()" (change)="regTermsAccepted.set($any($event.target).checked)" class="remember-me-checkbox mt-0.5" />
-                      <span>I agree to the <a href="/terms" target="_blank" rel="noopener" class="text-orange-600 hover:underline">Terms</a> and <a href="/privacy" target="_blank" rel="noopener" class="text-orange-600 hover:underline">Privacy Policy</a></span>
-                    </label>
-                    @if (submitAttempted() && termsError()) {
-                      <p class="field-error">{{ termsError() }}</p>
-                    }
-                  </div>
-                }
-
-                @if (!isRegistering()) {
-                  <div class="flex items-center justify-between">
-                    <label class="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer">
-                      <input type="checkbox" [checked]="rememberMe()" (change)="rememberMe.set($any($event.target).checked)" class="remember-me-checkbox" />
-                      Remember me
-                    </label>
-                    <a routerLink="/forgot-password" class="text-xs text-slate-400 hover:text-orange-600 font-bold transition-colors">
-                      Forgot password?
-                    </a>
-                  </div>
-                }
-
-                @if (authError()) {
-                  <div class="auth-alert auth-alert--error">
-                    <span class="auth-alert__icon"></span>
-                    <div>
-                      {{ authError() }}
-                      @if (phoneTakenError()) {
-                        <a routerLink="/login" class="block text-orange-600 font-bold hover:underline mt-2">Sign in instead</a>
-                      }
-                      @if (showResendVerification()) {
-                        @if (resendVerificationSent()) {
-                          <p class="text-emerald-600 font-bold mt-2">Verification email resent — check your inbox.</p>
-                        } @else {
-                          <button (click)="resendVerificationEmail()" [disabled]="isResendingVerification() || resendCooldown() > 0" class="block text-orange-600 font-bold hover:underline mt-2 disabled:opacity-50">
-                            @if (isResendingVerification()) {
-                              Sending…
-                            } @else if (resendCooldown() > 0) {
-                              Resend in {{ resendCooldown() }}s
-                            } @else {
-                              Resend verification email
-                            }
-                          </button>
-                        }
-                        @if (resendMessage()) {
-                          <p class="mt-2">{{ resendMessage() }}</p>
-                        }
-                      }
-                    </div>
-                  </div>
-                }
-
-                <ion-button (click)="isRegistering() ? register() : loginWithEmail()" expand="block" shape="round" class="btn-ion-orange h-14 font-black mt-4" [disabled]="isProcessing()">
-                  @if (isProcessing()) {
-                    <ion-spinner name="crescent" slot="start"></ion-spinner>
-                    Processing...
-                  } @else {
-                    {{ isRegistering() ? 'Register' : 'Login' }}
-                  }
-                </ion-button>
-
-                <div class="text-center py-2">
-                  <button (click)="toggleRegister()" class="text-sm text-orange-600 font-bold hover:underline">
-                    {{ isRegistering() ? 'Already have an account? Login' : 'Need an account? Sign Up' }}
-                  </button>
-                </div>
-              </div>
-            </section>
+          <!-- Short one-screen sign-up / login (English + Hindi) -->
+          <app-auth-card [mode]="isRegistering() ? 'signup' : 'login'" />
         } @else if (auth.user()) {
             @if (mainView() === 'home') {
               <!-- Modern Dashboard View -->
@@ -1387,7 +1195,7 @@
   <app-cookie-banner />
   @if (whatsappUrl && (showLanding() || !auth.user())) {
     <!-- Lifted above the cookie banner while it's showing, so neither covers the other. -->
-    <a [href]="whatsappUrl" target="_blank" rel="noopener" class="whatsapp-fab" [class.whatsapp-fab--raised]="consent.choice() === null" aria-label="Chat on WhatsApp">
+    <a [href]="whatsappUrl" target="_blank" rel="noopener" class="whatsapp-fab" [class.whatsapp-fab--raised]="consent.choice() === null" [class.whatsapp-fab--auth]="mainView() === 'auth' && !showLanding()" aria-label="Chat on WhatsApp">
       <ion-icon name="logo-whatsapp"></ion-icon>
       <span class="whatsapp-fab__label">Chat on WhatsApp</span>
     </a>

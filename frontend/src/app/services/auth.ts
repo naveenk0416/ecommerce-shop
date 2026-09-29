@@ -17,14 +17,41 @@ export interface UserProfile extends AdditionalUserData {
   };
   /** Explicit WhatsApp updates/alerts consent (sent when adding a phone number later). */
   whatsapp_opt_in?: boolean;
+  emailVerified?: boolean;
+  verificationEmailSentAt?: string | null;
+  signupMethod?: 'email' | 'google' | null;
+  /** "Tell us about your business (+2 coins)" card after sign-up. */
+  businessCard?: { show: boolean; done: boolean; bonus: number };
 }
 
-/** /register response — emailSent is false when the verification email couldn't be delivered. */
+/** /register response: the new seller is signed in straight away (email verified later).
+ * emailSent is false when the verification email couldn't be delivered. */
 export interface RegisterResult {
-  requiresVerification: true;
+  token: string;
   email: string;
   emailSent?: boolean;
   emailError?: string;
+}
+
+/** Server-side email check on blur: typo suggestion, disposable domain, domain without MX. */
+export interface EmailCheckResult {
+  ok: boolean;
+  code?: 'INVALID_EMAIL' | 'DISPOSABLE_EMAIL' | 'EMAIL_DOMAIN_INVALID' | 'EMAIL_TYPO';
+  error?: string;
+  suggestion?: string;
+}
+
+/** Google sign-in step 1: signed in, or a new account that still needs mobile + terms. */
+export type GoogleSignInResult =
+  | { signedIn: true }
+  | { signedIn: false; pendingToken: string; email: string; name: string };
+
+export interface BusinessDetails {
+  state?: string;
+  city?: string;
+  catalogSizeBand?: string;
+  sellsOn?: string[];
+  gstNumber?: string;
 }
 
 export interface AdditionalUserData {
@@ -87,6 +114,11 @@ export class AuthService {
     }
   }
 
+  /** Re-reads /me (e.g. after verifying the email or saving business details). */
+  refreshProfile(): Promise<void> {
+    return this.syncUserProfileFromAPI();
+  }
+
   private async syncUserProfileFromAPI() {
     try {
       const body = await apiFetch<{ user: UserProfile }>('/me');
@@ -97,11 +129,11 @@ export class AuthService {
     }
   }
 
-  /** Registration no longer signs the user in directly — the account stays inactive until they
-   * verify their email (see verifyEmail below). */
+  /** Creates the account and signs the seller in straight away; verifying the email later
+   * unlocks the rest of the welcome coins. */
   async registerWithEmail(email: string, password: string, additionalData: AdditionalUserData = {}): Promise<RegisterResult> {
     try {
-      return await apiFetch<RegisterResult>('/register', {
+      const result = await apiFetch<RegisterResult>('/register', {
         method: 'POST',
         body: {
           email,
@@ -118,6 +150,9 @@ export class AuthService {
           attribution: additionalData.attribution ?? undefined,
         },
       });
+      setAuthToken(result.token, true);
+      await this.syncUserProfileFromAPI();
+      return result;
     } catch (error) {
       const apiError = error as ApiError & { code?: string };
       // The backend returns 409 for both a duplicate email and a duplicate phone number — check
@@ -125,10 +160,59 @@ export class AuthService {
       if (apiError.status === 409) {
         const phoneTaken = (apiError.data as { code?: string } | undefined)?.code === 'PHONE_TAKEN' || /phone|number/i.test(apiError.message);
         apiError.code = phoneTaken ? 'auth/phone-already-in-use' : 'auth/email-already-in-use';
+      } else if (apiError.status === 429) {
+        apiError.code = 'auth/too-many-requests';
+      } else {
+        const code = (apiError.data as { code?: string } | undefined)?.code;
+        if (code) apiError.code = code;
       }
       console.error('Registration failed:', error);
       throw apiError;
     }
+  }
+
+  checkEmail(email: string): Promise<EmailCheckResult> {
+    return apiFetch<EmailCheckResult>('/check-email', { method: 'POST', body: { email } });
+  }
+
+  /** "Continue with Google": signs in an existing account, or returns a pending token for a new one. */
+  async signInWithGoogle(credential: string): Promise<GoogleSignInResult> {
+    const body = await apiFetch<{ token?: string; needsProfile?: boolean; pendingToken?: string; email?: string; name?: string }>('/auth/google', {
+      method: 'POST',
+      body: { credential },
+    });
+    if (body.token) {
+      setAuthToken(body.token, true);
+      await this.syncUserProfileFromAPI();
+      return { signedIn: true };
+    }
+    return { signedIn: false, pendingToken: body.pendingToken ?? '', email: body.email ?? '', name: body.name ?? '' };
+  }
+
+  /** New Google account: only the mobile number and terms are asked. */
+  async completeGoogleSignup(data: { pendingToken: string; phoneNumber: string; termsAccepted: boolean; whatsappOptIn: boolean; attribution?: Attribution | null }): Promise<void> {
+    try {
+      const body = await apiFetch<{ token: string }>('/auth/google/complete', { method: 'POST', body: { ...data, attribution: data.attribution ?? undefined } });
+      setAuthToken(body.token, true);
+      await this.syncUserProfileFromAPI();
+    } catch (error) {
+      const apiError = error as ApiError & { code?: string };
+      if (apiError.status === 409 && (apiError.data as { code?: string } | undefined)?.code === 'PHONE_TAKEN') apiError.code = 'auth/phone-already-in-use';
+      throw apiError;
+    }
+  }
+
+  /** Onboarding card. Returns whether the +2 was granted now or waits for email verification. */
+  async saveBusinessDetails(details: BusinessDetails): Promise<{ bonusGranted: boolean; bonusPending: boolean; complete: boolean }> {
+    const result = await apiFetch<{ bonusGranted: boolean; bonusPending: boolean; complete: boolean }>('/me/business', { method: 'PATCH', body: details });
+    await this.syncUserProfileFromAPI();
+    return result;
+  }
+
+  async dismissBusinessCard(): Promise<void> {
+    await apiFetch('/me/business', { method: 'PATCH', body: { dismiss: true } });
+    const profile = this.profile();
+    if (profile?.businessCard) this.profile.set({ ...profile, businessCard: { ...profile.businessCard, show: false } });
   }
 
   async loginWithEmail(email: string, password: string, rememberMe = true) {

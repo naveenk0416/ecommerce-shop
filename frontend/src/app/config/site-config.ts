@@ -33,6 +33,13 @@ export const WHATSAPP_PREFILL = 'Hi SellAssist, I want to know more about listin
  */
 export const META_PIXEL_IDS: readonly string[] = ['1777429170044753', '1020160774160627'];
 
+/**
+ * Google OAuth "Web application" client ID for "Continue with Google" (Google Cloud Console →
+ * APIs & Services → Credentials). The backend needs the same value in GOOGLE_CLIENT_ID.
+ * Empty hides the Google button.
+ */
+export const GOOGLE_CLIENT_ID = '';
+
 /** GA4 measurement ID — already loaded via gtag in index.html. */
 export const GA4_MEASUREMENT_ID = 'G-NYCJ00ML3F';
 

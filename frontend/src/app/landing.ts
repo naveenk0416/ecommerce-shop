@@ -7,6 +7,8 @@ import {
 import { addIcons } from 'ionicons';
 import { BUSINESS, MARKETING_STATS, SHOW_STATS } from './config/site-config';
 import { RouterLink } from '@angular/router';
+import { GuestTry } from './landing/guest-try';
+import { AnalyticsService } from './services/analytics';
 import { camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoLinkedin, logoFacebook, sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle, image, copy, settings, checkmarkCircle, chevronForward, text, documentText, cash, time, school, statsChart, cube, alertCircle, sync, receipt } from 'ionicons/icons';
 
 @Component({
@@ -14,7 +16,7 @@ import { camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoL
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule, RouterLink,
+    CommonModule, RouterLink, GuestTry,
     IonButton, IonIcon
   ],
   templateUrl: './landing.html',
@@ -25,6 +27,8 @@ export class Landing {
   /** Emits which button was clicked ('hero' | 'cta') for Lead tracking. */
   getStarted = output<string>();
   goDashboard = output<void>();
+  /** "Free account बनाएं — पूरी listing देखें" under the guest-try preview. */
+  guestSignup = output<void>();
 
   isLoggedIn = input<boolean>(false);
 
@@ -43,6 +47,7 @@ export class Landing {
   }
 
   constructor() {
+    inject(AnalyticsService).track('landing_view');
     addIcons({ 
       camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoLinkedin, logoFacebook,
       sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle, image,

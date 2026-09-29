@@ -1,0 +1,87 @@
+<div class="nudges" [attr.lang]="i18n.lang()">
+  @if (showVerify()) {
+    <div class="nudge nudge--verify" role="status" data-testid="verify-banner">
+      <span class="nudge__icon" aria-hidden="true">✉️</span>
+      <p class="nudge__text">
+        <strong>{{ verifyText() }}</strong>
+        <span class="nudge__sub">{{ t('We sent a link to', 'हमने link भेजा है:') }} {{ auth.profile()?.email }}</span>
+        @if (resendState() === 'sent') {
+          <span class="nudge__ok">{{ t('Email sent — check your inbox (and spam).', 'Email भेज दिया — inbox (और spam) देखें।') }}</span>
+        }
+        @if (resendMessage()) {
+          <span class="nudge__err">{{ resendMessage() }}</span>
+        }
+      </p>
+      <button type="button" class="nudge__btn" (click)="resend()" [disabled]="resendState() === 'sending' || cooldown() > 0" data-testid="resend-email">
+        @if (resendState() === 'sending') {
+          {{ t('Sending…', 'भेज रहे हैं…') }}
+        } @else if (cooldown() > 0) {
+          {{ t('Resend in', 'फिर भेजें:') }} {{ cooldown() }}s
+        } @else {
+          {{ t('Resend email', 'Email फिर भेजें') }}
+        }
+      </button>
+    </div>
+  }
+
+  @if (saved()) {
+    <p class="nudge nudge--saved" role="status" data-testid="business-saved">{{ saved() }}</p>
+  }
+
+  @if (showBusiness()) {
+    <section class="nudge nudge--business" aria-labelledby="business-title" data-testid="business-card">
+      <div class="nudge__head">
+        <span class="nudge__icon" aria-hidden="true">🏪</span>
+        <p id="business-title" class="nudge__text"><strong>{{ t('Tell us about your business', 'अपने business के बारे में बताएं') }} <span class="nudge__coins">+{{ bonus() }} coins</span></strong></p>
+        @if (!open()) {
+          <button type="button" class="nudge__btn" (click)="expand()" data-testid="business-open">{{ t('Add details', 'Details भरें') }}</button>
+        }
+        <button type="button" class="nudge__close" (click)="dismiss()" [attr.aria-label]="t('Dismiss', 'बंद करें')" data-testid="business-dismiss">✕</button>
+      </div>
+
+      @if (open()) {
+        <form class="biz" (submit)="$event.preventDefault(); save()" novalidate>
+          <div class="biz__grid">
+            <label class="biz__field">
+              <span>{{ t('State', 'राज्य') }}</span>
+              <select [value]="state()" (change)="state.set($any($event.target).value)" data-testid="biz-state">
+                <option value="" [selected]="!state()">{{ t('Select state', 'राज्य चुनें') }}</option>
+                @for (s of states; track s) { <option [value]="s" [selected]="s === state()">{{ s }}</option> }
+              </select>
+            </label>
+            <label class="biz__field">
+              <span>{{ t('City', 'शहर') }}</span>
+              <input type="text" maxlength="80" autocomplete="address-level2" [value]="city()" (input)="city.set($any($event.target).value)" [placeholder]="t('e.g. Surat', 'जैसे Surat')" data-testid="biz-city" />
+            </label>
+          </div>
+          <fieldset class="biz__chips">
+            <legend>{{ t('How many products do you sell?', 'आप कितने products बेचते हैं?') }}</legend>
+            @for (b of bands; track b.value) {
+              <label class="chip" [class.chip--on]="band() === b.value">
+                <input type="radio" name="biz-band" [value]="b.value" [checked]="band() === b.value" (change)="band.set(b.value)" />{{ b.label }}
+              </label>
+            }
+          </fieldset>
+          <fieldset class="biz__chips">
+            <legend>{{ t('Where do you sell?', 'आप कहाँ बेचते हैं?') }}</legend>
+            @for (c of channels; track c) {
+              <label class="chip" [class.chip--on]="sellsOn().includes(c)">
+                <input type="checkbox" [checked]="sellsOn().includes(c)" (change)="toggleChannel(c, $any($event.target).checked)" />{{ c }}
+              </label>
+            }
+          </fieldset>
+          <label class="biz__field">
+            <span>{{ t('GST number (optional)', 'GST number (optional)') }}</span>
+            <input type="text" maxlength="15" autocapitalize="characters" [value]="gst()" (input)="gst.set($any($event.target).value)" placeholder="24ABCDE1234F1Z5" />
+            @if (gstError()) { <span class="nudge__err">{{ gstError() }}</span> }
+          </label>
+          @if (saveError()) { <p class="nudge__err" role="alert">{{ saveError() }}</p> }
+          <div class="biz__actions">
+            <button type="button" class="nudge__link" (click)="open.set(false)">{{ t('Later', 'बाद में') }}</button>
+            <button type="submit" class="nudge__btn nudge__btn--primary" [disabled]="saving()" data-testid="biz-save">{{ saving() ? t('Saving…', 'Save हो रहा है…') : t('Save', 'Save करें') }}</button>
+          </div>
+        </form>
+      }
+    </section>
+  }
+</div>

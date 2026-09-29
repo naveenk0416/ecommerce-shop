@@ -29,9 +29,10 @@ import { formatGstRate } from './utils/format';
 import { apiFetch, ApiError } from './services/api';
 import { PasswordField } from './ui/password-field/password-field';
 import { PasswordStrength } from './ui/password-strength/password-strength';
+import { AuthCard } from './auth/auth-card';
 import { loadRazorpay } from './utils/razorpay';
 import { AnalyticsService } from './services/analytics';
-import { CATALOG_SIZE_BANDS, GSTIN_RE, INDIAN_MOBILE_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, normalizeIndianMobile } from './config/signup-options';
+import { INDIAN_MOBILE_RE, normalizeIndianMobile } from './config/signup-options';
 import { LanguageService } from './services/language';
 import { ConsentService } from './services/consent';
 import { CookieBanner } from './ui/cookie-banner/cookie-banner';
@@ -48,7 +49,7 @@ import { BUSINESS, WHATSAPP_NUMBER, WHATSAPP_PREFILL } from './config/site-confi
     IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle,
     IonLabel, IonSpinner,
     IonInput, IonTextarea,
-    PasswordField, PasswordStrength, CookieBanner
+    PasswordField, PasswordStrength, CookieBanner, AuthCard
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -102,94 +103,9 @@ export class App {
   password = signal('');
   rememberMe = signal(true);
 
-  // Additional Registration Fields
-  regName = signal('');
-  regPhone = signal('');
-  regGST = signal('');
-  regState = signal('');
-  regCity = signal('');
-  regSellsOn = signal<string[]>([]);
-  /** "How many products do you sell?" — required one-tap answer, saved as catalogSizeBand. */
-  regCatalogSize = signal('');
-  readonly catalogSizeBands = CATALOG_SIZE_BANDS;
-  catalogSizeError = computed(() => (this.regCatalogSize() ? '' : this.i18n.t('Choose how many products you sell.', 'चुनें कि आप कितने products बेचते हैं।')));
-  regTermsAccepted = signal(false);
-  /** Separate, explicit WhatsApp consent (checked by default) — the phone number itself is not consent. */
-  regWhatsappOptIn = signal(true);
-  readonly indianStates = INDIAN_STATES_AND_UTS;
-  readonly sellingChannels = SELLING_CHANNELS;
-
-  // Errors are never shown before the user interacts: a field's format error appears once it
-  // has been blurred with something typed in it, and "required" errors only after a submit
-  // attempt (autofocus + clicking elsewhere must not flash "Email is required").
-  emailTouched = signal(false);
-  passwordTouched = signal(false);
-  nameTouched = signal(false);
-  phoneTouched = signal(false);
-  gstTouched = signal(false);
-  cityTouched = signal(false);
-  submitAttempted = signal(false);
-
-  emailError = computed(() => {
-    const value = this.email().trim();
-    if (!value) return 'Email is required.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter a valid email address.';
-    return '';
-  });
-
-  nameError = computed(() => (this.regName().trim().length < 2 ? 'Enter your full name.' : ''));
-
-  /** Mobile number is required; spaces and a pasted leading 0 / 91 / +91 are stripped first. */
-  phoneError = computed(() => {
-    const digits = normalizeIndianMobile(this.regPhone());
-    if (!digits) return 'Enter your mobile number.';
-    if (!INDIAN_MOBILE_RE.test(digits)) return 'Enter a valid 10-digit Indian mobile number.';
-    return '';
-  });
-
-  /** GST number is optional, but must be a well-formed GSTIN if given. */
-  gstError = computed(() => {
-    const value = this.regGST().trim().toUpperCase();
-    if (!value) return '';
-    return GSTIN_RE.test(value) ? '' : 'Enter a valid 15-character GSTIN (e.g. 24ABCDE1234F1Z5).';
-  });
-
-  stateError = computed(() => (this.indianStates.includes(this.regState()) ? '' : 'Select your state.'));
-  cityError = computed(() => (this.regCity().trim() ? '' : 'Enter your city.'));
-  termsError = computed(() => (this.regTermsAccepted() ? '' : 'Please agree to the Terms and Privacy Policy.'));
-
-  /** Kept in sync with the backend's STRONG_PASSWORD_RE in auth.ts. */
-  passwordValid = computed(() => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(this.password()));
-
-  /** Every rule must pass before the registration request is sent. */
-  registrationValid = computed(
-    () =>
-      !this.emailError() &&
-      !this.nameError() &&
-      !this.phoneError() &&
-      !this.gstError() &&
-      !this.stateError() &&
-      !this.cityError() &&
-      !this.termsError() &&
-      !this.catalogSizeError() &&
-      this.passwordValid(),
-  );
-
-  /** Whether a field's error may be shown yet: after a submit attempt, or after blur with input. */
-  showFieldError(touched: boolean, value: string): boolean {
-    return this.submitAttempted() || (touched && value.trim().length > 0);
-  }
-
-  toggleSellsOn(channel: string, checked: boolean) {
-    this.regSellsOn.update((list) => (checked ? [...new Set([...list, channel])] : list.filter((c) => c !== channel)));
-  }
-
-  loginValid = computed(() => !this.emailError() && this.password().length > 0);
-
+  // Sign-up and login forms live in AuthCard (auth/auth-card.ts); isRegistering picks its mode.
   isRegistering = signal(false);
   authError = signal<string | null>(null);
-  /** The last registration was rejected because the phone number already has an account. */
-  phoneTakenError = signal(false);
   checkoutMessage = signal<string | null>(null);
   isProcessingCheckout = signal(false);
 
@@ -205,8 +121,6 @@ export class App {
   // Email Verification State
   /** Non-null while showing the "check your inbox" screen after registration. */
   verificationPendingEmail = signal<string | null>(null);
-  /** Shown on a login attempt that failed specifically because the account isn't verified yet. */
-  showResendVerification = signal(false);
   isResendingVerification = signal(false);
   resendVerificationSent = signal(false);
   /** Set when the URL is /verify-email?token=... — drives the auto-verify screen. 'error' covers a
@@ -401,17 +315,14 @@ export class App {
     this.verificationEmailFailed.set(false);
     this.resendMessage.set(null);
     this.authError.set(null);
-    this.phoneTakenError.set(false);
-    this.showResendVerification.set(false);
     this.resendVerificationSent.set(false);
-    this.submitAttempted.set(false);
   }
 
   async sendPasswordResetEmail() {
     this.authError.set(null);
     const emailVal = this.email().trim();
     if (!emailVal) {
-      this.authError.set('Please enter your email address.');
+      this.authError.set(this.i18n.t('Please enter your email address.', 'कृपया अपना email address लिखें।'));
       return;
     }
     this.isProcessing.set(true);
@@ -429,15 +340,15 @@ export class App {
     this.authError.set(null);
     const token = this.resetToken();
     if (!token) {
-      this.authError.set('Invalid or missing reset token.');
+      this.authError.set(this.i18n.t('Invalid or missing reset link.', 'Reset link गलत है या नहीं मिला।'));
       return;
     }
     if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(this.newPassword())) {
-      this.authError.set('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.');
+      this.authError.set(this.i18n.t('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.', 'Password कम से कम 8 characters का हो: A–Z, a–z, एक number और एक symbol।'));
       return;
     }
     if (this.newPassword() !== this.confirmNewPassword()) {
-      this.authError.set('Passwords do not match.');
+      this.authError.set(this.i18n.t('Passwords do not match.', 'दोनों passwords एक जैसे नहीं हैं।'));
       return;
     }
     this.isProcessing.set(true);
@@ -1011,76 +922,6 @@ export class App {
     this.activeTab.set('details');
   }
 
-  async loginWithEmail() {
-    this.submitAttempted.set(true);
-    this.authError.set(null);
-    this.showResendVerification.set(false);
-    // Inline field errors (from the touched flags above) already cover this — no need to repeat
-    // the same message in the alert box below.
-    if (!this.loginValid()) {
-      return;
-    }
-
-    this.isProcessing.set(true);
-    try {
-      await this.auth.loginWithEmail(this.email(), this.password(), this.rememberMe());
-      const returnUrl = safeReturnUrl(this.router.parseUrl(this.router.url).queryParamMap.get('returnUrl'));
-      this.resetAuthForm();
-      await this.router.navigateByUrl(returnUrl ?? DASHBOARD_PATH);
-    } catch (error: unknown) {
-      const code = (error as { code?: string }).code || (error as Error).message;
-      this.authError.set(this.getAuthErrorMessage(code));
-      this.showResendVerification.set(code === 'auth/email-not-verified');
-    } finally {
-      this.isProcessing.set(false);
-    }
-  }
-
-  async register() {
-    this.submitAttempted.set(true);
-    this.authError.set(null);
-    this.phoneTakenError.set(false);
-
-    // Inline field errors (shown now that submitAttempted is set) already cover this — no need
-    // to repeat the same message in the alert box below.
-    if (!this.registrationValid()) {
-      return;
-    }
-
-    this.isProcessing.set(true);
-    try {
-      const registeredEmail = this.email();
-      const result = await this.auth.registerWithEmail(registeredEmail, this.password(), {
-        displayName: this.regName().trim(),
-        phoneNumber: normalizeIndianMobile(this.regPhone()),
-        whatsappOptIn: this.regWhatsappOptIn(),
-        gstNumber: this.regGST().trim().toUpperCase(),
-        state: this.regState(),
-        city: this.regCity().trim(),
-        sellsOn: this.regSellsOn(),
-        catalogSizeBand: this.regCatalogSize(),
-        termsAccepted: this.regTermsAccepted(),
-        attribution: this.analytics.getAttribution(),
-      });
-      this.analytics.trackSignUp();
-      this.resetAuthForm();
-      this.verificationPendingEmail.set(registeredEmail);
-      this.resendMessage.set(null);
-      if (result?.emailSent === false) {
-        this.verificationEmailFailed.set(true);
-      } else {
-        this.verificationEmailFailed.set(false);
-        this.startResendCooldown(60);
-      }
-    } catch (error: unknown) {
-      const code = (error as { code?: string }).code || (error as Error).message;
-      this.phoneTakenError.set(code === 'auth/phone-already-in-use');
-      this.authError.set(this.getAuthErrorMessage(code));
-    } finally {
-      this.isProcessing.set(false);
-    }
-  }
-
   /** "Resend verification email" — at most once per 60 seconds (also enforced by the backend). */
   async resendVerificationEmail(emailOverride?: string) {
     const email = (emailOverride ?? (this.verificationPendingEmail() || this.email())).trim();
@@ -1248,6 +1089,8 @@ export class App {
     try {
       await this.auth.verifyEmail(token, this.rememberMe());
       this.emailVerificationState.set('success');
+      this.analytics.track('email_verified');
+      void this.wallet.load();
     } catch (error) {
       this.emailVerificationState.set('error');
       this.emailVerificationError.set(
@@ -1314,68 +1157,19 @@ export class App {
     }
   }
 
-  private resetAuthForm() {
-    this.email.set('');
-    this.password.set('');
-    this.regName.set('');
-    this.regPhone.set('');
-    this.regGST.set('');
-    this.regState.set('');
-    this.regCity.set('');
-    this.regSellsOn.set([]);
-    this.regCatalogSize.set('');
-    this.regTermsAccepted.set(false);
-    this.regWhatsappOptIn.set(true);
-    this.emailTouched.set(false);
-    this.passwordTouched.set(false);
-    this.nameTouched.set(false);
-    this.phoneTouched.set(false);
-    this.gstTouched.set(false);
-    this.cityTouched.set(false);
-    this.submitAttempted.set(false);
-  }
-
-  private getAuthErrorMessage(code: string): string {
-    switch (code) {
-      case 'auth/email-already-in-use':
-        return 'This email is already registered. Try signing in instead.';
-      case 'auth/phone-already-in-use':
-        return 'This number is already registered. Sign in instead?';
-      case 'auth/invalid-email':
-        return 'Enter a valid email address.';
-      case 'auth/weak-password':
-        return 'Password is too weak. Use at least 8 characters with a mix of upper/lowercase letters, a number, and a special character.';
-      case 'auth/too-many-requests':
-        return 'Too many login attempts. Please wait 15 minutes and try again.';
-      case 'auth/email-not-verified':
-        return 'Your email address has not been verified. Please verify your email before logging in.';
-      case 'auth/user-not-found':
-      case 'auth/wrong-password':
-      case 'auth/invalid-credential':
-        // Intentionally the same message for "no such account" and "wrong password" — telling
-        // them apart lets an attacker discover which emails are registered (the same reason
-        // /forgot-password always returns a generic response).
-        return 'Incorrect email or password. Please try again.';
-      default:
-        // Backend validation messages (e.g. "Enter a valid 10-digit Indian mobile number.") are
-        // already user-facing sentences; anything else gets the generic text.
-        return /\s/.test(code) && code.length < 200 ? code : 'Something went wrong. Please try again.';
-    }
-  }
-
   openSignIn() {
     this.router.navigate(['/login']);
+  }
+
+  /** Guest-try preview → sign-up, keeping the UTM params (the guest token is kept in this browser). */
+  openGuestSignup() {
+    this.router.navigate(['/signup'], { queryParamsHandling: 'preserve' });
   }
 
   /** Every "Start Free / Get Started / Create your free account" button lands here. */
   startSignup(source: string) {
     this.analytics.trackLead(source);
     this.router.navigate(['/signup']);
-  }
-
-  /** "Need an account? Sign Up" ↔ "Already have an account? Login" — keeps any returnUrl. */
-  toggleRegister() {
-    this.router.navigate([this.isRegistering() ? '/login' : '/signup'], { queryParamsHandling: 'preserve' });
   }
 
   async logout() {

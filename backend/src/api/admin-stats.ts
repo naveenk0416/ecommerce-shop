@@ -1,6 +1,6 @@
 import express from 'express';
 import { authMiddleware } from './auth.js';
-import { AiUsage, CoinLedger, CoinOrder, ensureConnected, FeatureInterest, PackInterest, User } from './common.js';
+import { AbuseEvent, AiUsage, CoinLedger, CoinOrder, ensureConnected, FeatureInterest, FunnelEvent, GuestDraft, GuestUsage, PackInterest, User } from './common.js';
 import { coinConfig, dayKey } from '../config/coins.js';
 import { NOTIFY_FEATURES } from '../config/features.js';
 
@@ -194,6 +194,9 @@ async function computeStats(filters: Filters) {
   const featureNotifyMe: Record<string, number> = Object.fromEntries(NOTIFY_FEATURES.map((f) => [f, 0]));
   for (const row of featureRows) featureNotifyMe[row._id] = row.sellers;
 
+  const funnel = await computeFunnel(filters);
+  const abuse = await computeAbuse(filters);
+
   const summary = {
     filters: { from: filters.from.toISOString(), to: filters.to.toISOString(), campaign: filters.campaign ?? null, ref: filters.ref ?? null },
     signups,
@@ -214,6 +217,8 @@ async function computeStats(filters: Filters) {
     usedAllFreeCoinsPct: pct(perUser.filter((u) => u.usedAllFreeCoins).length, verified),
     notifyMe: { clicks: clicks.length, users: new Set(clicks.map((c) => c.uid)).size },
     featureNotifyMe,
+    funnel,
+    abuse,
     bonusCompletionPct: {
       welcome: pct(perUser.filter((u) => u.bonusWelcome).length, verified),
       mobile: pct(perUser.filter((u) => u.bonusMobile).length, verified),
@@ -252,6 +257,93 @@ async function computeStats(filters: Filters) {
     },
   };
   return { summary, perUser };
+}
+
+const FUNNEL_STEPS = ['landing_view', 'signup_view', 'sign_up_start', 'sign_up', 'first_listing_created'] as const;
+const GUEST_STEPS = ['guest_try_start', 'guest_try_success', 'guest_try_signup_click'] as const;
+
+/**
+ * Visits → sign-up page → started typing → signed up → first listing, per utm_campaign, counted as
+ * unique visitors (browser id) per step in the date range. Guest-try steps alongside.
+ */
+async function computeFunnel(filters: Filters) {
+  const match: Record<string, unknown> = { createdAt: { $gte: filters.from, $lte: filters.to }, name: { $in: [...FUNNEL_STEPS, ...GUEST_STEPS] } };
+  if (filters.campaign) match['utm_campaign'] = filters.campaign;
+  const rows = await FunnelEvent.aggregate([
+    { $match: match },
+    { $group: { _id: { campaign: { $ifNull: ['$utm_campaign', '(none)'] }, name: '$name' }, visitors: { $addToSet: { $ifNull: ['$deviceId', '$uid'] } } } },
+    { $project: { _id: 1, count: { $size: '$visitors' } } },
+  ]);
+  const byCampaign = new Map<string, Record<string, number>>();
+  const totals: Record<string, number> = Object.fromEntries([...FUNNEL_STEPS, ...GUEST_STEPS].map((s) => [s, 0]));
+  for (const row of rows) {
+    const campaign = row._id.campaign || '(none)';
+    if (!byCampaign.has(campaign)) byCampaign.set(campaign, Object.fromEntries([...FUNNEL_STEPS, ...GUEST_STEPS].map((s) => [s, 0])));
+    byCampaign.get(campaign)![row._id.name] = row.count;
+    totals[row._id.name] += row.count;
+  }
+  const withRates = (campaign: string, counts: Record<string, number>) => ({
+    campaign,
+    steps: FUNNEL_STEPS.map((step, i) => ({
+      step,
+      count: counts[step] ?? 0,
+      pctOfPrevious: i === 0 ? null : pct(counts[step] ?? 0, counts[FUNNEL_STEPS[i - 1]] ?? 0),
+    })),
+    guest: Object.fromEntries(GUEST_STEPS.map((s) => [s, counts[s] ?? 0])),
+  });
+  const campaigns = [...byCampaign.entries()]
+    .sort((a, b) => (b[1]['landing_view'] ?? 0) - (a[1]['landing_view'] ?? 0))
+    .map(([campaign, counts]) => withRates(campaign, counts));
+
+  const range = { createdAt: { $gte: filters.from, $lte: filters.to } };
+  const [guestSuccess, guestFailed, guestClaimed] = await Promise.all([
+    GuestUsage.countDocuments({ ...range, status: 'success' }),
+    GuestUsage.countDocuments({ ...range, status: 'failed' }),
+    GuestDraft.countDocuments({ ...range, claimedByUid: { $exists: true } }),
+  ]);
+  return {
+    steps: FUNNEL_STEPS,
+    total: withRates('All campaigns', totals),
+    campaigns,
+    guest: { generated: guestSuccess, failed: guestFailed, savedAfterSignup: guestClaimed, limits: coinConfig.guest },
+  };
+}
+
+/** Suspicious sign-up patterns and unverified accounts to clean up (admin only; ids, never emails). */
+async function computeAbuse(filters: Filters) {
+  const range = { createdAt: { $gte: filters.from, $lte: filters.to } };
+  const [byType, busyIps, busyDevices] = await Promise.all([
+    AbuseEvent.aggregate([{ $match: range }, { $group: { _id: '$type', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+    User.aggregate([
+      { $match: { ...range, signupIpHash: { $exists: true } } },
+      { $group: { _id: '$signupIpHash', signups: { $sum: 1 }, withoutWelcome: { $sum: { $cond: [{ $eq: ['$welcomeEligible', false] }, 1, 0] } } } },
+      { $match: { signups: { $gte: 3 } } }, { $sort: { signups: -1 } }, { $limit: 20 },
+    ]),
+    User.aggregate([
+      { $match: { ...range, signupDeviceId: { $exists: true } } },
+      { $group: { _id: '$signupDeviceId', signups: { $sum: 1 } } },
+      { $match: { signups: { $gte: 2 } } }, { $sort: { signups: -1 } }, { $limit: 20 },
+    ]),
+  ]);
+  const cutoff = new Date(Date.now() - coinConfig.signup.unverifiedCleanupListAfterDays * DAY_MS);
+  const unverifiedQuery = { emailVerified: false, createdAt: { $lt: cutoff } };
+  const [unverifiedTotal, unverified] = await Promise.all([
+    User.countDocuments(unverifiedQuery),
+    User.find(unverifiedQuery).select('createdAt signupMethod usageCount email').sort({ createdAt: 1 }).limit(200).lean() as Promise<any[]>,
+  ]);
+  return {
+    events: Object.fromEntries(byType.map((row: any) => [row._id, row.count])),
+    networksWithManySignups: busyIps.map((row: any) => ({ network: String(row._id).slice(0, 10), signups: row.signups, withoutWelcome: row.withoutWelcome })),
+    devicesWithManySignups: busyDevices.map((row: any) => ({ device: String(row._id).slice(0, 10), signups: row.signups })),
+    unverifiedOlderThanDays: coinConfig.signup.unverifiedCleanupListAfterDays,
+    unverifiedTotal,
+    unverified: unverified.map((u) => ({
+      userId: u._id.toString(),
+      createdAt: new Date(u.createdAt).toISOString(),
+      emailDomain: String(u.email || '').split('@').pop(),
+      aiListings: u.usageCount ?? 0,
+    })),
+  };
 }
 
 router.get('/stats', authMiddleware, requireAdmin, async (req, res) => {

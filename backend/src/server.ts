@@ -1,7 +1,7 @@
 import './utils/env.js';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import authRouter from './api/auth.js';
+import authRouter, { sendVerificationReminders } from './api/auth.js';
 import adminRouter from './api/admin.js';
 import listingRouter from './api/listing.js';
 import templateRouter from './api/template.js';
@@ -15,6 +15,8 @@ import aiRouter from './api/ai.js';
 import walletRouter from './api/wallet.js';
 import adminStatsRouter from './api/admin-stats.js';
 import featuresRouter from './api/features.js';
+import guestRouter from './api/guest.js';
+import eventsRouter from './api/events.js';
 import marketplaceConnectionsRouter, { amazonOAuthRouter, flipkartOAuthRouter } from './api/marketplace-connections.js';
 
 // Origins allowed to call this API in addition to localhost dev servers. Configure the deployed
@@ -64,7 +66,9 @@ app.get('/test', (req: Request, res: Response) => {
 app.use('/api', authRouter);
 app.use('/api/admin', adminStatsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/ai', guestRouter);
 app.use('/api/ai', aiRouter);
+app.use('/api/events', eventsRouter);
 app.use('/api/wallet', walletRouter);
 app.use('/api/features', featuresRouter);
 app.use('/api/listings', listingRouter);
@@ -103,6 +107,10 @@ if (!process.env['VERCEL']) {
   app.listen(Number(port), '0.0.0.0', () => {
     console.log(`[SERVER] Node Express server listening on 0.0.0.0:${port}`);
   });
+  // One reminder email 24h after sign-up to sellers who haven't verified yet.
+  const runReminders = () => sendVerificationReminders().catch((err) => console.error('[verify-reminder] run failed', err));
+  setTimeout(runReminders, 60 * 1000).unref();
+  setInterval(runReminders, 30 * 60 * 1000).unref();
 }
 
 export default app;

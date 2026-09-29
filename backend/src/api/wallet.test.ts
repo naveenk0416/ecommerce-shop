@@ -38,6 +38,7 @@ before(async () => {
   process.env['GEMINI_API_KEY'] = '';
   process.env['RESEND_API_KEY'] = '';
   process.env['TRUST_PROXY'] = '';
+  process.env['EMAIL_MX_CHECK'] = 'false';
 
   common = await import('./common.js');
   await common.ensureConnected();
@@ -123,21 +124,20 @@ const listingCall = (token: string, opts: Opts = {}) => api('POST', '/ai/listing
 
 // ---- Check 1 ----
 
-test('sign-up requires the product-count answer', async () => {
+test('sign-up no longer asks the product count (it moved to the onboarding card)', async () => {
   const res = await api('POST', '/register', {
-    email: 'nocatalog@example.test', password: 'Str0ng!Pass', displayName: 'X', phoneNumber: nextPhone(),
-    state: 'Telangana', city: 'Hyderabad', termsAccepted: true,
+    email: 'nocatalog@example.test', password: 'Str0ng!Pass', displayName: 'New Seller', phoneNumber: nextPhone(), termsAccepted: true,
   });
-  assert.equal(res.status, 400);
-  assert.equal(res.data.code, 'CATALOG_SIZE_REQUIRED');
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  assert.ok(res.data.token);
 });
 
 test('new verified seller gets the 10-coin welcome bonus once (+2 for the mobile number given at sign-up)', async () => {
   const { token, uid } = await signUp();
   const w = await wallet(token);
-  const welcome = await common.CoinLedger.find({ uid, type: 'welcome_bonus' }).lean();
-  assert.equal(welcome.length, 1);
-  assert.equal(welcome[0].amount, 10);
+  // Split welcome: 3 at sign-up + 7 on verification = 10.
+  const welcome = await common.CoinLedger.find({ uid, type: 'welcome_bonus' }).sort({ createdAt: 1 }).lean();
+  assert.deepEqual(welcome.map((w: any) => [w.reason, w.amount]), [['Welcome bonus (part 1)', 3], ['Email verified', 7]]);
   assert.equal(w.balance.total, 12);
   assert.deepEqual(w.bonuses.filter((b: any) => b.done).map((b: any) => b.id).sort(), ['mobile', 'welcome']);
   await wallet(token);

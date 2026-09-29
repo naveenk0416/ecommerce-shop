@@ -19,6 +19,19 @@ interface AdminStatsData {
   notifyMe: { clicks: number; users: number };
   /** Sellers who asked to be told when a not-yet-live feature launches, by feature. */
   featureNotifyMe?: Record<string, number>;
+  funnel?: {
+    total: FunnelRow;
+    campaigns: FunnelRow[];
+    guest: { generated: number; failed: number; savedAfterSignup: number; limits: { perDevice: number; perIpPerDay: number; globalPerDay: number } };
+  };
+  abuse?: {
+    events: Record<string, number>;
+    networksWithManySignups: { network: string; signups: number; withoutWelcome: number }[];
+    devicesWithManySignups: { device: string; signups: number }[];
+    unverifiedOlderThanDays: number;
+    unverifiedTotal: number;
+    unverified: { userId: string; createdAt: string; emailDomain: string; aiListings: number }[];
+  };
   bonusCompletionPct: Record<string, number>;
   referrals: { referredSignups: number; pending: number; rewarded: number; blocked: number; blockedReasons: Record<string, number>; reversed: number; signupsFromReferralLinks: number };
   packs: {
@@ -38,10 +51,34 @@ interface AdminStatsData {
   };
 }
 
+interface FunnelRow {
+  campaign: string;
+  steps: { step: string; count: number; pctOfPrevious: number | null }[];
+  guest: Record<string, number>;
+}
+
+const STEP_LABELS: Record<string, string> = {
+  landing_view: 'Visits',
+  signup_view: 'Sign-up page',
+  sign_up_start: 'Started form',
+  sign_up: 'Signed up',
+  first_listing_created: 'First listing',
+};
+
+const ABUSE_LABELS: Record<string, string> = {
+  disposable_email: 'Disposable email blocked',
+  welcome_blocked_device: 'No welcome coins — 2nd+ account on a device',
+  welcome_blocked_ip: 'No welcome coins — too many sign-ups from one network',
+  guest_cap_device: 'Guest try blocked — device already used it',
+  guest_cap_ip: 'Guest try blocked — network daily limit',
+  guest_cap_global: 'Guest try blocked — global daily limit',
+};
+
 const PURPOSE_LABELS: Record<string, string> = {
   listing: 'AI listings (1 coin each)',
   field_fix: '✨ Field fixes (free)',
   marketplace_autofill: 'Fill empty fields with AI (free)',
+  guest_listing: 'Guest try on landing page (free, no account)',
 };
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -179,6 +216,76 @@ function isoDay(date: Date): string {
               </table>
             </div>
           </div>
+
+          @if (s.funnel; as f) {
+            <div class="panel panel--wide" data-testid="funnel-table">
+              <h4>Sign-up funnel by campaign</h4>
+              <p class="panel__meta">Unique visitors (browser) per step in this date range · % = of the previous step</p>
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">utm_campaign</th>
+                      @for (step of f.total.steps; track step.step) { <th scope="col" class="num">{{ stepLabel(step.step) }}</th> }
+                      <th scope="col" class="num">Guest tries (done → sign-up click)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of funnelRows(); track row.campaign) {
+                      <tr>
+                        <td>{{ row.campaign }}</td>
+                        @for (step of row.steps; track step.step) {
+                          <td class="num">{{ step.count }}@if (step.pctOfPrevious !== null) { <small class="muted"> ({{ step.pctOfPrevious }}%)</small> }</td>
+                        }
+                        <td class="num">{{ row.guest['guest_try_start'] }} ({{ row.guest['guest_try_success'] }} → {{ row.guest['guest_try_signup_click'] }})</td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="7" class="muted">No visits recorded in this period yet.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <p class="panel__meta">Guest listings: {{ f.guest.generated }} generated · {{ f.guest.failed }} failed · {{ f.guest.savedAfterSignup }} saved to an account after sign-up · limits {{ f.guest.limits.perDevice }}/device, {{ f.guest.limits.perIpPerDay }}/network/day, {{ f.guest.limits.globalPerDay }}/day</p>
+            </div>
+          }
+
+          @if (s.abuse; as a) {
+            <div class="panel">
+              <h4>Suspicious sign-ups</h4>
+              <table>
+                <tbody>
+                  @for (row of abuseRows(); track row.type) {
+                    <tr><td>{{ row.label }}</td><td class="num">{{ row.count }}</td></tr>
+                  } @empty {
+                    <tr><td class="muted">Nothing blocked in this period.</td></tr>
+                  }
+                  @for (n of a.networksWithManySignups; track n.network) {
+                    <tr><td>Network {{ n.network }}… — {{ n.signups }} sign-ups</td><td class="num">{{ n.withoutWelcome }} without welcome</td></tr>
+                  }
+                  @for (d of a.devicesWithManySignups; track d.device) {
+                    <tr><td>Device {{ d.device }}… — accounts</td><td class="num">{{ d.signups }}</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="panel" data-testid="unverified-list">
+              <h4>Unverified accounts older than {{ a.unverifiedOlderThanDays }} days ({{ a.unverifiedTotal }})</h4>
+              <p class="panel__meta">For manual clean-up — nothing is deleted automatically.</p>
+              <div class="scroll scroll--short">
+                <table>
+                  <thead><tr><th scope="col">User id</th><th scope="col">Signed up</th><th scope="col">Email domain</th><th scope="col" class="num">AI listings</th></tr></thead>
+                  <tbody>
+                    @for (u of a.unverified; track u.userId) {
+                      <tr><td><code>{{ u.userId }}</code></td><td>{{ u.createdAt.slice(0, 10) }}</td><td>{{ u.emailDomain }}</td><td class="num">{{ u.aiListings }}</td></tr>
+                    } @empty {
+                      <tr><td colspan="4" class="muted">None.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
         </div>
       }
     </section>
@@ -202,6 +309,8 @@ function isoDay(date: Date): string {
     .panel h4 { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: #0f172a; }
     .panel__meta { margin: 0 0 8px; font-size: 12px; color: #64748b; }
     .scroll { overflow-x: auto; }
+    .scroll--short { max-height: 280px; overflow-y: auto; }
+    code { font-size: 11px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th { text-align: left; font-size: 11px; color: #64748b; padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
     td { padding: 6px 8px; border-bottom: 1px solid #f8fafc; color: #0f172a; }
@@ -230,6 +339,16 @@ export class AdminStats {
   importedRows = computed(() => Object.entries(this.stats()?.catalogSizeImported.buckets ?? {}).map(([band, count]) => ({ band, count })));
   bonusRows = computed(() => Object.entries(this.stats()?.bonusCompletionPct ?? {}).map(([id, pct]) => ({ label: BONUS_LABELS[id] ?? id, pct })));
   packRows = computed(() => Object.entries(this.stats()?.packs.purchasesByPack ?? {}).map(([id, row]) => ({ id, ...row })));
+  funnelRows = computed(() => {
+    const f = this.stats()?.funnel;
+    return f ? [f.total, ...f.campaigns] : [];
+  });
+  abuseRows = computed(() => Object.entries(this.stats()?.abuse?.events ?? {}).map(([type, count]) => ({ type, label: ABUSE_LABELS[type] ?? type, count })));
+
+  stepLabel(step: string): string {
+    return STEP_LABELS[step] ?? step;
+  }
+
   featureNotifyRows = computed(() => Object.entries(this.stats()?.featureNotifyMe ?? {}).map(([feature, count]) => ({ feature, label: FEATURE_LABELS[feature] ?? feature, count })));
 
   constructor() {

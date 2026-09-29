@@ -287,21 +287,21 @@ ion-toolbar {
   transform: translateY(-2px);
 }
 
-/* While the cookie banner is visible (desktop: one row ~60px; phone: two rows ~100px). */
+/* While the cookie bar (≤ 64px, docked at the very bottom) is visible: the WhatsApp button sits
+   above it and the page gets matching bottom padding, so the bar never covers content. */
 .whatsapp-fab--raised {
-  bottom: calc(88px + env(safe-area-inset-bottom));
+  bottom: calc(76px + env(safe-area-inset-bottom));
 }
 
+ion-content.has-cookie-bar {
+  --padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+/* Sign-up / login on a phone: the form's big button is near the bottom of the screen, so the
+   floating WhatsApp button is hidden there rather than sitting on top of it. */
 @media (max-width: 480px) {
-  .whatsapp-fab--raised {
-    bottom: calc(128px + env(safe-area-inset-bottom));
-  }
-}
-
-/* On short phones the banner docks at the top (see cookie-banner.ts), so no lift is needed. */
-@media (max-width: 480px) and (max-height: 759px) {
-  .whatsapp-fab--raised {
-    bottom: calc(16px + env(safe-area-inset-bottom));
+  .whatsapp-fab--auth {
+    display: none;
   }
 }
 

@@ -1,0 +1,246 @@
+/* Compact, one-screen card: the whole sign-up form fits a 375×812 phone with the keyboard closed. */
+:host {
+  display: block;
+}
+
+.auth-card {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 18px 18px 14px;
+  background: #fff;
+  border: 1px solid #ffedd5;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.auth-card__title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.auth-card__sub,
+.auth-card__note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.auth-card__note {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.auth-card__perk {
+  display: inline-block;
+  margin: 6px 0 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.auth-card__google {
+  margin-top: 12px;
+  min-height: 44px;
+}
+
+.auth-card__google-slot {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.auth-card__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 2px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.auth-card__or::before,
+.auth-card__or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.auth-card__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.field__label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 16px; /* 16px stops iOS zooming into the field */
+  color: #0f172a;
+}
+
+.field input:focus {
+  outline: 2px solid #fb923c;
+  outline-offset: 0;
+  border-color: #fb923c;
+  background: #fff;
+}
+
+.field input[aria-invalid='true'] {
+  border-color: #dc2626;
+}
+
+.field__phone,
+.field__password {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.field__prefix {
+  flex-shrink: 0;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  font-weight: 800;
+  color: #475569;
+}
+
+.field__password input {
+  padding-right: 72px;
+}
+
+.field__toggle {
+  position: absolute;
+  right: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #c2410c;
+  background: transparent;
+}
+
+.field__error {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.field__suggest {
+  padding: 0;
+  font: inherit;
+  color: #c2410c;
+  text-decoration: underline;
+  background: none;
+}
+
+.auth-card__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.auth-card__check input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: #ea580c;
+}
+
+.auth-card__check--small {
+  font-size: 12px;
+  margin-top: -2px;
+}
+
+.auth-card__check a,
+.auth-card__link {
+  color: #c2410c;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.auth-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.auth-card__alert {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.auth-card__submit {
+  height: 52px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+  box-shadow: 0 6px 16px rgba(234, 88, 12, 0.25);
+}
+
+.auth-card__submit:disabled {
+  opacity: 0.7;
+}
+
+.auth-card__switch {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: #c2410c;
+  background: none;
+}
+
+.auth-card__hint {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: #64748b;
+}

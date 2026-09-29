@@ -130,6 +130,8 @@ export class WalletNudges {
 
   showCatalogPrompt = computed(() => {
     const w = this.wallet();
+    // The "Tell us about your business" card asks the same question for new sellers.
+    if (this.auth.profile()?.businessCard?.show) return false;
     return !!w && !w.catalog.band && !w.catalog.promptDismissed && !this.catalogHidden();
   });
 

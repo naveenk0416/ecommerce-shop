@@ -41,6 +41,11 @@
           </p>
         }
 
+        @if (!isLoggedIn()) {
+          <!-- Try 1 listing free — no sign-up -->
+          <app-guest-try (signup)="guestSignup.emit()" />
+        }
+
         <div class="hero-actions">
           @if (isLoggedIn()) {
             <button (click)="goDashboard.emit()" class="btn-orange-premium">
@@ -57,6 +62,7 @@
             {{ lang() === 'hi' ? 'कैसे काम करता है' : 'See how it works' }}
           </button>
         </div>
+
 
         <div class="hero-checklist">
           <div class="check-item">
