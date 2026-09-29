@@ -1,83 +1,46 @@
 <main class="landing-container">
 
   <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-      <div class="hero-content animate-in fade-in slide-in-from-bottom-4">
-
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="badge">
-            <ion-icon name="school" class="mr-1"></ion-icon>
-            {{ lang() === 'hi' ? 'Indian sellers के लिए बना »' : 'Made for Indian Sellers »' }}
-          </div>
-          <div class="lang-toggle" role="group" aria-label="Language">
-            <button type="button" [class.lang-toggle__on]="lang() === 'en'" [attr.aria-pressed]="lang() === 'en'" (click)="lang.set('en')">English</button>
-            <button type="button" [class.lang-toggle__on]="lang() === 'hi'" [attr.aria-pressed]="lang() === 'hi'" (click)="lang.set('hi')" lang="hi">हिंदी</button>
-          </div>
-        </div>
+  <section class="hero" [attr.lang]="lang()" aria-labelledby="hero-title">
+    <div class="hero__inner">
+      <div class="hero__content">
+        <span class="hero__badge">{{ tx('heroBadge') }}</span>
 
         @if (lang() === 'hi') {
-          <h1 class="hero-title" lang="hi">
-            एक photo खींचो.<br>
-            <span class="text-orange">Listing तैयार,</span><br>
-            सेकंडों में.
+          <h1 id="hero-title" class="hero__title">
+            एक photo खींचो।<br>
+            <span class="hero__grad">Listing</span> तैयार,<br>
+            सेकंडों में।
           </h1>
-
-          <p class="hero-description" lang="hi">
-            Product की photo upload करो और <strong class="text-slate-900">Amazon, Meesho &amp; Flipkart</strong> के लिए
-            listing तुरंत पाओ — HSN code, GST rate और Instagram caption के साथ. अपना stock भी एक ही जगह manage करो.
-          </p>
+          <p class="hero__lead">{{ tx('heroLead') }}</p>
         } @else {
-          <h1 class="hero-title">
-            Snap a photo.<br>
-            <span class="text-orange">Sell smarter</span><br>
+          <h1 id="hero-title" class="hero__title">
+            Snap a <span class="hero__grad">photo</span>.<br>
+            Sell smarter<br>
             in seconds.
           </h1>
-
-          <p class="hero-description">
-            The AI toolkit built for Indian sellers. Upload a product photo and get marketplace-ready listings for
-            <strong class="text-slate-900">Amazon, Meesho &amp; Flipkart</strong> — with HSN codes, GST rates, and social captions included.
-            Then track your stock and sales in one place.
-          </p>
+          <p class="hero__lead">{{ tx('heroLead') }}</p>
         }
 
-        @if (!isLoggedIn()) {
-          <!-- Try 1 listing free — no sign-up -->
-          <app-guest-try (signup)="guestSignup.emit()" />
-        }
-
-        <div class="hero-actions">
-          @if (isLoggedIn()) {
-            <button (click)="goDashboard.emit()" class="btn-orange-premium">
-              {{ lang() === 'hi' ? 'Dashboard पर जाओ' : 'Go to Dashboard' }}
-              <ion-icon name="rocket" class="ml-2"></ion-icon>
-            </button>
-          } @else {
-            <button (click)="getStarted.emit('hero')" class="btn-orange-premium">
-              {{ lang() === 'hi' ? 'Free में शुरू करो — कोई card नहीं' : 'Start Free — No Card Needed' }}
-              <ion-icon name="arrow-forward" class="ml-2"></ion-icon>
-            </button>
-          }
-          <button class="btn-secondary" (click)="scrollToSection($event, 'how-it-works')">
-            {{ lang() === 'hi' ? 'कैसे काम करता है' : 'See how it works' }}
+        @if (isLoggedIn()) {
+          <button type="button" (click)="goDashboard.emit()" class="hero__primary">
+            {{ tx('heroDashboard') }}
           </button>
-        </div>
+        } @else {
+          <!-- Try 1 listing free — no sign-up: the one primary action in the hero -->
+          <app-guest-try (signup)="guestSignup.emit()" />
+          <button type="button" class="hero__link" (click)="getStarted.emit('hero')" data-testid="hero-signup-link">
+            {{ tx('heroSignupLink') }}
+          </button>
+        }
 
-
-        <div class="hero-checklist">
-          <div class="check-item">
-            <ion-icon name="checkmark-circle"></ion-icon>
-            No credit card
-          </div>
-          <div class="check-item">
-            <ion-icon name="checkmark-circle"></ion-icon>
-            Hindi + English
-          </div>
-          <div class="check-item">
-            <ion-icon name="checkmark-circle"></ion-icon>
-            GST-compliant
-          </div>
-        </div>
+        <p class="hero__trust">
+          <span>{{ tx('trustNoCard') }}</span>
+          <span aria-hidden="true">·</span>
+          <span>{{ tx('trustLanguages') }}</span>
+          <span aria-hidden="true">·</span>
+          <span>{{ tx('trustGst') }}</span>
+        </p>
       </div>
 
       <!-- Browser Mockup -->
@@ -143,7 +106,7 @@
       }
 
       <div class="partner-strip">
-        <span class="partner-label">Works with</span>
+        <span class="partner-label">{{ tx('worksWith') }}</span>
         <div class="partner-logos">
           <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" class="h-5">
           <img src="https://upload.wikimedia.org/wikipedia/commons/8/80/Meesho_Logo_Full.png" alt="Meesho" class="h-7">
@@ -158,8 +121,8 @@
   <section id="how-it-works" class="how-section py-24 bg-white">
     <div class="max-w-5xl mx-auto px-6">
       <div class="text-center mb-16">
-        <p class="section-eyebrow">Simple by design</p>
-        <h2 class="section-title">From photo to listing in 3 steps</h2>
+        <p class="section-eyebrow">{{ tx('howEyebrow') }}</p>
+        <h2 class="section-title">{{ tx('howTitle') }}</h2>
       </div>
 
       <div class="how-steps">
@@ -169,8 +132,8 @@
             <div class="step-icon bg-orange-50 text-orange-500">
               <ion-icon name="camera"></ion-icon>
             </div>
-            <h3 class="step-title">Upload your product photo</h3>
-            <p class="step-text">Take a photo on your phone or use an existing one. No studio setup needed.</p>
+            <h3 class="step-title">{{ tx('step1Title') }}</h3>
+            <p class="step-text">{{ tx('step1Text') }}</p>
           </div>
         </div>
 
@@ -182,8 +145,8 @@
             <div class="step-icon bg-purple-50 text-purple-500">
               <ion-icon name="sparkles"></ion-icon>
             </div>
-            <h3 class="step-title">AI reads your product</h3>
-            <p class="step-text">SellAssist identifies color, material, category and writes platform-specific copy in seconds.</p>
+            <h3 class="step-title">{{ tx('step2Title') }}</h3>
+            <p class="step-text">{{ tx('step2Text') }}</p>
           </div>
         </div>
 
@@ -195,8 +158,8 @@
             <div class="step-icon bg-emerald-50 text-emerald-500">
               <ion-icon name="copy"></ion-icon>
             </div>
-            <h3 class="step-title">Copy &amp; list instantly</h3>
-            <p class="step-text">Get titles, descriptions, HSN codes and social captions — ready to paste on any marketplace.</p>
+            <h3 class="step-title">{{ tx('step3Title') }}</h3>
+            <p class="step-text">{{ tx('step3Text') }}</p>
           </div>
         </div>
       </div>
@@ -207,9 +170,9 @@
   <section id="features" class="features-section py-24 bg-slate-50">
     <div class="max-w-7xl mx-auto px-6">
       <div class="text-center mb-16">
-        <p class="section-eyebrow">Everything included</p>
-        <h2 class="section-title">One photo. Every platform. Done.</h2>
-        <p class="section-subtitle">From listing copy to GST classification — SellAssist handles the boring stuff so you can focus on selling. Publish directly to Amazon. Flipkart publishing coming soon.</p>
+        <p class="section-eyebrow">{{ tx('featEyebrow') }}</p>
+        <h2 class="section-title">{{ tx('featTitle') }}</h2>
+        <p class="section-subtitle">{{ tx('featSub') }}</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -217,56 +180,56 @@
           <div class="feature-icon bg-orange-100 text-orange-500">
             <ion-icon name="camera"></ion-icon>
           </div>
-          <h3 class="feature-title">Image-First AI</h3>
-          <p class="feature-text">Upload a single product photo. Our AI reads colors, materials, and style — and writes the listing for you.</p>
+          <h3 class="feature-title">{{ tx('f1Title') }}</h3>
+          <p class="feature-text">{{ tx('f1Text') }}</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon bg-blue-100 text-blue-500">
             <ion-icon name="text"></ion-icon>
           </div>
-          <h3 class="feature-title">Marketplace Titles</h3>
-          <p class="feature-text">SEO-optimized titles tailored for Amazon, Flipkart, and Meesho — each platform gets its own style.</p>
+          <h3 class="feature-title">{{ tx('f2Title') }}</h3>
+          <p class="feature-text">{{ tx('f2Text') }}</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon bg-violet-100 text-violet-500">
             <ion-icon name="document-text"></ion-icon>
           </div>
-          <h3 class="feature-title">Rich Descriptions</h3>
-          <p class="feature-text">Compelling product descriptions with bullet points and keywords — ready to paste.</p>
+          <h3 class="feature-title">{{ tx('f3Title') }}</h3>
+          <p class="feature-text">{{ tx('f3Text') }}</p>
         </div>
 
         <div class="feature-card feature-card-highlight">
           <div class="feature-icon bg-white/20 text-white">
             <ion-icon name="cash"></ion-icon>
           </div>
-          <h3 class="feature-title !text-white">HSN + GST</h3>
-          <p class="feature-text !text-orange-100">Get the HSN code and GST rate under the new GST 2.0 slabs (0/5/18/40%, from 22 Sep 2025) with a clear explanation.</p>
+          <h3 class="feature-title !text-white">{{ tx('f4Title') }}</h3>
+          <p class="feature-text !text-orange-100">{{ tx('f4Text') }}</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon bg-pink-100 text-pink-500">
             <ion-icon name="logo-instagram"></ion-icon>
           </div>
-          <h3 class="feature-title">Social Captions</h3>
-          <p class="feature-text">Instagram + Facebook captions with hashtags, ready to share with your customers.</p>
+          <h3 class="feature-title">{{ tx('f5Title') }}</h3>
+          <p class="feature-text">{{ tx('f5Text') }}</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon bg-emerald-100 text-emerald-500">
             <ion-icon name="time"></ion-icon>
           </div>
-          <h3 class="feature-title">History &amp; Reuse</h3>
-          <p class="feature-text">Every listing is saved. Browse, copy, and re-use anytime from your dashboard.</p>
+          <h3 class="feature-title">{{ tx('f6Title') }}</h3>
+          <p class="feature-text">{{ tx('f6Text') }}</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon bg-amber-100 text-amber-600">
             <ion-icon name="cube"></ion-icon>
           </div>
-          <h3 class="feature-title">Inventory &amp; Stock</h3>
-          <p class="feature-text">Track stock for every product, get low-stock alerts, and log sales — all next to your listings.</p>
+          <h3 class="feature-title">{{ tx('f7Title') }}</h3>
+          <p class="feature-text">{{ tx('f7Text') }}</p>
         </div>
       </div>
     </div>
@@ -276,9 +239,9 @@
   <section id="inventory" class="py-24 bg-white">
     <div class="max-w-7xl mx-auto px-6">
       <div class="text-center mb-16">
-        <p class="section-eyebrow">Inventory management</p>
-        <h2 class="section-title">Know your stock. Sell without surprises.</h2>
-        <p class="section-subtitle">Keep products, stock and sales in the same place you create your listings.</p>
+        <p class="section-eyebrow">{{ tx('invEyebrow') }}</p>
+        <h2 class="section-title">{{ tx('invTitle') }}</h2>
+        <p class="section-subtitle">{{ tx('invSub') }}</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -286,32 +249,32 @@
           <div class="feature-icon bg-orange-100 text-orange-500">
             <ion-icon name="cube"></ion-icon>
           </div>
-          <h3 class="feature-title">Stock tracking</h3>
-          <p class="feature-text">Quantity, cost and selling price for every product, with your total inventory value and potential profit.</p>
+          <h3 class="feature-title">{{ tx('i1Title') }}</h3>
+          <p class="feature-text">{{ tx('i1Text') }}</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon bg-red-100 text-red-500">
             <ion-icon name="alert-circle"></ion-icon>
           </div>
-          <h3 class="feature-title">Low-stock alerts</h3>
-          <p class="feature-text">Products running low are flagged on your inventory dashboard so you can restock in time.</p>
+          <h3 class="feature-title">{{ tx('i2Title') }}</h3>
+          <p class="feature-text">{{ tx('i2Text') }}</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon bg-blue-100 text-blue-500">
             <ion-icon name="sync"></ion-icon>
           </div>
-          <h3 class="feature-title">Amazon &amp; Flipkart sync</h3>
-          <p class="feature-text">Import your catalogue and stock from Amazon and Flipkart, and push price and stock updates back in one click.</p>
+          <h3 class="feature-title">{{ tx('i3Title') }}</h3>
+          <p class="feature-text">{{ tx('i3Text') }}</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon bg-emerald-100 text-emerald-500">
             <ion-icon name="receipt"></ion-icon>
           </div>
-          <h3 class="feature-title">Sales log</h3>
-          <p class="feature-text">Record each sale with its platform and price — stock updates automatically.</p>
+          <h3 class="feature-title">{{ tx('i4Title') }}</h3>
+          <p class="feature-text">{{ tx('i4Text') }}</p>
         </div>
       </div>
     </div>
@@ -322,17 +285,17 @@
     <div class="max-w-4xl mx-auto px-6">
       <div class="cta-banner">
         <div class="cta-glow"></div>
-        <p class="cta-eyebrow">Free to start. No credit card.</p>
-        <h2 class="cta-title">Ready to sell smarter?</h2>
-        <p class="cta-text">Join Indian sellers using SellAssist to list faster and manage stock in one place.</p>
+        <p class="cta-eyebrow">{{ tx('ctaEyebrow') }}</p>
+        <h2 class="cta-title">{{ tx('ctaTitle') }}</h2>
+        <p class="cta-text">{{ tx('ctaText') }}</p>
         @if (isLoggedIn()) {
           <button (click)="goDashboard.emit()" class="btn-cta-primary">
-            Go to Dashboard
+            {{ tx('ctaDashboard') }}
             <ion-icon name="rocket" class="ml-2"></ion-icon>
           </button>
         } @else {
           <button (click)="getStarted.emit('cta')" class="btn-cta-primary">
-            Create your free account
+            {{ tx('ctaSignup') }}
             <ion-icon name="arrow-forward" class="ml-2"></ion-icon>
           </button>
         }
@@ -352,7 +315,7 @@
             <span class="text-xl font-black tracking-tight text-slate-800 uppercase">SellAssist</span>
           </div>
           <p class="text-sm text-slate-500 leading-relaxed max-w-xs">
-            Bharat's AI-powered selling assistant, helping sellers optimize their marketplace presence daily.
+            {{ tx('footerAbout') }}
           </p>
           <div class="flex gap-4 mt-6">
             <ion-icon name="logo-facebook" class="footer-social-icon"></ion-icon>
@@ -362,7 +325,7 @@
         </div>
 
         <div>
-          <h4 class="footer-heading">Marketplaces</h4>
+          <h4 class="footer-heading">{{ tx('footerMarketplaces') }}</h4>
           <ul class="footer-links">
             <li><a href="https://www.amazon.in" target="_blank">Amazon India</a></li>
             <li><a href="https://www.flipkart.com" target="_blank">Flipkart</a></li>
@@ -372,22 +335,22 @@
         </div>
 
         <div>
-          <h4 class="footer-heading">Tools</h4>
+          <h4 class="footer-heading">{{ tx('footerTools') }}</h4>
           <ul class="footer-links">
-            <li><a routerLink="/gst-calculator">GST Calculator</a></li>
-            <li><a href="/home" (click)="scrollToSection($event, 'features')">AI Listing Generator</a></li>
-            <li><a href="/home" (click)="scrollToSection($event, 'features')">Instagram &amp; Facebook Captions</a></li>
-            <li><a href="/home" (click)="scrollToSection($event, 'inventory')">Inventory Management</a></li>
+            <li><a routerLink="/gst-calculator">{{ tx('linkGst') }}</a></li>
+            <li><a href="/home" (click)="scrollToSection($event, 'features')">{{ tx('linkListing') }}</a></li>
+            <li><a href="/home" (click)="scrollToSection($event, 'features')">{{ tx('linkCaptions') }}</a></li>
+            <li><a href="/home" (click)="scrollToSection($event, 'inventory')">{{ tx('linkInventory') }}</a></li>
           </ul>
         </div>
 
         <div>
-          <h4 class="footer-heading">Company</h4>
+          <h4 class="footer-heading">{{ tx('footerCompany') }}</h4>
           <ul class="footer-links">
-            <li><a routerLink="/privacy">Privacy Policy</a></li>
-            <li><a routerLink="/terms">Terms of Service</a></li>
-            <li><a routerLink="/refund-policy">Refund Policy</a></li>
-            <li><a routerLink="/contact">Contact Us</a></li>
+            <li><a routerLink="/privacy">{{ tx('linkPrivacy') }}</a></li>
+            <li><a routerLink="/terms">{{ tx('linkTerms') }}</a></li>
+            <li><a routerLink="/refund-policy">{{ tx('linkRefund') }}</a></li>
+            <li><a routerLink="/contact">{{ tx('linkContact') }}</a></li>
           </ul>
           <ul class="footer-links mt-4">
             <li><a [href]="'mailto:' + business.supportEmail">{{ business.supportEmail }}</a></li>
@@ -398,7 +361,7 @@
 
       <div class="pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
         <p class="text-xs text-slate-400 font-medium">
-          © {{ currentYear }} SellAssist. All rights reserved. Built for Bharat's sellers.
+          © {{ currentYear }} SellAssist. {{ tx('footerRights') }}
         </p>
       </div>
     </div>

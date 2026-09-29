@@ -26,6 +26,8 @@ before(async () => {
   process.env['VERCEL'] = '1';
   process.env['JWT_SECRET'] = 'test-secret';
   process.env['REGISTER_RATE_LIMIT'] = '1000';
+  // Payments on, so the pack-order test reaches the "verify your email first" rule.
+  process.env['PAYMENTS_ENABLED'] = 'true';
   // Real client IPs from X-Forwarded-For, so the per-network limits can be tested.
   process.env['TRUST_PROXY'] = '1';
   for (const key of ['GEMINI_API_KEY', 'RESEND_API_KEY', 'GOOGLE_CLIENT_ID', 'COIN_PACKS_ENABLED']) process.env[key] = '';
@@ -309,9 +311,17 @@ test('guest try: preview only; second try on the same device is blocked; claim s
   assert.equal(JSON.stringify(res.data).includes('FIT: straight'), false, 'the rest stays on the server');
   assert.equal(await common.AiUsage.countDocuments({ purpose: 'guest_listing', uid: 'guest' }), 1);
 
+  assert.equal((await api('GET', '/ai/guest-status', undefined, { device })).data.available, false, 'device already used its try');
+  assert.equal((await api('GET', '/ai/guest-status', undefined, { device: newDevice() })).data.available, true);
   const again = await api('POST', '/ai/guest-listing', req, { device });
   assert.equal(again.status, 429);
   assert.equal(again.data.error, 'Sign up free to create listings.');
+
+  // A returning visitor gets the same preview back while the token is valid.
+  const again2 = await api('POST', '/ai/guest-listing/preview', { token: res.data.token });
+  assert.equal(again2.status, 200);
+  assert.deepEqual(again2.data.preview, res.data.preview);
+  assert.equal((await api('POST', '/ai/guest-listing/preview', { token: 'x'.repeat(32) })).status, 404);
 
   const acc = await register({}, { device: newDevice() });
   const coinsBefore = (await walletOf(acc.data.token)).balance.total;
@@ -326,6 +336,7 @@ test('guest try: preview only; second try on the same device is blocked; claim s
   assert.equal((await api('POST', '/ai/guest-listing/claim', { token: res.data.token }, { token: acc.data.token })).data.draftId, claim.data.draftId, 'idempotent');
   const other = await register({}, { device: newDevice() });
   assert.equal((await api('POST', '/ai/guest-listing/claim', { token: res.data.token }, { token: other.data.token })).status, 409);
+  assert.equal((await api('POST', '/ai/guest-listing/preview', { token: res.data.token })).status, 404, 'no preview once saved to an account');
 });
 
 test('guest try: 3 per network per day', async () => {

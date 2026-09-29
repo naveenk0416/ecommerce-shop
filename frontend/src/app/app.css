@@ -265,6 +265,7 @@ ion-toolbar {
 }
 
 /* Floating "Chat on WhatsApp" button. */
+/* 48px round WhatsApp button, 16px from the bottom-right corner. */
 .whatsapp-fab {
   position: fixed;
   right: 16px;
@@ -272,19 +273,77 @@ ion-toolbar {
   z-index: 50;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.8rem 1.1rem;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
   border-radius: 999px;
   background: #25d366;
   color: #fff;
-  font-size: 13px;
-  font-weight: 800;
-  box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4);
-  transition: transform 0.15s ease;
+  box-shadow: 0 8px 20px rgba(37, 211, 102, 0.35);
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .whatsapp-fab:hover {
   transform: translateY(-2px);
+}
+
+/* Header language pill (logged out) and compact "Get Started". */
+.header-lang {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.header-lang button {
+  min-height: 32px;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+  background: transparent;
+}
+
+.header-lang .header-lang__on {
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: #fff;
+}
+
+.header-lang__short {
+  display: none;
+}
+
+@media (max-width: 419px) {
+  .header-lang__long {
+    display: none;
+  }
+  .header-lang__short {
+    display: inline;
+  }
+}
+
+.header-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
+@media (min-width: 768px) {
+  .header-cta {
+    min-height: 44px;
+    padding: 0 1.4rem;
+    font-size: 14px;
+  }
 }
 
 /* While the cookie bar (≤ 64px, docked at the very bottom) is visible: the WhatsApp button sits
@@ -331,16 +390,25 @@ ion-content.has-cookie-bar {
 }
 
 .whatsapp-fab ion-icon {
-  font-size: 22px;
+  font-size: 26px;
 }
 
-@media (max-width: 480px) {
-  .whatsapp-fab__label {
-    display: none;
-  }
+/* The label is for screen readers only; the button is a 48px circle. */
+.whatsapp-fab__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 
-  .whatsapp-fab {
-    padding: 0.85rem;
+/* Phones: step aside while the landing upload card is on screen, so it never covers it. */
+@media (max-width: 480px) {
+  .whatsapp-fab--over-card {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(12px);
   }
 }
 

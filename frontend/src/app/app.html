@@ -3,7 +3,7 @@
     <ion-toolbar class="bg-white px-3 md:px-6 py-3 md:py-4 border-b border-slate-100">
       <div class="flex items-center justify-between w-full gap-2">
         <a routerLink="/home" (click)="mobileMenuOpen.set(false)" class="flex items-center gap-3 cursor-pointer group min-w-0" aria-label="SellAssist home">
-          <img src="assets/logo.png" alt="SellAssist logo" class="h-10 md:h-14 w-auto object-contain"/>
+          <img src="assets/logo.png" alt="SellAssist logo" width="885" height="241" class="h-8 md:h-14 w-auto object-contain"/>
         </a>
 
         <div class="flex items-center gap-2 md:gap-6 shrink-0">
@@ -53,11 +53,20 @@
             </div>
           } @else {
             <div class="flex items-center gap-2 md:gap-3">
+              <!-- English / हिंदी (moved here from the landing hero) -->
+              <div class="header-lang" role="group" [attr.aria-label]="i18n.t('Language', 'भाषा')" data-testid="header-lang">
+                <button type="button" [class.header-lang__on]="i18n.lang() === 'en'" [attr.aria-pressed]="i18n.lang() === 'en'" (click)="i18n.lang.set('en')" aria-label="English">
+                  <span class="header-lang__long">English</span><span class="header-lang__short" aria-hidden="true">EN</span>
+                </button>
+                <button type="button" lang="hi" [class.header-lang__on]="i18n.lang() === 'hi'" [attr.aria-pressed]="i18n.lang() === 'hi'" (click)="i18n.lang.set('hi')" aria-label="हिंदी">
+                  <span class="header-lang__long">हिंदी</span><span class="header-lang__short" aria-hidden="true">हिं</span>
+                </button>
+              </div>
               <button (click)="openSignIn()" class="btn-ghost px-6 whitespace-nowrap hidden md:inline-flex">
-                Sign In
+                {{ i18n.t('Sign In', 'Login') }}
               </button>
-              <button (click)="startSignup('header')" class="btn-orange-premium whitespace-nowrap tracking-[0.1em] md:tracking-[0.2em]">
-                Get Started
+              <button (click)="startSignup('header')" class="header-cta" data-testid="header-get-started">
+                {{ i18n.t('Get Started', 'शुरू करें') }}
               </button>
             </div>
           }
@@ -1195,7 +1204,7 @@
   <app-cookie-banner />
   @if (whatsappUrl && (showLanding() || !auth.user())) {
     <!-- Lifted above the cookie banner while it's showing, so neither covers the other. -->
-    <a [href]="whatsappUrl" target="_blank" rel="noopener" class="whatsapp-fab" [class.whatsapp-fab--raised]="consent.choice() === null" [class.whatsapp-fab--auth]="mainView() === 'auth' && !showLanding()" aria-label="Chat on WhatsApp">
+    <a [href]="whatsappUrl" target="_blank" rel="noopener" class="whatsapp-fab" [class.whatsapp-fab--raised]="consent.choice() === null" [class.whatsapp-fab--auth]="mainView() === 'auth' && !showLanding()" [class.whatsapp-fab--over-card]="showLanding() && floating.uploadCardInView()" aria-label="Chat on WhatsApp">
       <ion-icon name="logo-whatsapp"></ion-icon>
       <span class="whatsapp-fab__label">Chat on WhatsApp</span>
     </a>

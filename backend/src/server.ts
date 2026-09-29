@@ -1,6 +1,8 @@
 import './utils/env.js';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import mongoose from 'mongoose';
+import { ensureConnected } from './api/common.js';
 import authRouter, { sendVerificationReminders } from './api/auth.js';
 import adminRouter from './api/admin.js';
 import listingRouter from './api/listing.js';
@@ -61,6 +63,23 @@ app.get('/debug', (req: Request, res: Response) => {
 
 app.get('/test', (req: Request, res: Response) => {
   res.json({ message: 'API is working' });
+});
+
+// Uptime monitors call this: 200 {ok:true} when the API and database answer, 503 otherwise.
+app.get('/api/health', async (_req: Request, res: Response) => {
+  const started = Date.now();
+  try {
+    await ensureConnected();
+    await Promise.race([
+      mongoose.connection.db!.admin().ping(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('database ping timed out')), 5000)),
+    ]);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, db: 'up', ms: Date.now() - started });
+  } catch (err: any) {
+    console.error('[health] database check failed', err?.message);
+    res.status(503).json({ ok: false, db: 'down' });
+  }
 });
 
 app.use('/api', authRouter);

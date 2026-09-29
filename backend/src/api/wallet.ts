@@ -3,7 +3,7 @@ import Razorpay from 'razorpay';
 import '../utils/env.js';
 import { authMiddleware } from './auth.js';
 import { CoinLedger, CoinOrder, ensureConnected, PackInterest, User } from './common.js';
-import { activeFestivePacks, coinConfig, type CoinPack } from '../config/coins.js';
+import { activeFestivePacks, coinConfig, PAYMENTS_DISABLED_MESSAGE, packsEnabled, paymentsEnabled, type CoinPack } from '../config/coins.js';
 import { verifyRazorpaySignature } from '../utils/razorpay.js';
 import { credit, ensureWallet, walletSummary } from '../utils/wallet.js';
 import { setCoinBalanceHeaderFrom } from '../utils/coin-header.js';
@@ -68,7 +68,7 @@ router.post('/catalog-size', authMiddleware, async (req, res) => {
 
 /** The pack a seller may buy right now, or an error message. Prices always come from config. */
 async function resolvePack(uid: string, packId: string): Promise<{ pack: CoinPack; starter: boolean } | { error: string; status: number }> {
-  if (!coinConfig.packs.enabled) return { error: 'Coin packs are not available yet.', status: 403 };
+  if (!packsEnabled()) return { error: 'Coin packs are not available yet.', status: 403 };
   const starter = coinConfig.packs.starter;
   if (packId === starter.id) {
     const user = await User.findById(uid).select('hasPurchased offerExpiresAt').lean();
@@ -85,6 +85,10 @@ async function resolvePack(uid: string, packId: string): Promise<{ pack: CoinPac
 }
 
 router.post('/packs/:id/order', authMiddleware, async (req, res) => {
+  if (!paymentsEnabled()) {
+    res.status(403).json({ error: PAYMENTS_DISABLED_MESSAGE, code: 'PAYMENTS_DISABLED' });
+    return;
+  }
   await ensureConnected();
   const uid = uidOf(req);
   if (!(req as any).authUser.emailVerified) {

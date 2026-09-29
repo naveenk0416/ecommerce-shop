@@ -51,6 +51,34 @@ export class GuestListingService {
     return body.preview;
   }
 
+  /** Whether this browser can still use the free try (same limits the server enforces). */
+  async canTry(): Promise<boolean> {
+    try {
+      const { available } = await apiFetch<{ available: boolean }>('/ai/guest-status');
+      return available;
+    } catch {
+      return true; // Can't tell — let the upload decide (it answers with the sign-up message if not).
+    }
+  }
+
+  /** A returning visitor's saved preview (token still valid, not yet saved to an account), or null. */
+  async savedPreview(): Promise<GuestPreview | null> {
+    let token: string | null = null;
+    try {
+      token = window.localStorage.getItem(GUEST_TOKEN_KEY);
+    } catch {
+      return null;
+    }
+    if (!token) return null;
+    try {
+      const { preview } = await apiFetch<{ preview: GuestPreview }>('/ai/guest-listing/preview', { method: 'POST', body: { token } });
+      return preview;
+    } catch (error) {
+      if ((error as ApiError).status === 404) this.forget();
+      return null;
+    }
+  }
+
   /**
    * After sign-up / login: attaches the guest listing to the account (free) and returns the new
    * listing's id, or null when there's nothing to attach (or it expired).

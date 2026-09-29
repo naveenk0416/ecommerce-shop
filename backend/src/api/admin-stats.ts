@@ -1,7 +1,7 @@
 import express from 'express';
 import { authMiddleware } from './auth.js';
 import { AbuseEvent, AiUsage, CoinLedger, CoinOrder, ensureConnected, FeatureInterest, FunnelEvent, GuestDraft, GuestUsage, PackInterest, User } from './common.js';
-import { coinConfig, dayKey } from '../config/coins.js';
+import { coinConfig, dayKey, packsEnabled } from '../config/coins.js';
 import { NOTIFY_FEATURES } from '../config/features.js';
 
 /**
@@ -233,7 +233,7 @@ async function computeStats(filters: Filters) {
       signupsFromReferralLinks: perUser.filter((u) => u.ref).length,
     },
     packs: {
-      enabled: coinConfig.packs.enabled,
+      enabled: packsEnabled(),
       purchasesByPack,
       revenueInr: orders.reduce((s, o) => s + (o.amountInr || 0), 0),
       payingUsers: paying.length,

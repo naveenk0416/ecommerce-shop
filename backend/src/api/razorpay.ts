@@ -2,6 +2,7 @@ import express from 'express';
 import '../utils/env.js';
 import Razorpay from 'razorpay';
 import { verifyRazorpaySignature } from '../utils/razorpay.js';
+import { PAYMENTS_DISABLED_MESSAGE, paymentsEnabled } from '../config/coins.js';
 
 const router = express.Router();
 
@@ -13,6 +14,10 @@ function getRazorpayClient() {
 }
 
 router.post('/create-order', async (req, res) => {
+  if (!paymentsEnabled()) {
+    res.status(403).json({ error: PAYMENTS_DISABLED_MESSAGE, code: 'PAYMENTS_DISABLED' });
+    return;
+  }
   try {
     const amount = Number(req.body?.amount);
     const currency = String(req.body?.currency || 'INR');

@@ -3,11 +3,15 @@
  * globally from index.html, so public pages don't pull in Razorpay's scripts (checkout.js itself
  * brings in its risk-detection bundle when loaded).
  */
+import { PAYMENTS_ENABLED } from '../config/site-config';
+
 type RazorpayConstructor = new (options: unknown) => { open: () => void; on: (event: string, cb: (response: unknown) => void) => void };
 
 let loading: Promise<RazorpayConstructor> | null = null;
 
 export function loadRazorpay(): Promise<RazorpayConstructor> {
+  // Payments off: never touch checkout.razorpay.com (or its risk script).
+  if (!PAYMENTS_ENABLED) return Promise.reject(new Error('Payments are not enabled'));
   const existing = (window as Window & { Razorpay?: RazorpayConstructor }).Razorpay;
   if (existing) return Promise.resolve(existing);
 

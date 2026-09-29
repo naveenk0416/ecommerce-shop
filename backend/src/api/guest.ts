@@ -163,6 +163,40 @@ router.post('/guest-listing', guestLimiter, async (req, res) => {
 });
 
 /**
+ * Can this browser still use the free try? Same checks as POST /guest-listing (device, network
+ * per day, global per day), so the landing page never shows an upload box that would fail.
+ */
+router.get('/guest-status', async (req, res) => {
+  if (!coinConfig.guest.enabled) {
+    res.json({ available: false, reason: 'disabled' });
+    return;
+  }
+  await ensureConnected();
+  const hit = await capHit(deviceId(req), ipHash(req), dayKey());
+  res.json({ available: !hit, reason: hit });
+});
+
+/**
+ * A returning visitor who already used the free try: their saved preview again (same fields as
+ * the first time), while the token is valid and the listing hasn't been saved to an account.
+ * POST so the token never appears in request logs.
+ */
+router.post('/guest-listing/preview', async (req, res) => {
+  const token = String(req.body?.token || '');
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) {
+    res.status(404).json({ error: 'This preview has expired.', code: 'GUEST_EXPIRED' });
+    return;
+  }
+  await ensureConnected();
+  const guest = await GuestDraft.findOne({ tokenHash: hashToken(token), expiresAt: { $gt: new Date() } }).select('results claimedByUid expiresAt').lean() as any;
+  if (!guest || guest.claimedByUid) {
+    res.status(404).json({ error: 'This preview has expired.', code: guest ? 'GUEST_CLAIMED' : 'GUEST_EXPIRED' });
+    return;
+  }
+  res.json({ preview: previewOf(guest.results ?? {}), expiresAt: new Date(guest.expiresAt).toISOString() });
+});
+
+/**
  * After sign-up / login: the guest listing becomes a normal saved listing on the account (My
  * Listings) — no coin is charged. Claiming twice returns the same listing.
  */

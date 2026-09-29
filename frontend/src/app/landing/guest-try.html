@@ -1,11 +1,20 @@
 <section class="guest" [attr.lang]="i18n.lang()" aria-labelledby="guest-title" data-testid="guest-try">
   @switch (state()) {
+    @case ('checking') {
+      <!-- Same size as the upload card while we check, so nothing jumps. -->
+      <div class="guest__card guest__card--checking" aria-busy="true">
+        <span class="guest__icon" aria-hidden="true">📸</span>
+        <span class="guest__button guest__button--muted">{{ t('Upload product photo', 'Product की photo upload करें') }}</span>
+        <span class="guest__sub">{{ t('Free · No sign-up · ~15 seconds', 'Free · Sign-up नहीं · ~15 सेकंड') }}</span>
+      </div>
+    }
     @case ('idle') {
-      <label class="guest__drop">
+      <!-- The whole card is the file picker (one tap anywhere opens the camera / gallery). -->
+      <label class="guest__card">
         <input type="file" accept="image/*" class="guest__file" (change)="onFile($event)" data-testid="guest-file" />
         <span class="guest__icon" aria-hidden="true">📸</span>
-        <span id="guest-title" class="guest__title">{{ t('Try it now — upload a product photo', 'अभी try करें — product की photo upload करें') }}</span>
-        <span class="guest__sub">{{ t('Free · No sign-up · Listing in ~15 seconds', 'Free · Sign-up नहीं चाहिए · ~15 सेकंड में listing') }}</span>
+        <span id="guest-title" class="guest__button">{{ t('Upload product photo', 'Product की photo upload करें') }}</span>
+        <span class="guest__sub">{{ t('Free · No sign-up · ~15 seconds', 'Free · Sign-up नहीं · ~15 सेकंड') }}</span>
       </label>
     }
     @case ('working') {
@@ -22,7 +31,13 @@
         <div class="guest__result" data-testid="guest-preview">
           <div class="guest__head">
             @if (photo()) { <img [src]="photo()" alt="" class="guest__thumb" /> }
-            <p class="guest__ok">✅ {{ t('Your listing is ready', 'आपकी listing तैयार है') }}</p>
+            <p id="guest-title" class="guest__ok">
+              @if (returning()) {
+                ✅ {{ t('Your saved listing', 'आपकी saved listing') }}
+              } @else {
+                ✅ {{ t('Your listing is ready', 'आपकी listing तैयार है') }}
+              }
+            </p>
           </div>
           <p class="guest__label">{{ t('Amazon title', 'Amazon title') }}</p>
           <p class="guest__value guest__value--title" data-testid="guest-title">{{ p.amazonTitle }}</p>
@@ -50,7 +65,13 @@
             <p>Instagram caption & 20 hashtags · best time to post</p>
           </div>
           <div class="guest__cta-wrap">
-            <p class="guest__cta-note">{{ t('All bullets, Flipkart, Meesho and the Instagram caption are ready.', 'बाकी bullets, Flipkart, Meesho और Instagram caption तैयार हैं।') }}</p>
+            <p class="guest__cta-note">
+              @if (returning()) {
+                {{ t('Create your free account to see the full listing.', 'पूरी listing देखने के लिए free account बनाएं।') }}
+              } @else {
+                {{ t('All bullets, Flipkart, Meesho and the Instagram caption are ready.', 'बाकी bullets, Flipkart, Meesho और Instagram caption तैयार हैं।') }}
+              }
+            </p>
             <button type="button" class="guest__cta" (click)="goSignup()" data-testid="guest-signup">
               {{ t('Create free account — see and save the full listing', 'Free account बनाएं — पूरी listing देखें और save करें') }}
             </button>
@@ -60,14 +81,15 @@
     }
     @case ('limit') {
       <div class="guest__limit" role="status" data-testid="guest-limit">
-        <p class="guest__title">{{ t('Sign up free to create listings', 'Listings बनाने के लिए free sign up करें') }}</p>
-        <p class="guest__sub">{{ t('You’ve used your free try. A free account gets 10 AI listings.', 'आपका free try हो चुका है। Free account में 10 AI listings मिलती हैं।') }}</p>
-        <button type="button" class="guest__cta" (click)="goSignup()">{{ t('Create free account', 'Free account बनाएं') }}</button>
+        <span class="guest__icon" aria-hidden="true">✅</span>
+        <p id="guest-title" class="guest__title">{{ t('You’ve used your free try', 'आपका free try हो चुका है') }}</p>
+        <p class="guest__sub">{{ t('A free account gets 10 AI listings.', 'Free account में 10 AI listings मिलती हैं।') }}</p>
+        <button type="button" class="guest__cta" (click)="goSignup()" data-testid="guest-limit-signup">{{ t('Create free account', 'Free account बनाएं') }}</button>
       </div>
     }
     @case ('error') {
       <div class="guest__limit" role="alert">
-        <p class="guest__sub">{{ error() }}</p>
+        <p id="guest-title" class="guest__sub">{{ error() }}</p>
         <label class="guest__retry">
           <input type="file" accept="image/*" class="guest__file" (change)="onFile($event)" />
           {{ t('Try another photo', 'दूसरी photo try करें') }}

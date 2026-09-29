@@ -3,6 +3,12 @@ import { apiFetch, ApiError, onCoinBalance } from './api';
 import { AuthService } from './auth';
 import { LanguageService } from './language';
 import { loadRazorpay } from '../utils/razorpay';
+import { PAYMENTS_ENABLED } from '../config/site-config';
+
+/** With payments off, coin packs always show as off here too ("Notify me", no buy buttons). */
+function withPaymentsFlag(wallet: WalletSummary): WalletSummary {
+  return PAYMENTS_ENABLED ? wallet : { ...wallet, packs: { ...wallet.packs, enabled: false, starter: null, regular: [], festive: [], minPriceInr: null } };
+}
 
 export type BonusId = 'welcome' | 'mobile' | 'firstInventorySave' | 'firstPublish' | 'businessDetails';
 
@@ -146,7 +152,7 @@ export class WalletService {
     this.loading.set(true);
     this.inflight = apiFetch<WalletSummary>('/wallet')
       .then((wallet) => {
-        this.wallet.set(wallet);
+        this.wallet.set(withPaymentsFlag(wallet));
         this.live.set({ free: wallet.balance.free, paid: wallet.balance.paid });
         this.loadError.set(null);
         return wallet;
@@ -174,7 +180,7 @@ export class WalletService {
   }
 
   setWallet(wallet: WalletSummary): void {
-    this.wallet.set(wallet);
+    this.wallet.set(withPaymentsFlag(wallet));
     this.live.set({ free: wallet.balance.free, paid: wallet.balance.paid });
   }
 
@@ -224,7 +230,7 @@ export class WalletService {
         handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
           apiFetch<{ ok: boolean; wallet: WalletSummary }>('/wallet/packs/verify', { method: 'POST', body: response })
             .then((result) => {
-              if (result.wallet) this.wallet.set(result.wallet);
+              if (result.wallet) this.wallet.set(withPaymentsFlag(result.wallet));
               resolve(true);
             })
             .catch(reject);

@@ -40,6 +40,13 @@ export const META_PIXEL_IDS: readonly string[] = ['1777429170044753', '102016077
  */
 export const GOOGLE_CLIENT_ID = '';
 
+/**
+ * Payments (Razorpay). false = no Razorpay script is ever loaded, no buy/pay buttons are shown
+ * (coin packs show "Notify me" instead) and the developer test checkout box never renders.
+ * The backend has its own PAYMENTS_ENABLED env switch and refuses orders while it's off.
+ */
+export const PAYMENTS_ENABLED = false;
+
 /** GA4 measurement ID — already loaded via gtag in index.html. */
 export const GA4_MEASUREMENT_ID = 'G-NYCJ00ML3F';
 

@@ -146,6 +146,22 @@ function loadConfig(): CoinConfig {
 
 export const coinConfig: CoinConfig = loadConfig();
 
+/**
+ * PAYMENTS_ENABLED=true in the .env turns payments on. Anything else (including unset) means off:
+ * no Razorpay orders, and coin packs are treated as off whatever packs.enabled says.
+ * Read on every call so tests (and a restart with a new .env) see the current value.
+ */
+export function paymentsEnabled(): boolean {
+  return /^(1|true|yes|on)$/i.test((process.env['PAYMENTS_ENABLED'] ?? '').trim());
+}
+
+/** Coin packs are on only when both COIN_PACKS_ENABLED/packs.enabled and PAYMENTS_ENABLED are on. */
+export function packsEnabled(): boolean {
+  return coinConfig.packs.enabled && paymentsEnabled();
+}
+
+export const PAYMENTS_DISABLED_MESSAGE = 'Payments are not enabled';
+
 /** Tests flip packs on/off without restarting. */
 export function setPacksEnabledForTests(enabled: boolean): void {
   coinConfig.packs.enabled = enabled;

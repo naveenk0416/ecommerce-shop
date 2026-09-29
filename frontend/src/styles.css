@@ -1,6 +1,6 @@
 /* You can add global styles to this file, and also import other style files */
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=Baloo+2:wght@600;700;800&family=Noto+Sans+Devanagari:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
 
 /* Ionic CSS */
@@ -18,8 +18,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  /* Latin glyphs come from Inter/Outfit; Devanagari (Hindi) falls through to Noto Sans
+     Devanagari / Baloo 2, which Inter and Outfit don't include. */
+  --font-sans: "Inter", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", "Baloo 2", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   --shadow-premium: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
@@ -28,6 +30,25 @@
   --color-surface: #ffffff;
   --color-surface-elevated: #f8fafc;
   --color-border: #e2e8f0;
+}
+
+/* Hindi: Devanagari needs its letters unspaced and room above/below for matras. Applies while
+   the site is in Hindi (<html lang="hi">, set by LanguageService) and to any lang="hi" element. */
+html:lang(hi) *,
+[lang="hi"],
+[lang="hi"] * {
+  letter-spacing: 0 !important;
+}
+
+html:lang(hi) :is(h1, h2, h3, h4, h5, .leading-none, .leading-tight, .leading-snug),
+[lang="hi"]:is(h1, h2, h3, h4, h5),
+[lang="hi"] :is(h1, h2, h3, h4, h5, .leading-none, .leading-tight, .leading-snug) {
+  line-height: 1.3;
+}
+
+/* Devanagari has no italic; the browser's slanted fake looks broken. */
+html:lang(hi) :is(h1, h2, h3, h4, h5) {
+  font-style: normal;
 }
 
 .dark {

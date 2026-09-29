@@ -6,7 +6,7 @@
 .auth-card {
   max-width: 420px;
   margin: 0 auto;
-  padding: 18px 18px 14px;
+  padding: 18px 16px 14px;
   background: #fff;
   border: 1px solid #ffedd5;
   border-radius: 20px;
@@ -15,9 +15,10 @@
 
 .auth-card__title {
   margin: 0;
-  font-size: 22px;
+  font-family: var(--font-display);
+  font-size: 27px;
   line-height: 1.2;
-  font-weight: 900;
+  font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.01em;
 }
@@ -32,6 +33,19 @@
 .auth-card__note {
   color: #15803d;
   font-weight: 700;
+}
+
+/* "✅ Your listing is saved — create your account to see it" (after a guest try). */
+.auth-card__saved {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .auth-card__perk {
@@ -77,25 +91,25 @@
 .auth-card__form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .field__label {
-  font-size: 12px;
-  font-weight: 800;
-  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 .field input {
   width: 100%;
-  height: 44px;
+  height: 48px;
   padding: 0 12px;
   border: 1px solid #cbd5e1;
   border-radius: 12px;
@@ -125,7 +139,7 @@
 
 .field__prefix {
   flex-shrink: 0;
-  height: 44px;
+  height: 48px;
   display: inline-flex;
   align-items: center;
   padding: 0 10px;
@@ -184,8 +198,8 @@
 }
 
 .auth-card__check--small {
-  font-size: 12px;
-  margin-top: -2px;
+  font-size: 13px;
+  margin-top: -6px;
 }
 
 .auth-card__check a,

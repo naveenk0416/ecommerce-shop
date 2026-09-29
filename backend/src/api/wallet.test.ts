@@ -33,6 +33,8 @@ before(async () => {
   process.env['RAZORPAY_KEY_SECRET'] = RAZORPAY_SECRET;
   process.env['RAZORPAY_KEY_ID'] = 'rzp_test_dummy';
   process.env['COIN_PACKS_ENABLED'] = 'false';
+  // Payments on for this suite (the packs tests buy with a fake Razorpay); one test turns them off.
+  process.env['PAYMENTS_ENABLED'] = 'true';
   // Empty (not deleted): dotenv never overrides a variable that already exists, so the real keys
   // in backend/.env can't be picked up. No mail, AI or payment request leaves this machine.
   process.env['GEMINI_API_KEY'] = '';
@@ -515,5 +517,24 @@ test('field fix: a slow AI reply is covered by one backup request (answer arrive
       if (geminiFails) throw new Error('{"error":{"status":"UNAVAILABLE","message":"overloaded"}}');
       return { text: geminiReply(req.prompt), inputTokens: 1000, outputTokens: 200 };
     });
+  }
+});
+
+test('PAYMENTS_ENABLED off: order endpoints refuse with 403 and packs show as off', async () => {
+  const { token } = await existingUser();
+  coins.setPacksEnabledForTests(true);
+  process.env['PAYMENTS_ENABLED'] = 'false';
+  try {
+    const order = await api('POST', '/wallet/packs/pack_30/order', {}, { token });
+    assert.equal(order.status, 403);
+    assert.equal(order.data.error, 'Payments are not enabled');
+    const legacy = await api('POST', '/create-order', { amount: 49900 });
+    assert.equal(legacy.status, 403);
+    assert.equal(legacy.data.error, 'Payments are not enabled');
+    const w = await wallet(token);
+    assert.equal(w.packs.enabled, false, 'packs are off while payments are off');
+    assert.deepEqual(w.packs.regular, []);
+  } finally {
+    process.env['PAYMENTS_ENABLED'] = 'true';
   }
 });

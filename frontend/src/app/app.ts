@@ -35,9 +35,10 @@ import { AnalyticsService } from './services/analytics';
 import { INDIAN_MOBILE_RE, normalizeIndianMobile } from './config/signup-options';
 import { LanguageService } from './services/language';
 import { ConsentService } from './services/consent';
+import { FloatingUiService } from './services/floating-ui';
 import { CookieBanner } from './ui/cookie-banner/cookie-banner';
 import { DASHBOARD_PATH, safeReturnUrl } from './guards/auth.guard';
-import { BUSINESS, WHATSAPP_NUMBER, WHATSAPP_PREFILL } from './config/site-config';
+import { BUSINESS, PAYMENTS_ENABLED, WHATSAPP_NUMBER, WHATSAPP_PREFILL } from './config/site-config';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -69,6 +70,7 @@ export class App {
   private analytics = inject(AnalyticsService);
   readonly i18n = inject(LanguageService);
   readonly consent = inject(ConsentService);
+  readonly floating = inject(FloatingUiService);
   private wallet = inject(WalletService);
 
   showLanding = signal(true);
@@ -173,7 +175,7 @@ export class App {
   readonly formatGstRate = formatGstRate;
 
   /** The "Pay ₹499" Razorpay test box is for developers only — never rendered in production builds. */
-  readonly showPaymentDemo = isDevMode();
+  readonly showPaymentDemo = PAYMENTS_ENABLED && isDevMode();
 
   async startRazorpayCheckout() {
     if (!isPlatformBrowser(this.platformId)) {

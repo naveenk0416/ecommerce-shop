@@ -142,3 +142,10 @@ test('admin stats show "Notify me" counts per feature', async () => {
   const csv = await api('GET', '/admin/stats.csv?type=summary', undefined, admin.token);
   assert.match(csv.data, /"featureNotifyMe\.meesho_publish","2"/);
 });
+
+test('GET /api/health returns 200 {ok:true} when the database answers', async () => {
+  const res = await api('GET', '/health');
+  assert.equal(res.status, 200);
+  assert.equal(res.data.ok, true);
+  assert.equal(res.data.db, 'up');
+});

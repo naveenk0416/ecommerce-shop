@@ -17,6 +17,13 @@ export class LanguageService {
   private readonly initial = this.lang();
 
   constructor() {
+    effect(() => {
+      try {
+        document.documentElement.lang = this.lang();
+      } catch {
+        // No document (server render) — nothing to update.
+      }
+    });
     // Remember an explicit switch (not the automatic campaign default).
     effect(() => {
       const lang = this.lang();

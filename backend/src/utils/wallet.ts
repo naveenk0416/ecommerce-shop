@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { AiUsage, AssistCounter, CoinLedger, GstLookup, PackInterest, User } from '../api/common.js';
-import { activeFestivePacks, coinConfig, dayKey, monthKey, monthStart, nextTopUpDate } from '../config/coins.js';
+import { activeFestivePacks, coinConfig, dayKey, monthKey, monthStart, nextTopUpDate, packsEnabled } from '../config/coins.js';
 
 /**
  * Coin wallet rules. Balances live on the User (coins.free / coins.paid); every change is also a
@@ -133,7 +133,7 @@ async function afterBalanceDrop(uid: string, balance: { free: number; paid: numb
 
 /** The ₹49 starter offer: only for sellers who never bought, only while packs are on, 48h from first hitting 0. */
 async function maybeStartStarterOffer(uid: string): Promise<void> {
-  if (!coinConfig.packs.enabled) return;
+  if (!packsEnabled()) return;
   const now = new Date();
   await User.updateOne(
     { _id: uid, hasPurchased: { $ne: true }, offerStartedAt: { $exists: false } },
@@ -462,13 +462,13 @@ export async function walletSummary(uid: string) {
   });
   const referralRewardedTotal = await CoinLedger.countDocuments({ uid, type: 'referral', key: { $regex: '^referral:referrer:' } });
 
-  const packsEnabled = coinConfig.packs.enabled;
+  const packsOn = packsEnabled();
   const starterBought = ledgerKeys.has('purchase:starter');
-  const starterAvailable = packsEnabled && !user.hasPurchased && !starterBought
+  const starterAvailable = packsOn && !user.hasPurchased && !starterBought
     && !!user.offerExpiresAt && new Date(user.offerExpiresAt).getTime() > now.getTime();
   const starter = coinConfig.packs.starter;
-  const regular = packsEnabled ? coinConfig.packs.regular : [];
-  const festive = packsEnabled ? activeFestivePacks(now) : [];
+  const regular = packsOn ? coinConfig.packs.regular : [];
+  const festive = packsOn ? activeFestivePacks(now) : [];
   const prices = [...regular, ...festive].map((p) => p.priceInr);
   if (starterAvailable) prices.push(starter.priceInr);
 
@@ -508,7 +508,7 @@ export async function walletSummary(uid: string) {
       rewardedTotal: referralRewardedTotal,
     },
     packs: {
-      enabled: packsEnabled,
+      enabled: packsOn,
       lowBalanceThreshold: coinConfig.packs.lowBalanceThreshold,
       starter: starterAvailable ? { ...starter, expiresAt: new Date(user.offerExpiresAt).toISOString() } : null,
       regular,

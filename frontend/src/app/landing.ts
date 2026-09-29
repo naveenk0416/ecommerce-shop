@@ -9,6 +9,7 @@ import { BUSINESS, MARKETING_STATS, SHOW_STATS } from './config/site-config';
 import { RouterLink } from '@angular/router';
 import { GuestTry } from './landing/guest-try';
 import { AnalyticsService } from './services/analytics';
+import { LANDING_TEXT, LandingTextKey } from './i18n/landing.i18n';
 import { camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoLinkedin, logoFacebook, sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle, image, copy, settings, checkmarkCircle, chevronForward, text, documentText, cash, time, school, statsChart, cube, alertCircle, sync, receipt } from 'ionicons/icons';
 
 @Component({
@@ -38,7 +39,12 @@ export class Landing {
   readonly currentYear = new Date().getFullYear();
 
   /** Hero language — shared with the cookie banner and sign-up form (LanguageService). */
-  readonly lang = inject(LanguageService).lang;
+  private readonly i18n = inject(LanguageService);
+  readonly lang = this.i18n.lang;
+  /** Landing text in the current language (i18n/landing.i18n.ts). */
+  protected tx(key: LandingTextKey): string {
+    return LANDING_TEXT[key][this.lang()];
+  }
 
   /** In-page links — ion-content is its own scroll container, so router fragments don't scroll it. */
   scrollToSection(event: Event, id: string) {

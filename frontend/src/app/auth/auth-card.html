@@ -4,11 +4,11 @@
     <h1 id="auth-title" class="auth-card__title">{{ t('One last step', 'बस एक step बाकी') }}</h1>
     <p class="auth-card__sub">{{ t('Signed in with Google as', 'Google से sign in:') }} <strong>{{ g.email }}</strong></p>
   } @else if (mode() === 'signup') {
+    @if (guestPending()) {
+      <p class="auth-card__saved" role="status" data-testid="guest-saved-note">✅ {{ t('Your listing is saved — create your account to see it', 'आपकी listing save है — account बनाते ही दिखेगी') }}</p>
+    }
     <h1 id="auth-title" class="auth-card__title">{{ t('Create your free account', 'Free account बनाएं') }}</h1>
     <p class="auth-card__perk" data-testid="signup-perk">✨ {{ t('10 free AI listings · No card needed', '10 free AI listings · कोई card नहीं') }}</p>
-    @if (guestPending()) {
-      <p class="auth-card__note">{{ t('Your listing will be saved to your account.', 'आपकी listing आपके account में save हो जाएगी।') }}</p>
-    }
   } @else {
     <h1 id="auth-title" class="auth-card__title">{{ t('Welcome back', 'फिर से स्वागत है') }}</h1>
     <p class="auth-card__sub">{{ t('Login to continue with your listings.', 'अपनी listings पर आगे बढ़ने के लिए Login करें।') }}</p>
