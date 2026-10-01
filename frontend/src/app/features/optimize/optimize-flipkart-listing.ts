@@ -9,6 +9,7 @@ import { AiTabStatus } from '../listing-workspace/ui/ai-tab-status/ai-tab-status
 import { OptimizeSessionService } from './optimize-session.service';
 import { WalletService } from '../../services/wallet';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { FeatureService } from '../../services/features';
 import { LanguageService } from '../../services/language';
 
@@ -16,7 +17,7 @@ import { LanguageService } from '../../services/language';
   selector: 'app-optimize-flipkart-listing',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [UiCard, UiSection, EditableField, SeoScoreCard, AiTabStatus, MatIconModule],
+  imports: [UiCard, UiSection, EditableField, SeoScoreCard, AiTabStatus, MatIconModule, RouterLink],
   templateUrl: './optimize-flipkart-listing.html',
   styleUrls: ['../listing-workspace/tabs/tab-shell.scss'],
 })

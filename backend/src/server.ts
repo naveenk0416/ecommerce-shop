@@ -19,6 +19,11 @@ import adminStatsRouter from './api/admin-stats.js';
 import featuresRouter from './api/features.js';
 import guestRouter from './api/guest.js';
 import eventsRouter from './api/events.js';
+import bulkRouter from './api/bulk.js';
+import batchRouter from './api/batch.js';
+import imagesRouter from './api/images.js';
+import sizeChartsRouter from './api/size-charts.js';
+import { startBatchWorker } from './batch/worker.js';
 import marketplaceConnectionsRouter, { amazonOAuthRouter, flipkartOAuthRouter } from './api/marketplace-connections.js';
 
 // Origins allowed to call this API in addition to localhost dev servers. Configure the deployed
@@ -42,7 +47,7 @@ app.use(cors({
   },
   credentials: true,
   // X-Coin-Balance keeps the header coin pill current; Server-Timing shows where AI time goes.
-  exposedHeaders: ['X-Coin-Balance', 'Server-Timing'],
+  exposedHeaders: ['X-Coin-Balance', 'Server-Timing', 'X-Output-Format', 'Content-Disposition'],
 }));
 
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -88,6 +93,10 @@ app.use('/api/admin', adminRouter);
 app.use('/api/ai', guestRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/events', eventsRouter);
+app.use('/api/bulk', bulkRouter);
+app.use('/api/batch', batchRouter);
+app.use('/api/images', imagesRouter);
+app.use('/api/size-charts', sizeChartsRouter);
 app.use('/api/wallet', walletRouter);
 app.use('/api/features', featuresRouter);
 app.use('/api/listings', listingRouter);
@@ -130,6 +139,8 @@ if (!process.env['VERCEL']) {
   const runReminders = () => sendVerificationReminders().catch((err) => console.error('[verify-reminder] run failed', err));
   setTimeout(runReminders, 60 * 1000).unref();
   setInterval(runReminders, 30 * 60 * 1000).unref();
+  // "Add many products" queue — resumes batches left running by the previous process.
+  ensureConnected().then(() => startBatchWorker()).catch((err) => console.error('[batch] worker failed to start', err));
 }
 
 export default app;

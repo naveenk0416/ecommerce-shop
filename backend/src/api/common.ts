@@ -13,7 +13,7 @@ export async function ensureConnected() {
   await mongoose.connect(mongoUri, { autoIndex: true });
   // The wallet's "exactly once" guarantees rely on these unique indexes existing before the
   // first write, so wait for them instead of letting autoIndex build them in the background.
-  await Promise.all([User.init(), CoinLedger.init(), AssistCounter.init(), GstLookup.init(), CoinOrder.init(), FeatureInterest.init(), GuestDraft.init(), GuestUsage.init()]);
+  await Promise.all([User.init(), CoinLedger.init(), AssistCounter.init(), GstLookup.init(), CoinOrder.init(), FeatureInterest.init(), GuestDraft.init(), GuestUsage.init(), BulkValueCache.init(), BatchJob.init(), BatchItem.init(), SizeChart.init()]);
   connected = true;
 }
 
@@ -26,6 +26,13 @@ const userSchema = new mongoose.Schema({
   state: { type: String },
   city: { type: String },
   sellsOn: { type: [String], default: undefined },
+  // "Where do you sell?" (onboarding card / Profile → My marketplaces) — values from
+  // MARKETPLACE_VALUES in utils/signup-fields.ts. Unset = never answered.
+  marketplaces: { type: [String], default: undefined },
+  marketplaces_other: { type: String, default: null },
+  marketplaces_updated_at: { type: Date },
+  /** The one-time "where do you sell?" card for existing accounts was closed without answering. */
+  marketplaces_card_dismissed_at: { type: Date },
   termsAcceptedAt: { type: Date },
   // Explicit WhatsApp marketing/alerts consent — a phone number on its own is not consent.
   whatsapp_opt_in: { type: Boolean },
@@ -117,6 +124,18 @@ const userSchema = new mongoose.Schema({
   businessDetailsAt: { type: Date },
   verificationReminderSentAt: { type: Date },
   firstListingAt: { type: Date },
+
+  // ---- Bulk template fill: saved once, reused in every Meesho/Flipkart file ----
+  sellerProfile: {
+    brand: { type: String },
+    manufacturerName: { type: String },
+    manufacturerAddress: { type: String },
+    packerName: { type: String },
+    packerAddress: { type: String },
+    countryOfOrigin: { type: String },
+    gstHandling: { type: String, enum: ['inclusive', 'exclusive'] },
+    pickupPincode: { type: String },
+  },
 }, { timestamps: true });
 
 export const User = (mongoose.models as any).User || mongoose.model('User', userSchema);
@@ -136,6 +155,9 @@ const saleSchema = new mongoose.Schema({
   platform: { type: String, default: 'Other' },
   quantity: { type: Number, default: 0 },
   salePrice: { type: Number, default: 0 },
+  /** The size/colour sold, for products with sizes. */
+  variantId: { type: String },
+  variantLabel: { type: String },
   date: { type: String, default: () => new Date().toISOString() },
 }, { timestamps: true });
 
@@ -153,6 +175,15 @@ const listingDraftSchema = new mongoose.Schema({
   /** Per-tab generated content keyed by tab (general, amazon, flipkart, meesho, instagram). */
   results: { type: mongoose.Schema.Types.Mixed, default: {} },
   inventoryListingId: { type: String },
+  /** Sizes & colours chosen before the product is in Inventory (same shape as Listing.variants). */
+  variants: { type: mongoose.Schema.Types.Mixed },
+  /** Size set used ("alpha", "waist", … or "custom"). */
+  sizePreset: { type: String },
+  /** All photos of the product (ProductImage ids); `image` stays the main photo. */
+  imageIds: { type: [String], default: undefined },
+  /** Created by "Add many products". */
+  batchId: { type: String, index: true },
+  batchItemId: { type: String },
 }, { timestamps: true, minimize: false });
 
 export const ListingDraft = (mongoose.models as any).ListingDraft || mongoose.model('ListingDraft', listingDraftSchema);
@@ -228,7 +259,7 @@ export const CoinLedger = (mongoose.models as any).CoinLedger || mongoose.model(
 // "time saved" and the admin AI cost page.
 const aiUsageSchema = new mongoose.Schema({
   uid: { type: String, required: true, index: true },
-  purpose: { type: String, required: true, enum: ['listing', 'field_fix', 'marketplace_autofill', 'guest_listing'] },
+  purpose: { type: String, required: true, enum: ['listing', 'field_fix', 'marketplace_autofill', 'guest_listing', 'bulk_mapping'] },
   model: { type: String },
   success: { type: Boolean, default: false },
   inputTokens: { type: Number, default: 0 },
@@ -320,6 +351,47 @@ guestUsageSchema.index({ day: 1 });
 
 export const GuestUsage = (mongoose.models as any).GuestUsage || mongoose.model('GuestUsage', guestUsageSchema);
 
+// Bulk-upload templates (Meesho / Flipkart) a seller uploaded to fill. Deleted 24h after upload;
+// filled files are generated on download and never stored.
+const bulkTemplateSchema = new mongoose.Schema({
+  uid: { type: String, required: true, index: true },
+  marketplace: { type: String, enum: ['meesho', 'flipkart'], required: true },
+  fileName: { type: String },
+  inputFormat: { type: String, enum: ['xlsx', 'xlsm', 'xls'], required: true },
+  /** The file as uploaded (.xls is converted to .xlsx once, here). */
+  data: { type: Buffer, required: true },
+  parsed: { type: mongoose.Schema.Types.Mixed, required: true },
+  expiresAt: { type: Date, required: true },
+}, { timestamps: true, minimize: false });
+bulkTemplateSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+export const BulkTemplate = (mongoose.models as any).BulkTemplate || mongoose.model('BulkTemplate', bulkTemplateSchema);
+
+// Dropdown value mappings the AI made once for a template (by template hash): the same category
+// template costs nothing the next time.
+const bulkValueCacheSchema = new mongoose.Schema({
+  templateHash: { type: String, required: true },
+  column: { type: String, required: true },
+  from: { type: String, required: true },
+  to: { type: String, required: true },
+}, { timestamps: true });
+bulkValueCacheSchema.index({ templateHash: 1, column: 1, from: 1 }, { unique: true });
+
+export const BulkValueCache = (mongoose.models as any).BulkValueCache || mongoose.model('BulkValueCache', bulkValueCacheSchema);
+
+// One row per generated file — never the file's contents.
+const bulkFileLogSchema = new mongoose.Schema({
+  uid: { type: String, required: true, index: true },
+  marketplace: { type: String },
+  category: { type: String },
+  rows: { type: Number },
+  filledPercent: { type: Number },
+  errors: { type: [String], default: undefined },
+  format: { type: String },
+}, { timestamps: { createdAt: true, updatedAt: false } });
+
+export const BulkFileLog = (mongoose.models as any).BulkFileLog || mongoose.model('BulkFileLog', bulkFileLogSchema);
+
 // Sign-up funnel events (landing_view → signup_view → sign_up_start → sign_up → first listing),
 // keyed by the browser id so steps can be counted per visitor and per campaign.
 const funnelEventSchema = new mongoose.Schema({
@@ -373,3 +445,84 @@ amazonAuthStateSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const AmazonAuthState = (mongoose.models as any).AmazonAuthState
   || mongoose.model('AmazonAuthState', amazonAuthStateSchema);
+
+// A product photo (data URL), served at /api/images/:id.jpg — used for "Add many products" and
+// per-colour photos of products with sizes/colours.
+const productImageSchema = new mongoose.Schema({
+  uid: { type: String, required: true, index: true },
+  data: { type: String, required: true },
+  batchId: { type: String, index: true },
+}, { timestamps: true });
+
+export const ProductImage = (mongoose.models as any).ProductImage || mongoose.model('ProductImage', productImageSchema);
+
+// Size chart (chest/length … per size), entered once per brand + category and reused.
+const sizeChartSchema = new mongoose.Schema({
+  uid: { type: String, required: true },
+  /** Normalised "brand|category". */
+  key: { type: String, required: true },
+  brand: { type: String, default: '' },
+  category: { type: String, default: '' },
+  unit: { type: String, enum: ['in', 'cm'], default: 'in' },
+  /** Measurement names in column order, e.g. ["Chest", "Length"]. */
+  measures: { type: [String], default: undefined },
+  rows: { type: [{ size: String, values: [String] }], default: undefined },
+}, { timestamps: true });
+sizeChartSchema.index({ uid: 1, key: 1 }, { unique: true });
+
+export const SizeChart = (mongoose.models as any).SizeChart || mongoose.model('SizeChart', sizeChartSchema);
+
+// "Add many products": one job per batch of photos, one item per product. Items are generated by
+// the in-process queue (batch/worker.ts) — the seller can close the page; the job keeps going.
+const batchJobSchema = new mongoose.Schema({
+  uid: { type: String, required: true, index: true },
+  /** uploading → queued/running → done (or cancelled). paused = waiting for the AI or for coins. */
+  status: { type: String, enum: ['uploading', 'queued', 'running', 'paused', 'done', 'cancelled'], default: 'uploading' },
+  /** true until done/cancelled — the partial unique index allows one active batch per seller. */
+  active: { type: Boolean, default: true },
+  pauseReason: { type: String, enum: ['ai_busy', 'coins', null], default: null },
+  pausedUntil: { type: Date },
+  pauseCount: { type: Number, default: 0 },
+  total: { type: Number, default: 0 },
+  done: { type: Number, default: 0 },
+  failed: { type: Number, default: 0 },
+  /** Details shared by every product of the batch (category, brand, price, sizes …). */
+  common: { type: mongoose.Schema.Types.Mixed, default: {} },
+  /** The single-listing prompt + schema, built by the app exactly as for one photo. */
+  prompt: { type: String },
+  schema: { type: mongoose.Schema.Types.Mixed },
+  startedAt: { type: Date },
+  finishedAt: { type: Date },
+  /** The seller opened the review screen after it finished (clears the "done" badge). */
+  seenAt: { type: Date },
+}, { timestamps: true, minimize: false });
+batchJobSchema.index({ uid: 1 }, { unique: true, partialFilterExpression: { active: true }, name: 'one_active_batch' });
+
+export const BatchJob = (mongoose.models as any).BatchJob || mongoose.model('BatchJob', batchJobSchema);
+
+const batchItemSchema = new mongoose.Schema({
+  batchId: { type: String, required: true },
+  uid: { type: String, required: true },
+  index: { type: Number, required: true },
+  /** ProductImage ids; the first is the main photo. */
+  photoIds: { type: [String], default: [] },
+  photoCount: { type: Number, default: 1 },
+  status: { type: String, enum: ['uploading', 'queued', 'generating', 'ready', 'failed'], default: 'uploading' },
+  error: { type: String },
+  /** Gemini attempts (including automatic retries). */
+  attempts: { type: Number, default: 0 },
+  /** The coin for this product was taken (only ever once, only on success). */
+  coin_charged: { type: Boolean, default: false },
+  /** The listing draft created for this product (My Listings). */
+  listing_id: { type: String },
+  /** AI colour name per photo (same order as photoIds). */
+  colours: { type: [String], default: undefined },
+  lockedAt: { type: Date },
+  finishedAt: { type: Date },
+  approvedAt: { type: Date },
+  inventoryListingId: { type: String },
+}, { timestamps: true });
+batchItemSchema.index({ batchId: 1, index: 1 }, { unique: true });
+batchItemSchema.index({ status: 1, lockedAt: 1 });
+
+export const BatchItem = (mongoose.models as any).BatchItem || mongoose.model('BatchItem', batchItemSchema);

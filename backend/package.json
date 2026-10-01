@@ -10,22 +10,27 @@
     "test": "tsx --test src/**/*.test.ts",
     "gst:recalculate": "tsx src/scripts/recalculate-gst.ts",
     "images:migrate": "tsx src/scripts/migrate-image-urls.ts",
-    "disposable:update": "tsx src/scripts/update-disposable-domains.ts"
+    "disposable:update": "tsx src/scripts/update-disposable-domains.ts",
+    "bulk:check": "tsx src/scripts/check-bulk-templates.ts",
+    "variants:migrate": "tsx src/scripts/migrate-variants.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.6.2",
     "google-auth-library": "^10.9.1",
     "jsonwebtoken": "^9.0.0",
+    "jszip": "^3.10.2",
     "mongoose": "^7.5.0",
     "nodemailer": "^9.0.3",
     "razorpay": "^2.9.6",
     "resend": "^6.18.1",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",

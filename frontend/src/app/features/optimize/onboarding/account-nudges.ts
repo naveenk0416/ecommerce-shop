@@ -4,12 +4,14 @@ import { WalletService } from '../../../services/wallet';
 import { LanguageService } from '../../../services/language';
 import { AnalyticsService } from '../../../services/analytics';
 import { ApiError } from '../../../services/api';
-import { CATALOG_SIZE_BANDS, GSTIN_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS } from '../../../config/signup-options';
+import { CATALOG_SIZE_BANDS, GSTIN_RE, INDIAN_STATES_AND_UTS, initialMarketplaces } from '../../../config/signup-options';
+import { MarketplacePicker } from './marketplace-picker';
 
 /**
  * Two small, dismissible prompts after sign-up — neither blocks anything:
  * - "Verify your email to get 7 more free listings" with "Resend email";
- * - "Tell us about your business (+2 coins)": state, city, product count, where you sell, GST.
+ * - "Tell us about your business (+2 coins)": state, city, product count, where you sell, GST;
+ * - for accounts that already closed or finished that card: a one-time "where do you sell?" card.
  */
 @Component({
   selector: 'app-account-nudges',
@@ -17,6 +19,7 @@ import { CATALOG_SIZE_BANDS, GSTIN_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS }
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './account-nudges.html',
   styleUrl: './account-nudges.css',
+  imports: [MarketplacePicker],
 })
 export class AccountNudges implements OnDestroy {
   protected readonly i18n = inject(LanguageService);
@@ -27,7 +30,6 @@ export class AccountNudges implements OnDestroy {
 
   readonly states = INDIAN_STATES_AND_UTS;
   readonly bands = CATALOG_SIZE_BANDS;
-  readonly channels = SELLING_CHANNELS;
 
   // ---- Verify email ----
   showVerify = computed(() => this.auth.profile()?.emailVerified === false);
@@ -95,7 +97,9 @@ export class AccountNudges implements OnDestroy {
   state = signal('');
   city = signal('');
   band = signal('');
-  sellsOn = signal<string[]>([]);
+  marketplaces = signal<string[]>([]);
+  marketplacesOther = signal('');
+  marketplacesSkipped = signal(false);
   gst = signal('');
   saving = signal(false);
   saveError = signal<string | null>(null);
@@ -111,13 +115,18 @@ export class AccountNudges implements OnDestroy {
     this.state.set(p?.state ?? '');
     this.city.set(p?.city ?? '');
     this.band.set(p?.catalogSizeBand ?? '');
-    this.sellsOn.set(p?.sellsOn ?? []);
+    this.marketplaces.set(initialMarketplaces(p));
+    this.marketplacesOther.set(p?.marketplacesOther ?? '');
+    this.marketplacesSkipped.set(false);
     this.gst.set(p?.gstNumber ?? '');
     this.open.set(true);
   }
 
-  toggleChannel(channel: string, on: boolean): void {
-    this.sellsOn.update((list) => (on ? [...new Set([...list, channel])] : list.filter((c) => c !== channel)));
+  /** "Skip" on the question: never asked again (the dashboard card stays away too). */
+  skipMarketplaces(): void {
+    this.marketplacesSkipped.set(true);
+    this.marketplaces.set([]);
+    void this.auth.dismissMarketplacesCard().catch(() => undefined);
   }
 
   async save(): Promise<void> {
@@ -129,10 +138,13 @@ export class AccountNudges implements OnDestroy {
         state: this.state(),
         city: this.city().trim(),
         catalogSizeBand: this.band(),
-        sellsOn: this.sellsOn(),
+        ...(this.marketplaces().length && !this.marketplacesSkipped()
+          ? { marketplaces: this.marketplaces(), marketplacesOther: this.marketplacesOther().trim() }
+          : {}),
         gstNumber: this.gst().trim().toUpperCase(),
       });
       void this.walletService.load();
+      if (this.marketplaces().length && !this.marketplacesSkipped()) this.trackMarketplaces(this.marketplaces());
       if (result.complete) this.analytics.track('onboarding_details_added');
       this.saved.set(result.bonusGranted
         ? this.t(`Saved — +${this.bonus()} coins added!`, `Save हो गया — +${this.bonus()} coins मिले!`)
@@ -152,6 +164,51 @@ export class AccountNudges implements OnDestroy {
   async dismiss(): Promise<void> {
     this.hidden.set(true);
     await this.auth.dismissBusinessCard().catch(() => undefined);
+  }
+
+  // ---- "Where do you sell?" for existing accounts (once; gone after answer or dismiss) ----
+  private readonly marketplacesHidden = signal(false);
+  showMarketplacesCard = computed(() => !!this.auth.profile()?.marketplacesCard?.show && !this.showBusiness() && !this.marketplacesHidden());
+  cardMarketplaces = signal<string[]>([]);
+  cardOther = signal('');
+  cardSaving = signal(false);
+  cardError = signal<string | null>(null);
+  private cardPrefilled = false;
+
+  private readonly prefillCard = effect(() => {
+    const p = this.auth.profile();
+    if (!p || this.cardPrefilled) return;
+    this.cardPrefilled = true;
+    untracked(() => {
+      this.cardMarketplaces.set(initialMarketplaces(p));
+      this.cardOther.set(p.marketplacesOther ?? '');
+    });
+  });
+
+  async saveMarketplacesCard(): Promise<void> {
+    const list = this.cardMarketplaces();
+    if (!list.length) return;
+    this.cardSaving.set(true);
+    this.cardError.set(null);
+    try {
+      await this.auth.saveMarketplaces(list, this.cardOther().trim());
+      this.trackMarketplaces(list);
+      this.marketplacesHidden.set(true);
+      this.saved.set(this.t('Thank you! We’ll build for where you sell.', 'धन्यवाद! हम आपके marketplaces के लिए features बनाएंगे।'));
+    } catch {
+      this.cardError.set(this.t('Could not save. Please try again.', 'Save नहीं हुआ। फिर से try करें।'));
+    } finally {
+      this.cardSaving.set(false);
+    }
+  }
+
+  async dismissMarketplacesCard(): Promise<void> {
+    this.marketplacesHidden.set(true);
+    await this.auth.dismissMarketplacesCard().catch(() => undefined);
+  }
+
+  private trackMarketplaces(list: readonly string[]): void {
+    this.analytics.track('marketplaces_selected', { marketplaces: list.join(',') });
   }
 
   ngOnDestroy(): void {

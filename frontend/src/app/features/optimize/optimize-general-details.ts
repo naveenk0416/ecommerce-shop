@@ -15,6 +15,10 @@ import { formatInrCompact, parseAmountInput } from '../../utils/format';
 import { AI_IMAGE_MAX_PX, OptimizeSessionService } from './optimize-session.service';
 import { resizeImage } from '../../utils/image';
 import { WalletService } from '../../services/wallet';
+import { LanguageService } from '../../services/language';
+import { RouterLink } from '@angular/router';
+import { VariantEditor } from './variants/variant-editor';
+import { hasRealVariants } from '../../config/size-presets';
 
 /** General-tab keys this form reads/writes in the session (AI content + seller-entered values). */
 type GeneralKey = 'productTitle' | 'category' | 'sku' | 'brand' | 'hsnCode' | 'description'
@@ -24,7 +28,7 @@ type GeneralKey = 'productTitle' | 'category' | 'sku' | 'brand' | 'hsnCode' | 'd
   selector: 'app-optimize-general-details',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, UiCard],
+  imports: [FormsModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, UiCard, VariantEditor, RouterLink],
   templateUrl: './optimize-general-details.html',
   styleUrl: './optimize-general-details.scss',
 })
@@ -35,6 +39,9 @@ export class OptimizeGeneralDetails {
   protected readonly auth = inject(AuthService);
   protected readonly session = inject(OptimizeSessionService);
   protected readonly wallet = inject(WalletService);
+  protected readonly i18n = inject(LanguageService);
+  /** With sizes, stock is entered per size and the stock field shows their total. */
+  readonly hasSizes = computed(() => hasRealVariants(this.session.variants()));
 
   /** Lazily injected — MatSnackBar/MatDialog as field initializers can throw NG0203 on lazy-loaded routes. */
   private get snackBar(): MatSnackBar {
@@ -291,6 +298,7 @@ export class OptimizeGeneralDetails {
         lowStockThreshold: threshold,
         searchTags: this.searchTags(),
         draftId: this.session.draftId() ?? undefined,
+        ...(this.hasSizes() ? { variants: this.session.variants() } : {}),
       };
 
       const existingId = this.session.inventoryListingId();

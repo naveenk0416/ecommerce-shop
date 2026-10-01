@@ -14,6 +14,7 @@ import { LanguageService } from '../../services/language';
 import { WalletNudges } from './wallet/wallet-nudges';
 import { AccountNudges } from './onboarding/account-nudges';
 import { FeatureService } from '../../services/features';
+import { BatchService } from '../../services/batch';
 
 @Component({
   selector: 'app-optimize-layout',
@@ -29,10 +30,12 @@ export class OptimizeLayout {
   protected readonly wallet = inject(WalletService);
   protected readonly i18n = inject(LanguageService);
   protected readonly features = inject(FeatureService);
+  /** "Add many products" keeps running on the server; the badge follows it from any page. */
+  protected readonly batch = inject(BatchService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
 
-  marketplaceRows = computed(() => computeMarketplaceRows(this.session.allResults()));
+  marketplaceRows = computed(() => computeMarketplaceRows(this.session.allResults(), this.auth.profile()?.marketplaces));
   /** Every channel with whether it can really be published to today (see FeatureService). */
   publishMenuRows = computed(() => this.marketplaceRows().map((row) => ({ ...row, live: this.features.isLive(row.marketplace as 'amazon' | 'flipkart' | 'meesho' | 'instagram') })));
   /** Only channels that are live AND ready count — "Coming soon" channels never do. */
@@ -89,6 +92,7 @@ export class OptimizeLayout {
     });
     inject(DestroyRef).onDestroy(() => sub.unsubscribe());
     void this.features.load();
+    if (this.auth.user()) void this.batch.refresh().then((b) => b && ['queued', 'running', 'paused'].includes(b.status) && this.batch.watch());
   }
 
   scoreTier(score: number): 'high' | 'medium' | 'low' {

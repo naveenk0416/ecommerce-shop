@@ -11,7 +11,7 @@
     </div>
 
     <mat-nav-list>
-      @for (item of navItems; track item.path) {
+      @for (item of navItems(); track item.path) {
         <a
           mat-list-item
           [routerLink]="item.path"
@@ -41,7 +41,7 @@
 
     @if (!isHandset()) {
       <nav mat-tab-nav-bar class="workspace-tabs" mat-stretch-tabs="false" [tabPanel]="tabPanel">
-        @for (item of navItems; track item.path) {
+        @for (item of navItems(); track item.path) {
           <a mat-tab-link [routerLink]="item.path" routerLinkActive #rla="routerLinkActive" [active]="rla.isActive">
             <app-marketplace-icon [marketplace]="item.marketplace" [size]="18" />
             <span>{{ item.label }}</span>

@@ -45,5 +45,12 @@
         <span>{{ i18n.t('Copy these details into Flipkart Seller Hub. Direct publishing coming soon.', 'ये details Flipkart Seller Hub में copy करें। Direct publishing जल्द आ रहा है।') }}</span>
       </p>
     }
+    <p class="tab-shell__copy-note tab-shell__copy-note--bulk">
+      <mat-icon aria-hidden="true">table_view</mat-icon>
+      <span>
+        {{ i18n.t('Listing many products? Fill the Flipkart bulk upload template automatically.', 'बहुत सारे products? Flipkart का bulk upload template अपने आप भरें।') }}
+        <a routerLink="/optimize/bulk-upload" [queryParams]="{ marketplace: 'flipkart', ids: session.draftId() }" data-testid="bulk-from-tab">{{ i18n.t('Make bulk upload file', 'Bulk upload file बनाएं') }}</a>
+      </span>
+    </p>
   }
 </div>

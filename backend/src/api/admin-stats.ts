@@ -3,6 +3,7 @@ import { authMiddleware } from './auth.js';
 import { AbuseEvent, AiUsage, CoinLedger, CoinOrder, ensureConnected, FeatureInterest, FunnelEvent, GuestDraft, GuestUsage, PackInterest, User } from './common.js';
 import { coinConfig, dayKey, packsEnabled } from '../config/coins.js';
 import { NOTIFY_FEATURES } from '../config/features.js';
+import { MARKETPLACE_VALUES } from '../utils/signup-fields.js';
 
 /**
  * Admin-only growth, coin and AI-cost stats, filterable by sign-up date range and
@@ -61,7 +62,7 @@ async function computeStats(filters: Filters) {
   if (filters.ref) userQuery['attribution.ref'] = filters.ref;
 
   const users = await User.find(userQuery)
-    .select('createdAt emailVerified usageCount role attribution catalogSizeBand catalogSizeImported activeDays freeExhaustedAt offerStartedAt hasPurchased referral')
+    .select('createdAt emailVerified usageCount role attribution catalogSizeBand catalogSizeImported activeDays freeExhaustedAt offerStartedAt hasPurchased referral marketplaces marketplaces_other marketplaces_updated_at')
     .lean() as any[];
   const uids = users.map((u) => u._id.toString());
 
@@ -116,6 +117,8 @@ async function computeStats(filters: Filters) {
       utmCampaign: u.attribution?.utm_campaign ?? '',
       ref: u.attribution?.ref ?? '',
       catalogSizeBand: u.catalogSizeBand ?? '',
+      /** "Where do you sell?" as "amazon|meesho"; empty = not answered. */
+      marketplaces: u.marketplaces_updated_at ? (u.marketplaces ?? []).join('|') : '',
       catalogSizeImported: typeof u.catalogSizeImported === 'number' ? u.catalogSizeImported : null,
       aiListingsTotal: e.listingDates.length || (u.usageCount ?? 0),
       aiListingsFirst7Days: within(7),
@@ -146,6 +149,8 @@ async function computeStats(filters: Filters) {
 
   const bandCounts: Record<string, number> = Object.fromEntries([...coinConfig.catalogSizeBands, 'Not answered'].map((b) => [b, 0]));
   for (const u of perUser) bandCounts[u.catalogSizeBand || 'Not answered'] = (bandCounts[u.catalogSizeBand || 'Not answered'] ?? 0) + 1;
+
+  const marketplaces = computeMarketplaces(users);
 
   const imported = perUser.map((u) => u.catalogSizeImported).filter((n): n is number => typeof n === 'number');
   const importedBuckets: Record<string, number> = Object.fromEntries(coinConfig.catalogSizeBands.map((b) => [b, 0]));
@@ -206,6 +211,7 @@ async function computeStats(filters: Filters) {
     week2RetentionPct: pct(week2Eligible.filter((u) => u.activeInWeek2).length, week2Eligible.length),
     week2EligibleUsers: week2Eligible.length,
     catalogSizeBand: bandCounts,
+    marketplaces,
     catalogSizeImported: {
       users: imported.length,
       median: median(imported),
@@ -257,6 +263,34 @@ async function computeStats(filters: Filters) {
     },
   };
   return { summary, perUser };
+}
+
+/**
+ * "Where do you sell?" — sellers per marketplace among the sign-ups in the filter. A seller can
+ * pick several, so shares add up to more than 100%. Share of respondents (answered) and of all
+ * sign-ups; "Other" free-text answers are listed by frequency (admin only, no user ids).
+ */
+function computeMarketplaces(users: any[]) {
+  const answered = users.filter((u) => u.marketplaces_updated_at);
+  const counts: Record<string, number> = Object.fromEntries(MARKETPLACE_VALUES.map((v) => [v, 0]));
+  const otherTexts = new Map<string, number>();
+  for (const u of answered) {
+    for (const v of u.marketplaces ?? []) if (v in counts) counts[v] += 1;
+    const other = String(u.marketplaces_other ?? '').trim().toLowerCase();
+    if (other) otherTexts.set(other, (otherTexts.get(other) ?? 0) + 1);
+  }
+  return {
+    signups: users.length,
+    respondents: answered.length,
+    respondentsPct: pct(answered.length, users.length),
+    rows: MARKETPLACE_VALUES.map((value) => ({
+      value,
+      sellers: counts[value],
+      pctOfRespondents: pct(counts[value], answered.length),
+      pctOfSignups: pct(counts[value], users.length),
+    })),
+    otherAnswers: [...otherTexts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([text, sellers]) => ({ text, sellers })),
+  };
 }
 
 const FUNNEL_STEPS = ['landing_view', 'signup_view', 'sign_up_start', 'sign_up', 'first_listing_created'] as const;
@@ -369,12 +403,21 @@ function flatten(prefix: string, value: unknown, rows: Array<[string, unknown]>)
   }
 }
 
-/** ?type=users (one row per seller, by user id) or ?type=summary (metric,value). */
+/** ?type=users (one row per seller, by user id), ?type=summary (metric,value) or ?type=marketplaces. */
 router.get('/stats.csv', authMiddleware, requireAdmin, async (req, res) => {
   await ensureConnected();
   const { summary, perUser } = await computeStats(parseFilters(req.query));
   let csv: string;
-  if (req.query['type'] === 'summary') {
+  const type = req.query['type'] === 'summary' || req.query['type'] === 'marketplaces' ? req.query['type'] : 'users';
+  if (type === 'marketplaces') {
+    const m = summary.marketplaces;
+    csv = [
+      'marketplace,sellers,pct_of_respondents,pct_of_signups',
+      ...m.rows.map((r) => [r.value, r.sellers, r.pctOfRespondents, r.pctOfSignups].map(csvCell).join(',')),
+      ['(answered)', m.respondents, 100, m.respondentsPct].map(csvCell).join(','),
+      ['(sign-ups in filter)', m.signups, '', 100].map(csvCell).join(','),
+    ].join('\n');
+  } else if (type === 'summary') {
     const rows: Array<[string, unknown]> = [];
     flatten('', summary, rows);
     csv = ['metric,value', ...rows.map(([k, v]) => `${csvCell(k)},${csvCell(v)}`)].join('\n');
@@ -383,7 +426,7 @@ router.get('/stats.csv', authMiddleware, requireAdmin, async (req, res) => {
     csv = [columns.join(','), ...perUser.map((row: any) => columns.map((c) => csvCell(row[c])).join(','))].join('\n');
   }
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="sellassist-stats-${req.query['type'] === 'summary' ? 'summary' : 'users'}-${dayKey()}.csv"`);
+  res.setHeader('Content-Disposition', `attachment; filename="sellassist-stats-${type}-${dayKey()}.csv"`);
   res.send(csv);
 });
 

@@ -67,6 +67,24 @@ export interface CreateAmazonListingPayload {
   attributes: Record<string, Array<Record<string, unknown>>>;
 }
 
+/** One size/colour of an Amazon variation family and what happened to it. */
+export interface AmazonChildResult {
+  variantId: string;
+  label: string;
+  sku: string;
+  ok?: boolean;
+  errors: string[];
+}
+
+export interface AmazonVariationsResult {
+  ok: boolean;
+  test?: boolean;
+  preview?: boolean;
+  theme: string;
+  parentSku: string;
+  children: AmazonChildResult[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -147,6 +165,18 @@ export class MarketplaceConnectionsService {
    * price/quantity plus the category-specific attributes the seller filled in. */
   async createAmazonListing(listingId: string, payload: CreateAmazonListingPayload): Promise<{ ok: true; sku: string }> {
     return apiFetch(`/marketplace-connections/amazon/create-listing/${encodeURIComponent(listingId)}`, {
+      method: 'POST',
+      body: payload,
+    });
+  }
+
+  /**
+   * A product with sizes: 1 parent + 1 child per size/colour. Validated against Amazon's schema
+   * and by Amazon itself before anything is created. `test` = SA-TEST SKUs with stock 0
+   * (inactive). Errors come back per size in `childErrors`.
+   */
+  async createAmazonVariations(listingId: string, payload: CreateAmazonListingPayload & { test?: boolean; preview?: boolean }): Promise<AmazonVariationsResult> {
+    return apiFetch(`/marketplace-connections/amazon/create-variations/${encodeURIComponent(listingId)}`, {
       method: 'POST',
       body: payload,
     });

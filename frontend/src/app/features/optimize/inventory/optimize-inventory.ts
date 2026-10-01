@@ -23,6 +23,16 @@ import { WalletService } from '../../../services/wallet';
 import { FeatureService, NotifyFeature } from '../../../services/features';
 import { LanguageService } from '../../../services/language';
 import { CHANNEL_LABELS, ComingSoonChannel } from '../coming-soon/coming-soon-publish';
+import { hasRealVariants, variantLabel } from '../../../config/size-presets';
+
+/** One low-stock line on the dashboard: a product, or one size/colour of it. */
+export interface LowStockAlert {
+  listingId: string;
+  name: string;
+  /** "Pink / M"; null for a product without sizes. */
+  variant: string | null;
+  stock: number;
+}
 
 @Component({
   selector: 'app-optimize-inventory',
@@ -92,7 +102,34 @@ export class OptimizeInventory {
 
   totalValue = computed(() => this.uniqueListings().reduce((sum, l) => sum + this.priceOf(l) * Number(l.quantity ?? 0), 0));
   totalProfit = computed(() => this.uniqueListings().reduce((sum, l) => sum + this.getProfit(l), 0));
-  lowStockCount = computed(() => this.uniqueListings().filter((l) => isLowStock(l)).length);
+  /** Low stock is per size for products with sizes ("Pink / M — 2 left"). */
+  lowStockAlerts = computed<LowStockAlert[]>(() => this.uniqueListings().flatMap((l): LowStockAlert[] => {
+    if (hasRealVariants(l.variants)) {
+      return this.lowVariants(l).map((v) => ({ listingId: l.id ?? '', name: l.name, variant: v.label, stock: v.stock }));
+    }
+    return isLowStock(l) ? [{ listingId: l.id ?? '', name: l.name, variant: null, stock: Number(l.quantity ?? 0) }] : [];
+  }).sort((a, b) => a.stock - b.stock));
+  lowStockCount = computed(() => this.lowStockAlerts().length);
+  readonly showAllAlerts = signal(false);
+
+  hasSizes(listing: Listing): boolean {
+    return hasRealVariants(listing.variants);
+  }
+
+  /** Sizes at or below the product's alert level. */
+  lowVariants(listing: Listing): { label: string; stock: number }[] {
+    if (!hasRealVariants(listing.variants)) return [];
+    const threshold = lowStockThresholdOf(listing);
+    return listing.variants!.filter((v) => v.stock <= threshold).map((v) => ({ label: variantLabel(v), stock: v.stock }));
+  }
+
+  isLow(listing: Listing): boolean {
+    return hasRealVariants(listing.variants) ? this.lowVariants(listing).length > 0 : isLowStock(listing);
+  }
+
+  leftText(stock: number): string {
+    return this.i18n.t(`${stock} left`, `${stock} बचे`);
+  }
 
   constructor() {
     void this.features.load();
@@ -293,8 +330,11 @@ export class OptimizeInventory {
           return;
         }
         if (!result || !listing.id) return;
+        // Products with sizes: stock is saved per size (the total follows on the server).
+        const { quantity, ...rest } = result;
+        const updates = result.variants ? rest : { ...rest, quantity };
         this.listingService
-          .updateListing(listing.id, { ...result, priceINR: `₹${result.sellingPrice}` })
+          .updateListing(listing.id, { ...updates, priceINR: `₹${result.sellingPrice}` })
           .then((saved) => {
             this.upsertLocal(saved);
             this.snackBar.open('Product updated successfully.', 'Dismiss', { duration: 3000 });
@@ -311,10 +351,11 @@ export class OptimizeInventory {
         if (!result || !listing.id) return;
         // The server reduces stock atomically with the sale and returns the updated listing.
         this.listingService
-          .logSale({ listingId: listing.id, platform: result.platform, quantity: result.quantity, salePrice: result.salePrice })
+          .logSale({ listingId: listing.id, platform: result.platform, quantity: result.quantity, salePrice: result.salePrice, ...(result.variantId ? { variantId: result.variantId } : {}) })
           .then((response) => {
             this.upsertLocal(response.listing ?? { ...listing, quantity: response.stock });
-            this.snackBar.open(`Sale logged. Stock: ${response.previousStock} → ${response.stock}`, 'Dismiss', { duration: 4000 });
+            const which = response.variantLabel ? ` (${response.variantLabel})` : '';
+            this.snackBar.open(this.i18n.t(`Sale logged. Stock${which}: ${response.previousStock} → ${response.stock}`, `Sale दर्ज हुई। Stock${which}: ${response.previousStock} → ${response.stock}`), 'Dismiss', { duration: 4000 });
           })
           .catch((error) => this.snackBar.open((error instanceof Error && error.message) || 'Could not log sale. Please try again.', 'Dismiss', { duration: 5000 }));
       });

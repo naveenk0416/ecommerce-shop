@@ -49,3 +49,6 @@ Thumbs.db
 
 # Generated client env (holds the Gemini API key; recreated by frontend dev script)
 frontend/src/app/env.ts
+
+# Real marketplace templates used for local testing — never commit
+samples/

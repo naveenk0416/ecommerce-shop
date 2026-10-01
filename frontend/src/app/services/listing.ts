@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { apiFetch } from './api';
 import { ProductDetails } from './gemini';
 import { handleApiError, OperationType } from '../utils/error-handler';
+import { Variant } from '../config/size-presets';
 
 export interface Listing extends ProductDetails {
   id?: string;
@@ -25,6 +26,10 @@ export interface Listing extends ProductDetails {
   /** The saved AI listing (My Listings) this inventory item was created from. */
   draftId?: string;
   searchTags?: string[];
+  /** Sizes & colours. Products without sizes have one default variant (size/colour null). */
+  variants?: Variant[];
+  /** Set once the product's sizes were pushed to Amazon (test = inactive SA-TEST SKUs). */
+  amazonFamily?: { parentSku: string; theme: string; test: boolean };
 }
 
 /** Low stock = at or below the product's threshold (default 5 units). */
@@ -44,6 +49,8 @@ export interface LogSaleResponse {
   sale: Sale;
   previousStock: number;
   stock: number;
+  /** Set for a product with sizes: the size/colour whose stock went down. */
+  variantLabel?: string;
   listing: Listing | null;
 }
 
@@ -59,6 +66,8 @@ export interface GstRateResult {
 export type DraftResults = Record<string, Record<string, { values: string[]; confidence: number | null; reason: string | null }>>;
 
 export interface ListingDraftSummary {
+  /** General tab category (list endpoint only). */
+  category?: string;
   id: string;
   title: string;
   status: 'draft' | 'saved';
@@ -66,10 +75,16 @@ export interface ListingDraftSummary {
   inventoryListingId: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Made by "Add many products". */
+  batchId?: string | null;
 }
 
 export interface ListingDraft extends ListingDraftSummary {
   results: DraftResults;
+  variants?: Variant[] | null;
+  sizePreset?: string | null;
+  /** Every photo of the product (batch uploads). */
+  imageUrls?: string[];
 }
 
 export interface Sale {
@@ -80,6 +95,18 @@ export interface Sale {
   quantity: number;
   salePrice: number;
   date: string;
+  /** For a product with sizes: which size/colour was sold. */
+  variantId?: string;
+  variantLabel?: string;
+}
+
+/** Optional size chart, saved once per brand + category and reused. */
+export interface SizeChart {
+  brand: string;
+  category: string;
+  unit: 'in' | 'cm';
+  measures: string[];
+  rows: { size: string; values: string[] }[];
 }
 
 export interface Feedback {
@@ -239,7 +266,7 @@ export class ListingService {
   }
 
   /** Logs a sale; the server reduces stock in the same atomic operation and returns the new stock. */
-  async logSale(sale: Omit<Sale, 'id' | 'uid' | 'date'>): Promise<LogSaleResponse> {
+  async logSale(sale: Omit<Sale, 'id' | 'uid' | 'date' | 'variantLabel'>): Promise<LogSaleResponse> {
     try {
       return await apiFetch<LogSaleResponse>(`/listings/${encodeURIComponent(sale.listingId)}/sales`, {
         method: 'POST',
@@ -276,7 +303,7 @@ export class ListingService {
     return apiFetch<ListingDraft>('/drafts', { method: 'POST', body });
   }
 
-  updateDraft(id: string, body: Partial<{ results: DraftResults; image: string; status: 'draft' | 'saved'; inventoryListingId: string }>): Promise<ListingDraftSummary> {
+  updateDraft(id: string, body: Partial<{ results: DraftResults; image: string; status: 'draft' | 'saved'; inventoryListingId: string; variants: Variant[] | null; sizePreset: string | null }>): Promise<ListingDraftSummary> {
     return apiFetch<ListingDraftSummary>(`/drafts/${encodeURIComponent(id)}`, { method: 'PATCH', body });
   }
 
@@ -286,6 +313,15 @@ export class ListingService {
 
   deleteDraft(id: string): Promise<void> {
     return apiFetch<void>(`/drafts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  async getSizeChart(brand: string, category: string): Promise<SizeChart | null> {
+    const params = new URLSearchParams({ brand, category });
+    return (await apiFetch<{ chart: SizeChart | null }>(`/size-charts?${params.toString()}`)).chart;
+  }
+
+  async saveSizeChart(chart: SizeChart): Promise<SizeChart> {
+    return (await apiFetch<{ chart: SizeChart }>('/size-charts', { method: 'PUT', body: chart })).chart;
   }
 
   getSales(listingId: string, callback: (sales: Sale[]) => void) {

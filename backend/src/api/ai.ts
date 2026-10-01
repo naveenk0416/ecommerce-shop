@@ -6,9 +6,9 @@ import { coinConfig, isBlockedAutofillField } from '../config/coins.js';
 import { AiCallError, AiTiming, callGemini } from '../utils/gemini.js';
 import { ownImageUrl } from '../utils/public-url.js';
 import { setCoinBalanceHeader } from '../utils/coin-header.js';
-import { recordUserFunnelEvent } from '../utils/funnel.js';
+import { recordListingSuccess } from '../utils/listing-usage.js';
 import {
-  assistsLeft, ensureWallet, processReferralAfterListing, refundSpend, releaseAssist, reserveAssist, spendCoins, walletSummary,
+  assistsLeft, ensureWallet, refundSpend, releaseAssist, reserveAssist, spendCoins, walletSummary,
   type AssistKind,
 } from '../utils/wallet.js';
 
@@ -87,16 +87,7 @@ router.post('/listing', authMiddleware, async (req, res) => {
       maxOutputTokens: coinConfig.ai.listingMaxOutputTokens,
     }, { coinsCharged: cost }, timing);
 
-    const today = new Date().toISOString().split('T')[0];
-    const user = await User.findById(uid).select('dailyStats').lean();
-    await User.updateOne({ _id: uid }, user?.dailyStats?.date === today
-      ? { $inc: { usageCount: 1, 'dailyStats.count': 1 } }
-      : { $inc: { usageCount: 1 }, $set: { dailyStats: { date: today, count: 1 } } });
-    // Activation: the seller's first AI listing.
-    const firstTime = await User.findOneAndUpdate({ _id: uid, firstListingAt: { $exists: false } }, { $set: { firstListingAt: new Date() } });
-    if (firstTime) await recordUserFunnelEvent('first_listing_created', firstTime);
-
-    await processReferralAfterListing(uid).catch((err) => console.error('[referral] reward failed', err));
+    await recordListingSuccess(uid);
     // Balance after the charge and any referral reward that this listing just unlocked.
     await setCoinBalanceHeader(res, uid);
     reportTiming(res, 'listing', startedAt, timing);

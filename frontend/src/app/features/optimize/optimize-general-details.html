@@ -64,6 +64,10 @@
             }
             <input type="file" accept="image/*" hidden (change)="onPrimaryFileSelected($event)" />
           </label>
+          <a class="photo-panel__many" routerLink="/optimize/batch" data-testid="add-many">
+            <mat-icon aria-hidden="true">collections</mat-icon>
+            {{ i18n.t('Add many products (up to 20 photos)', 'कई products जोड़ें (20 photos तक)') }}
+          </a>
         }
 
         <div class="photo-panel__thumbs">
@@ -189,10 +193,24 @@
           </label>
           <label class="field" for="gd-stock">
             <span class="field__label">Stock (units) *</span>
-            <input id="gd-stock" class="field__input" inputmode="numeric" [ngModel]="value('stock')" (ngModelChange)="update('stock', $event)" placeholder="0" [attr.aria-invalid]="showError(stockError())" />
+            <input id="gd-stock" class="field__input" inputmode="numeric" [ngModel]="value('stock')" (ngModelChange)="update('stock', $event)" placeholder="0" [readonly]="hasSizes()" [title]="hasSizes() ? i18n.t('Total of all sizes — change stock per size below', 'सभी sizes का कुल — stock नीचे हर size में बदलें') : ''" [attr.aria-invalid]="showError(stockError())" />
             @if (showError(stockError())) { <span class="field__error">{{ stockError() }}</span> }
           </label>
         </div>
+
+        @if (hasDraft()) {
+          <div class="sizes-box">
+            <app-variant-editor
+              [variants]="session.variants()"
+              (variantsChange)="session.setVariants($event)"
+              [preset]="session.sizePreset()"
+              (presetChange)="session.setVariants(session.variants(), $event)"
+              [category]="value('category')"
+              [title]="value('productTitle')"
+              [brand]="value('brand')"
+            />
+          </div>
+        }
 
         <label class="field field--narrow" for="gd-threshold">
           <span class="field__label">Low-stock alert at (units)</span>

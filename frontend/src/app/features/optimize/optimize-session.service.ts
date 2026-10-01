@@ -9,6 +9,7 @@ import { DraftResults, ListingService } from '../../services/listing';
 import { normalizeHashtags } from '../../utils/hashtags';
 import { resizeImage } from '../../utils/image';
 import { SELLER_FIELD_KEYS } from './listing-summary.model';
+import { hasRealVariants, totalStock, Variant } from '../../config/size-presets';
 
 export type OptimizeTabKey = 'general' | 'amazon' | 'flipkart' | 'meesho' | 'instagram';
 
@@ -75,6 +76,10 @@ export class OptimizeSessionService {
   /** Set if the combined generation call failed; every tab surfaces the same error + retry. */
   generationError = signal<string | null>(null);
 
+  // ---- Sizes & colours (saved with the draft; go to Inventory with the product) ----
+  variants = signal<Variant[]>([]);
+  sizePreset = signal<string | null>(null);
+
   // ---- Draft persistence ----
   draftId = signal<string | null>(null);
   draftStatus = signal<'draft' | 'saved'>('draft');
@@ -101,6 +106,8 @@ export class OptimizeSessionService {
   /** A brand-new photo starts a brand-new listing (new draft). */
   setImage(dataUrl: string, base64: string, mimeType: string): void {
     this.clearDraft();
+    this.variants.set([]);
+    this.sizePreset.set(null);
     this.imagePreview.set(dataUrl);
     this.imageBase64.set(base64);
     this.imageMimeType.set(mimeType);
@@ -125,6 +132,17 @@ export class OptimizeSessionService {
 
   allResults(): Partial<Record<OptimizeTabKey, TabResult>> {
     return this.cache();
+  }
+
+  /**
+   * New sizes/colours from the editor. With sizes, the product's stock is their total (the stock
+   * field becomes read-only).
+   */
+  setVariants(variants: Variant[], preset: string | null = this.sizePreset()): void {
+    this.variants.set(variants);
+    this.sizePreset.set(preset);
+    if (hasRealVariants(variants)) this.updateField('general', 'stock', String(totalStock(variants)));
+    this.scheduleSave();
   }
 
   /**
@@ -218,7 +236,9 @@ export class OptimizeSessionService {
       this.imagePreview.set(draft.imageUrl);
       this.imageBase64.set(null);
       this.imageMimeType.set(null);
-      this.galleryImages.set(draft.imageUrl ? [draft.imageUrl] : []);
+      this.galleryImages.set(draft.imageUrls?.length ? draft.imageUrls : draft.imageUrl ? [draft.imageUrl] : []);
+      this.variants.set(draft.variants ?? []);
+      this.sizePreset.set(draft.sizePreset ?? null);
       this.generationError.set(null);
       this.saveState.set('saved');
       void this.loadFixAssists();
@@ -244,10 +264,17 @@ export class OptimizeSessionService {
     if (!Object.keys(this.cache()).length) return;
     this.saveState.set('saving');
     try {
-      if (!this.draftId()) {
-        await this.createDraft();
-      } else {
-        await this.listingService.updateDraft(this.draftId()!, { results: this.cache() as DraftResults });
+      if (!this.draftId()) await this.createDraft();
+      const variants = this.variants();
+      const saved = await this.listingService.updateDraft(this.draftId()!, {
+        results: this.cache() as DraftResults,
+        variants: hasRealVariants(variants) ? variants : null,
+        sizePreset: this.sizePreset(),
+      }) as { variants?: Variant[] | null };
+      // The server fills in each size's SKU.
+      if (saved?.variants && this.variants() === variants) {
+        const bySku = new Map(saved.variants.map((v) => [v.id, v.sku]));
+        this.variants.set(variants.map((v) => ({ ...v, sku: v.sku || bySku.get(v.id) || '' })));
       }
       this.saveState.set('saved');
     } catch (error) {
@@ -259,6 +286,8 @@ export class OptimizeSessionService {
   reset(): void {
     this.stopProgress();
     this.clearDraft();
+    this.variants.set([]);
+    this.sizePreset.set(null);
     this.imagePreview.set(null);
     this.imageBase64.set(null);
     this.imageMimeType.set(null);

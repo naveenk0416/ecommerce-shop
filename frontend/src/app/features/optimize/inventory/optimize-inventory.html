@@ -22,11 +22,32 @@
     <app-ui-card [elevated]="true">
       <div class="stat">
         <span class="stat__label">Low Stock Alerts</span>
-        <span class="stat__value" [class.stat__value--warning]="lowStockCount() > 0">{{ lowStockCount() }}</span>
-        <span class="stat__hint">At or below each product's alert level (default {{ defaultThreshold }} units)</span>
+        <span class="stat__value" [class.stat__value--warning]="lowStockCount() > 0" data-testid="low-stock-count">{{ lowStockCount() }}</span>
+        <span class="stat__hint">{{ i18n.t('Products and sizes at or below their alert level (default ' + defaultThreshold + ' units)', 'Products और sizes जो alert level पर या उससे कम हैं (default ' + defaultThreshold + ' units)') }}</span>
       </div>
     </app-ui-card>
   </div>
+
+  @if (lowStockAlerts().length) {
+    <section class="low-alerts" role="status" data-testid="low-stock-alerts" [attr.aria-label]="i18n.t('Low stock', 'कम stock')">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <div class="low-alerts__body">
+        <strong>{{ i18n.t('Low stock', 'Stock कम है') }}</strong>
+        <ul class="low-alerts__list">
+          @for (a of lowStockAlerts(); track a.listingId + (a.variant ?? ''); let i = $index) {
+            @if (showAllAlerts() || i < 6) {
+              <li data-testid="low-stock-item">{{ a.name }}@if (a.variant) { · <b>{{ a.variant }}</b>} — {{ leftText(a.stock) }}</li>
+            }
+          }
+        </ul>
+        @if (lowStockAlerts().length > 6) {
+          <button type="button" class="low-alerts__more" (click)="showAllAlerts.set(!showAllAlerts())">
+            {{ showAllAlerts() ? i18n.t('Show less', 'कम दिखाएं') : i18n.t('Show all ' + lowStockAlerts().length, 'सभी ' + lowStockAlerts().length + ' दिखाएं') }}
+          </button>
+        }
+      </div>
+    </section>
+  }
 
   @if (!auth.user()) {
     <app-ui-card [elevated]="true">
@@ -98,7 +119,13 @@
                   </td>
                   <td data-label="Category">{{ listing.category || '—' }}</td>
                   <td data-label="Stock">
-                    <span class="stock-badge" [class.stock-badge--low]="isLowStock(listing)" [title]="'Low-stock alert at ' + thresholdOf(listing) + ' units'">{{ listing.quantity ?? 0 }} units</span>
+                    <span class="stock-badge" [class.stock-badge--low]="isLow(listing)" [title]="'Low-stock alert at ' + thresholdOf(listing) + ' units'">{{ listing.quantity ?? 0 }} units</span>
+                    @if (hasSizes(listing)) {
+                      <span class="size-count">{{ listing.variants!.length }} {{ i18n.t('sizes', 'sizes') }}</span>
+                      @for (v of lowVariants(listing); track v.label) {
+                        <span class="variant-low" data-testid="variant-low">{{ v.label }} — {{ leftText(v.stock) }}</span>
+                      }
+                    }
                   </td>
                   <td data-label="Price" class="nowrap">{{ formatInr(priceOf(listing)) }}</td>
                   <td data-label="GST" class="nowrap">

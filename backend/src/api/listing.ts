@@ -5,6 +5,7 @@ import { gstFieldsFor, normalizeListingNumbers, parseAmount } from '../utils/lis
 import { ensureWallet, grantBonus } from '../utils/wallet.js';
 import { ownImageUrl, publicApiUrl } from '../utils/public-url.js';
 import { setCoinBalanceHeader } from '../utils/coin-header.js';
+import { applyVariants, hasRealVariants, sanitizeVariants, totalStock, variantLabel, variantsOf, type Variant } from '../utils/variants.js';
 
 const router = express.Router();
 
@@ -59,7 +60,7 @@ function toClientListing(doc: any) {
   const id = obj._id?.toString();
   const asUrl = (variant: 'original' | 'processed', value: unknown) =>
     typeof value === 'string' && value.startsWith('data:') ? listImageUrl(id, variant, value.length) : ownImageUrl(value);
-  return { ...obj, id, originalImage: asUrl('original', obj.originalImage), processedImage: asUrl('processed', obj.processedImage) };
+  return { ...obj, id, variants: variantsOf(obj), originalImage: asUrl('original', obj.originalImage), processedImage: asUrl('processed', obj.processedImage) };
 }
 
 // Returns every listing with image fields as fetchable URLs rather than inline base64. The list
@@ -91,6 +92,7 @@ router.get('/', authMiddleware, async (req, res) => {
       return {
         ...listing,
         id,
+        variants: variantsOf(listing),
         originalImage: toUrl(id, 'original', listing.originalImage),
         processedImage: toUrl(id, 'processed', listing.processedImage),
       };
@@ -123,7 +125,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
       return;
     }
 
-    res.json({ ...listing, id: (listing as any)._id?.toString() });
+    res.json({ ...listing, id: (listing as any)._id?.toString(), variants: variantsOf(listing) });
   } catch (err: any) {
     console.error('Get listing error', err);
     res.status(500).json({ error: err?.message || 'Failed to fetch listing' });
@@ -201,6 +203,16 @@ router.post('/', authMiddleware, async (req, res) => {
     res.status(400).json({ error });
     return;
   }
+  let variants: Variant[] | undefined;
+  if (body.variants !== undefined) {
+    const parsed = sanitizeVariants(body.variants);
+    if (parsed.error) {
+      res.status(400).json({ error: parsed.error, field: 'variants' });
+      return;
+    }
+    variants = parsed.variants;
+  }
+  delete body.variants;
 
   try {
     for (const field of ['originalImage', 'processedImage']) {
@@ -213,6 +225,7 @@ router.post('/', authMiddleware, async (req, res) => {
       uid: authUser._id.toString(),
       createdAt: new Date().toISOString(),
     });
+    applyVariants(listing, variants, values['quantity']);
     await listing.save();
     // +3 coins for the first product saved to inventory (once per account).
     const uid = authUser._id.toString();
@@ -266,11 +279,33 @@ router.patch('/:id', authMiddleware, async (req, res) => {
       res.status(400).json({ error });
       return;
     }
+    let variants: Variant[] | undefined;
+    if ((updates as any).variants !== undefined) {
+      const parsed = sanitizeVariants((updates as any).variants);
+      if (parsed.error) {
+        res.status(400).json({ error: parsed.error, field: 'variants' });
+        return;
+      }
+      variants = parsed.variants;
+    } else if ('quantity' in values && hasRealVariants(listing.get('variants'))) {
+      // One total can't be split across sizes — stock is edited per size.
+      if (values['quantity'] !== totalStock(listing.get('variants'))) {
+        res.status(400).json({ error: 'This product has sizes — change the stock of each size instead.', field: 'variants' });
+        return;
+      }
+      delete values['quantity'];
+    }
+    delete (updates as any).variants;
 
     // doc.set(), not Object.assign: with strict:false, assigning a property that isn't declared in
     // the schema (quantity, sellingPrice, mrp…) only changes the JS object and is never saved —
     // that's why stock updates after a sale used to be silently lost.
     listing.set({ ...updates, ...values });
+    if (variants) applyVariants(listing, variants, 'quantity' in values ? values['quantity'] : undefined);
+    else if ('quantity' in values && !hasRealVariants(listing.get('variants')) && Array.isArray(listing.get('variants')) && listing.get('variants').length) {
+      const [first] = listing.get('variants');
+      listing.set('variants', [{ ...first, stock: values['quantity'] ?? 0 }]);
+    }
     // Recalculate whenever the inputs change, or the stored rate is a legacy string like "18%".
     if ('hsnCode' in updates || 'sellingPrice' in values || typeof listing.get('gstRate') !== 'number') {
       listing.set(gstFieldsFor(listing.get('hsnCode'), listing.get('sellingPrice') ?? parseAmount(listing.get('priceINR'))));
@@ -356,16 +391,35 @@ router.post('/:id/sales', authMiddleware, async (req, res) => {
       await Listing.updateOne({ _id: id, quantity: storedQty }, { $set: { quantity: Math.max(0, Math.trunc(parseAmount(storedQty) ?? 0)) } });
     }
 
+    // Products with sizes: the sale takes stock from the one size/colour that was sold.
+    const storedVariants = listing.get('variants');
+    const variant: Variant | undefined = hasRealVariants(storedVariants)
+      ? (storedVariants as Variant[]).find((v) => v.id === String(saleData.variantId ?? ''))
+      : undefined;
+    if (hasRealVariants(storedVariants) && !variant) {
+      res.status(400).json({ error: 'Choose the size / colour that was sold.', field: 'variantId' });
+      return;
+    }
+
     // Atomic: only decrements when enough stock remains, so two simultaneous sales can't oversell.
-    const before = await Listing.findOneAndUpdate(
-      { _id: id, quantity: { $gte: quantity } },
-      { $inc: { quantity: -quantity } },
-      { new: false, projection: { quantity: 1 } },
-    );
+    const before = variant
+      ? await Listing.findOneAndUpdate(
+        { _id: id, variants: { $elemMatch: { id: variant.id, stock: { $gte: quantity } } } },
+        { $inc: { 'variants.$.stock': -quantity, quantity: -quantity } },
+        { new: false, projection: { quantity: 1, variants: 1 } },
+      )
+      : await Listing.findOneAndUpdate(
+        { _id: id, quantity: { $gte: quantity } },
+        { $inc: { quantity: -quantity } },
+        { new: false, projection: { quantity: 1 } },
+      );
     if (!before) {
-      const current = await Listing.findById(id, { quantity: 1 }).lean();
-      const inStock = Number((current as any)?.quantity ?? 0);
-      res.status(409).json({ error: `Only ${inStock} unit${inStock === 1 ? '' : 's'} in stock — you can't sell ${quantity}.`, stock: inStock });
+      const current = await Listing.findById(id, { quantity: 1, variants: 1 }).lean();
+      const inStock = variant
+        ? Number(((current as any)?.variants ?? []).find((v: Variant) => v.id === variant.id)?.stock ?? 0)
+        : Number((current as any)?.quantity ?? 0);
+      const what = variant ? ` of ${variantLabel(variant)}` : '';
+      res.status(409).json({ error: `Only ${inStock} unit${inStock === 1 ? '' : 's'}${what} in stock — you can't sell ${quantity}.`, stock: inStock });
       return;
     }
 
@@ -377,19 +431,29 @@ router.post('/:id/sales', authMiddleware, async (req, res) => {
         platform: saleData.platform || 'Other',
         quantity,
         salePrice,
+        ...(variant ? { variantId: variant.id, variantLabel: variantLabel(variant) } : {}),
         date: saleData.date || new Date().toISOString(),
       }).save();
     } catch (saveErr) {
       // Put the stock back if the sale record couldn't be written.
-      await Listing.updateOne({ _id: id }, { $inc: { quantity } });
+      await (variant
+        ? Listing.updateOne({ _id: id, 'variants.id': variant.id }, { $inc: { 'variants.$.stock': quantity, quantity } })
+        : Listing.updateOne({ _id: id }, { $inc: { quantity } }));
       throw saveErr;
     }
 
     const updated = await Listing.findById(id);
+    const stockOf = (doc: any): number => {
+      if (!doc) return 0;
+      if (!variant) return Number(doc.get('quantity') ?? 0);
+      const list: Variant[] = doc.get('variants') ?? [];
+      return Number(list.find((v) => v.id === variant.id)?.stock ?? 0);
+    };
     res.json({
       sale,
-      previousStock: Number(before.get('quantity')),
-      stock: Number(updated?.get('quantity') ?? 0),
+      previousStock: stockOf(before),
+      stock: stockOf(updated),
+      ...(variant ? { variantId: variant.id, variantLabel: variantLabel(variant) } : {}),
       listing: updated ? toClientListing(updated) : null,
     });
   } catch (err: any) {

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { authMiddleware } from './auth.js';
 import { ensureConnected, Listing, ListingDraft } from './common.js';
 import { ownImageUrl, publicApiUrl } from '../utils/public-url.js';
+import { assignSkus, hasRealVariants, sanitizeVariants, SIZE_PRESETS } from '../utils/variants.js';
 
 const router = express.Router();
 
@@ -68,9 +69,16 @@ function toClient(draft: any, includeResults: boolean) {
     status: obj.status,
     imageUrl: imageUrl(id, obj.image, obj.updatedAt),
     inventoryListingId: obj.inventoryListingId ?? null,
+    ...(typeof obj.category === 'string' ? { category: obj.category } : {}),
     createdAt: obj.createdAt,
     updatedAt: obj.updatedAt,
-    ...(includeResults ? { results: obj.results ?? {} } : {}),
+    batchId: obj.batchId ?? null,
+    ...(includeResults ? {
+      results: obj.results ?? {},
+      variants: hasRealVariants(obj.variants) ? obj.variants : null,
+      sizePreset: obj.sizePreset ?? null,
+      imageUrls: (obj.imageIds ?? []).map((imageId: string) => `${publicApiUrl()}/api/images/${imageId}.jpg`),
+    } : {}),
   };
 }
 
@@ -85,7 +93,9 @@ router.get('/', authMiddleware, async (req, res) => {
       { $limit: 500 },
       {
         $project: {
-          title: 1, status: 1, inventoryListingId: 1, createdAt: 1, updatedAt: 1,
+          title: 1, status: 1, inventoryListingId: 1, createdAt: 1, updatedAt: 1, batchId: 1,
+          // For the bulk-upload category check.
+          category: { $arrayElemAt: ['$results.general.category.values', 0] },
           // Keep a tiny marker instead of the photo itself.
           image: { $cond: [{ $gt: [{ $strLenCP: { $ifNull: ['$image', ''] } }, 0] }, { $substrCP: ['$image', 0, 8] }, ''] },
         },
@@ -152,9 +162,26 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     if (image !== undefined) draft.image = image;
     if (req.body?.status === 'draft' || req.body?.status === 'saved') draft.status = req.body.status;
     if (typeof req.body?.inventoryListingId === 'string') draft.inventoryListingId = req.body.inventoryListingId;
+    // Sizes & colours (null clears them: a plain product again).
+    if (req.body?.variants === null) {
+      draft.variants = undefined;
+    } else if (req.body?.variants !== undefined) {
+      const parsed = sanitizeVariants(req.body.variants);
+      if (parsed.error) {
+        res.status(400).json({ error: parsed.error, field: 'variants' });
+        return;
+      }
+      // SKUs are fixed here (SA-<listing>-<COLOUR>-<SIZE>) so bulk files and Inventory use the same ones.
+      draft.variants = hasRealVariants(parsed.variants) ? assignSkus(draft._id.toString(), parsed.variants!) : undefined;
+      draft.markModified('variants');
+    }
+    if (req.body?.sizePreset === null || req.body?.sizePreset === 'custom' || (typeof req.body?.sizePreset === 'string' && req.body.sizePreset in SIZE_PRESETS)) {
+      draft.sizePreset = req.body.sizePreset ?? undefined;
+    }
 
     await draft.save();
-    res.json(toClient(draft, false));
+    // Sizes come back with their SKUs filled in.
+    res.json({ ...toClient(draft, false), ...(req.body?.variants !== undefined ? { variants: draft.variants ?? null } : {}) });
   } catch (err: any) {
     console.error('Update draft error', err);
     res.status(500).json({ error: 'Failed to save the draft' });
@@ -171,6 +198,10 @@ router.post('/:id/duplicate', authMiddleware, async (req, res) => {
       title: `Copy of ${draft.title || 'Untitled product'}`.slice(0, 200),
       image: draft.image,
       results: draft.results,
+      // Same sizes, fresh SKUs (they're filled in again when the copy goes to Inventory).
+      ...(hasRealVariants(draft.variants) ? { variants: draft.variants.map((v: any) => ({ ...v, sku: '', amazonSku: undefined, flipkartProductId: undefined, flipkartLocationId: undefined })) } : {}),
+      sizePreset: draft.sizePreset,
+      imageIds: draft.imageIds,
       status: 'draft',
     }).save();
     res.status(201).json(toClient(copy, false));

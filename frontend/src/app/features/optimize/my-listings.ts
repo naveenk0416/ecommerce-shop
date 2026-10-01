@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Injector, inject, runInInjectionContext, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { LanguageService } from '../../services/language';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -13,7 +14,7 @@ import { ListingDraftSummary, ListingService } from '../../services/listing';
   selector: 'app-my-listings',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, MatButtonModule, MatIconModule, MatTooltipModule, UiCard],
+  imports: [DatePipe, MatButtonModule, MatIconModule, MatTooltipModule, UiCard, RouterLink],
   template: `
     <app-ui-card [elevated]="true">
       <div class="my-listings">
@@ -22,10 +23,16 @@ import { ListingDraftSummary, ListingService } from '../../services/listing';
             <h2 class="my-listings__title">My Listings</h2>
             <p class="my-listings__subtitle">Every listing you generate is saved here automatically — open it to keep editing, copy it for a similar product, or delete it.</p>
           </div>
-          <button mat-flat-button color="primary" (click)="newListing()">
-            <mat-icon aria-hidden="true">add_a_photo</mat-icon>
-            New listing
-          </button>
+          <div class="my-listings__actions">
+            <a mat-stroked-button routerLink="/optimize/bulk-upload" data-testid="bulk-upload-link">
+              <mat-icon aria-hidden="true">table_view</mat-icon>
+              {{ i18n.t('Bulk upload file', 'Bulk upload file') }}
+            </a>
+            <button mat-flat-button color="primary" (click)="newListing()">
+              <mat-icon aria-hidden="true">add_a_photo</mat-icon>
+              New listing
+            </button>
+          </div>
         </div>
 
         @if (loading()) {
@@ -67,6 +74,7 @@ import { ListingDraftSummary, ListingService } from '../../services/listing';
   styles: `
     .my-listings { display: flex; flex-direction: column; gap: 16px; }
     .my-listings__header { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+    .my-listings__actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .my-listings__title { margin: 0; font-size: 18px; font-weight: 800; color: #0f172a; }
     .my-listings__subtitle { margin: 4px 0 0; font-size: 13px; color: #64748b; max-width: 560px; }
     .my-listings__empty { margin: 0; padding: 24px 0; text-align: center; color: #64748b; }
@@ -90,6 +98,7 @@ import { ListingDraftSummary, ListingService } from '../../services/listing';
 })
 export class MyListings {
   private readonly listingService = inject(ListingService);
+  protected readonly i18n = inject(LanguageService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
 

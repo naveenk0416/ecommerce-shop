@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -12,6 +12,10 @@ import { map } from 'rxjs';
 import { MarketplaceHeader } from '../ui/marketplace-header/marketplace-header';
 import { MarketplaceIcon } from '../ui/marketplace-icon/marketplace-icon';
 import { WORKSPACE_NAV_ITEMS } from './nav-items';
+import { AuthService } from '../../../services/auth';
+import { orderTabsByMarketplaces } from '../../../config/signup-options';
+
+const MARKETPLACE_TABS = new Set(['amazon', 'flipkart', 'meesho', 'instagram']);
 
 @Component({
   selector: 'app-workspace-layout',
@@ -34,7 +38,14 @@ import { WORKSPACE_NAV_ITEMS } from './nav-items';
   styleUrl: './workspace-layout.scss',
 })
 export class WorkspaceLayout {
-  navItems = WORKSPACE_NAV_ITEMS;
+  private readonly auth = inject(AuthService);
+  /** Marketplace tabs in the seller's order ("where do you sell?"); the other items stay put. */
+  navItems = computed(() => {
+    const marketplaces = WORKSPACE_NAV_ITEMS.filter((i) => MARKETPLACE_TABS.has(i.path));
+    const ordered = orderTabsByMarketplaces(marketplaces, (i) => i.path, this.auth.profile()?.marketplaces);
+    let next = 0;
+    return WORKSPACE_NAV_ITEMS.map((i) => (MARKETPLACE_TABS.has(i.path) ? ordered[next++] : i));
+  });
   sidenavOpen = signal(false);
 
   isHandset = toSignal(

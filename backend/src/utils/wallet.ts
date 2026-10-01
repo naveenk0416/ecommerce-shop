@@ -78,7 +78,7 @@ export async function credit(uid: string, entry: {
  */
 async function debit(uid: string, amount: number, entry: {
   type: LedgerType; reason: string; key?: string; meta?: Record<string, unknown>; allowPartial?: boolean;
-}): Promise<{ ok: boolean; ledgerId?: string; free: number; paid: number; balance: { free: number; paid: number } }> {
+}): Promise<{ ok: boolean; already?: boolean; ledgerId?: string; free: number; paid: number; balance: { free: number; paid: number } }> {
   for (let attempt = 0; attempt < 8; attempt++) {
     const balance = await balanceOf(uid);
     const total = balance.free + balance.paid;
@@ -96,11 +96,18 @@ async function debit(uid: string, amount: number, entry: {
     const after = { free: updated.coins?.free ?? 0, paid: updated.coins?.paid ?? 0 };
     let ledgerId: string | undefined;
     if (take > 0) {
-      const ledger = await CoinLedger.create({
-        uid, type: entry.type, amount: -take, free: -takeFree, paid: -takePaid,
-        reason: entry.reason, key: entry.key, meta: entry.meta, balanceAfter: after,
-      });
-      ledgerId = ledger._id.toString();
+      try {
+        const ledger = await CoinLedger.create({
+          uid, type: entry.type, amount: -take, free: -takeFree, paid: -takePaid,
+          reason: entry.reason, key: entry.key, meta: entry.meta, balanceAfter: after,
+        });
+        ledgerId = ledger._id.toString();
+      } catch (err) {
+        // Keyed charge that already happened (a racing duplicate): give these coins back.
+        if (!entry.key || !isDuplicateKey(err)) throw err;
+        const restored = await User.findByIdAndUpdate(uid, { $inc: { 'coins.free': takeFree, 'coins.paid': takePaid } }, { new: true }).select('coins').lean();
+        return { ok: true, already: true, free: 0, paid: 0, balance: { free: restored?.coins?.free ?? 0, paid: restored?.coins?.paid ?? 0 } };
+      }
     }
     return { ok: true, ledgerId, free: takeFree, paid: takePaid, balance: after };
   }
@@ -112,6 +119,23 @@ export async function spendCoins(uid: string, cost: number, reason: string, meta
   const result = await debit(uid, cost, { type: 'spend', reason, meta });
   if (result.ok) await afterBalanceDrop(uid, result.balance);
   return result;
+}
+
+/**
+ * Charges once per `key` (e.g. "batch-item:<id>"): a second call with the same key charges
+ * nothing and returns already: true. Used where the charge happens after the work succeeded.
+ */
+export async function spendCoinsOnce(uid: string, cost: number, key: string, reason: string, meta?: Record<string, unknown>) {
+  if (await CoinLedger.exists({ uid, key })) return { ok: true, already: true, free: 0, paid: 0, balance: await balanceOf(uid) };
+  const result = await debit(uid, cost, { type: 'spend', reason, key, meta });
+  if (result.ok && !result.already) await afterBalanceDrop(uid, result.balance);
+  return result;
+}
+
+/** Coins the seller has right now (free + paid). */
+export async function coinBalance(uid: string): Promise<number> {
+  const b = await balanceOf(uid);
+  return b.free + b.paid;
 }
 
 /** Gives back a charge whose AI call failed — same free/paid split as the original charge. */

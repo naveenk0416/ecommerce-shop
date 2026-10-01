@@ -4,9 +4,9 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { OAuth2Client } from 'google-auth-library';
-import { AbuseEvent, AmazonAuthState, AssistCounter, CoinLedger, ensureConnected, FeatureInterest, Feedback, GstLookup, Listing, ListingDraft, MarketplaceConnection, PackInterest, Sale, TemplateConfig, User } from './common.js';
+import { AbuseEvent, AmazonAuthState, AssistCounter, BulkFileLog, BulkTemplate, CoinLedger, ensureConnected, FeatureInterest, Feedback, GstLookup, Listing, ListingDraft, MarketplaceConnection, PackInterest, Sale, TemplateConfig, User } from './common.js';
 import { MAIL_UNAVAILABLE_MESSAGE, MailDeliveryError, sendMail } from '../utils/mailer.js';
-import { GSTIN_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, phoneLookupValues, sanitizeAttribution, toIndianE164 } from '../utils/signup-fields.js';
+import { GSTIN_RE, INDIAN_STATES_AND_UTS, SELLING_CHANNELS, phoneLookupValues, sanitizeAttribution, sanitizeMarketplaces, toIndianE164 } from '../utils/signup-fields.js';
 import { coinConfig, dayKey } from '../config/coins.js';
 import { deviceId, ipHash } from '../utils/request-identity.js';
 import { ensureWallet, grantBonus, processReferralAfterListing, reverseReferralOnDelete, welcomeEligibility } from '../utils/wallet.js';
@@ -681,10 +681,15 @@ router.get('/me', authMiddleware, async (req, res) => {
       verificationEmailSentAt: user.verificationEmailSentAt ?? null,
       signupMethod: user.signupMethod ?? null,
       sellsOn: user.sellsOn ?? [],
+      /** "Where do you sell?" — null until answered (an empty list is a saved "nothing"). */
+      marketplaces: user.marketplaces_updated_at ? (user.marketplaces ?? []) : null,
+      marketplacesOther: user.marketplaces_other ?? null,
+      /** One-time dashboard card for accounts that never saw the question; gone after answer or dismiss. */
+      marketplacesCard: { show: !user.marketplaces_updated_at && !user.marketplaces_card_dismissed_at },
       /** "Tell us about your business" card: hidden once filled in or dismissed. */
       businessCard: {
-        show: !user.businessCardDismissedAt && !(user.state && user.catalogSizeBand && user.sellsOn?.length),
-        done: !!(user.state && user.catalogSizeBand && user.sellsOn?.length),
+        show: !user.businessCardDismissedAt && !businessDone(user),
+        done: businessDone(user),
         bonus: coinConfig.earnedBonuses.businessDetails,
       },
     },
@@ -706,17 +711,45 @@ router.post('/check-email', checkEmailLimiter, async (req, res) => {
   res.json(result);
 });
 
+/** State + product count + where you sell (new marketplaces answer, or the older sellsOn list). */
+function businessDone(user: any): boolean {
+  return !!(user?.state && user?.catalogSizeBand && (user?.marketplaces?.length || user?.sellsOn?.length));
+}
+
+/**
+ * "Where do you sell?" — { marketplaces: string[], other?: string } saves the answer (unknown
+ * values are ignored), { dismiss: true } hides the one-time dashboard card without answering.
+ */
+router.put('/me/marketplaces', authMiddleware, async (req, res) => {
+  const uid = (req as any).authUser._id.toString();
+  const body = req.body || {};
+  if (body.dismiss === true) {
+    await User.updateOne({ _id: uid }, { $set: { marketplaces_card_dismissed_at: new Date() } });
+    res.json({ ok: true });
+    return;
+  }
+  if (!Array.isArray(body.marketplaces)) {
+    res.status(400).json({ error: 'Choose where you sell.', field: 'marketplaces' });
+    return;
+  }
+  const { marketplaces, other } = sanitizeMarketplaces(body.marketplaces, body.other);
+  await User.updateOne({ _id: uid }, { $set: { marketplaces, marketplaces_other: other, marketplaces_updated_at: new Date() } });
+  res.json({ ok: true, marketplaces, marketplacesOther: other });
+});
+
 /**
  * Onboarding card "Tell us about your business (+2 coins)": state, city, product count, where
- * you sell, GST number — all optional. +2 once state + product count + channels are filled
- * (waits for email verification like every bonus). { dismiss: true } just hides the card.
+ * you sell (marketplaces), GST number — all optional. +2 once state + product count + channels are
+ * filled (waits for email verification like every bonus). { dismiss: true } just hides the card —
+ * and the "where do you sell?" card too, since that question is part of this one.
  */
 router.patch('/me/business', authMiddleware, async (req, res) => {
   const authUser = (req as any).authUser;
   const uid = authUser._id.toString();
   const body = req.body || {};
   if (body.dismiss === true) {
-    await User.updateOne({ _id: uid }, { $set: { businessCardDismissedAt: new Date() } });
+    const now = new Date();
+    await User.updateOne({ _id: uid }, { $set: { businessCardDismissedAt: now, marketplaces_card_dismissed_at: now } });
     res.json({ ok: true });
     return;
   }
@@ -750,6 +783,11 @@ router.patch('/me/business', authMiddleware, async (req, res) => {
       ? Array.from(new Set((body.sellsOn as unknown[]).filter((c): c is string => typeof c === 'string' && SELLING_CHANNELS.includes(c))))
       : [];
   }
+  // Skipping the question sends nothing here, so an earlier answer is never wiped by the card.
+  if (Array.isArray(body.marketplaces) && body.marketplaces.length) {
+    const { marketplaces, other } = sanitizeMarketplaces(body.marketplaces, body.marketplacesOther);
+    if (marketplaces.length) Object.assign(set, { marketplaces, marketplaces_other: other, marketplaces_updated_at: new Date() });
+  }
   if (body.gstNumber !== undefined) {
     const gst = String(body.gstNumber || '').trim().toUpperCase();
     if (gst && !GSTIN_RE.test(gst)) {
@@ -761,7 +799,7 @@ router.patch('/me/business', authMiddleware, async (req, res) => {
   const user = await User.findByIdAndUpdate(uid, { $set: set }, { new: true });
   let bonusGranted = false;
   let bonusPending = false;
-  if (user && user.state && user.catalogSizeBand && user.sellsOn?.length) {
+  if (user && businessDone(user)) {
     const first = await User.updateOne({ _id: uid, businessDetailsAt: { $exists: false } }, { $set: { businessDetailsAt: new Date() } });
     if (first.modifiedCount === 1) await recordUserFunnelEvent('onboarding_details_added', user);
     bonusGranted = await ensureWallet(uid).then(() => grantBonus(uid, 'businessDetails')).catch((err) => {
@@ -771,7 +809,7 @@ router.patch('/me/business', authMiddleware, async (req, res) => {
     bonusPending = !user.emailVerified;
   }
   await setCoinBalanceHeader(res, uid);
-  res.json({ ok: true, bonusGranted, bonusPending, complete: !!(user?.state && user?.catalogSizeBand && user?.sellsOn?.length) });
+  res.json({ ok: true, bonusGranted, bonusPending, complete: businessDone(user) });
 });
 
 // ---- Continue with Google (Google Identity Services ID token, verified here) ----
@@ -957,6 +995,8 @@ router.delete('/me', authMiddleware, accountChangeLimiter, async (req, res) => {
       AssistCounter.deleteMany({ uid }),
       PackInterest.deleteMany({ uid }),
       FeatureInterest.deleteMany({ uid }),
+      BulkTemplate.deleteMany({ uid }),
+      BulkFileLog.deleteMany({ uid }),
       GstLookup.deleteMany({ uid }),
       Listing.deleteMany({ uid }),
       Sale.deleteMany({ uid }),

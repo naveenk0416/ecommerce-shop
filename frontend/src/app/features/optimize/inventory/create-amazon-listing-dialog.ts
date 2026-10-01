@@ -20,6 +20,8 @@ import { ApiError } from '../../../services/api';
 import { AssistsLeft, AutofillField, isBlockedAiField, WalletService } from '../../../services/wallet';
 import { LanguageService } from '../../../services/language';
 import { ConfirmActionData, ConfirmActionDialog } from '../confirm-action-dialog';
+import { hasRealVariants, variantLabel } from '../../../config/size-presets';
+import { AmazonChildResult } from '../../../services/marketplace-connections';
 
 type FieldKind = 'text' | 'textarea' | 'select' | 'bullets' | 'number';
 
@@ -131,6 +133,14 @@ export class CreateAmazonListingDialog {
   private readonly dialog = inject(MatDialog);
   protected readonly i18n = inject(LanguageService);
   protected readonly listing = inject<Listing>(MAT_DIALOG_DATA as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  // ---- Sizes & colours: 1 parent + 1 child listing per size ----
+  readonly sizes = hasRealVariants(this.listing.variants) ? this.listing.variants! : [];
+  readonly sizeLabels = this.sizes.map(variantLabel);
+  /** Test push: SA-TEST SKUs, every size at stock 0, so nothing is buyable. */
+  testPush = signal(false);
+  /** Per-size problems from our schema check, Amazon's validation, or the push itself. */
+  childErrors = signal<AmazonChildResult[]>([]);
 
   // ---- "Fill empty fields with AI" (free, limited per product per marketplace and per day) ----
   aiAssists = signal<AssistsLeft | null>(null);
@@ -682,8 +692,12 @@ export class CreateAmazonListingDialog {
       width: '480px',
       maxWidth: '95vw',
       data: {
-        title: 'Publish to Amazon?',
-        intro: 'This creates a new, live listing on your Amazon seller account.',
+        title: this.sizes.length && this.testPush() ? 'Test push to Amazon?' : 'Publish to Amazon?',
+        intro: this.sizes.length
+          ? (this.testPush()
+            ? `This creates 1 parent + ${this.sizes.length} sizes with SA-TEST SKUs and stock 0 — they stay inactive.`
+            : `This creates 1 parent + ${this.sizes.length} sizes (${this.sizeLabels.join(', ')}) as new listings on your Amazon account.`)
+          : 'This creates a new, live listing on your Amazon seller account.',
         items: [{
           heading: this.listing.name || 'This product',
           lines: [
@@ -755,11 +769,28 @@ export class CreateAmazonListingDialog {
     }
 
     const payload: CreateAmazonListingPayload = { productType: this.selectedProductType()!, attributes };
+    this.childErrors.set([]);
 
     try {
-      await this.marketplaceConnections.createAmazonListing(this.listing.id, payload);
+      if (this.sizes.length) {
+        const result = await this.marketplaceConnections.createAmazonVariations(this.listing.id, { ...payload, test: this.testPush() });
+        const failed = result.children.filter((c) => c.ok === false);
+        if (failed.length) {
+          this.childErrors.set(failed);
+          this.submitError.set(`${result.children.length - failed.length} of ${result.children.length} sizes were created. Fix the sizes below and try again.`);
+          return;
+        }
+      } else {
+        await this.marketplaceConnections.createAmazonListing(this.listing.id, payload);
+      }
       this.dialogRef.close(true);
     } catch (error) {
+      const data = (error as ApiError | null)?.data as { childErrors?: AmazonChildResult[] } | undefined;
+      if (data?.childErrors?.length) {
+        this.childErrors.set(data.childErrors);
+        this.submitError.set((error instanceof Error && error.message) || 'Amazon found problems — nothing was published.');
+        return;
+      }
       await this.handleSubmitError(error);
     } finally {
       this.submitting.set(false);

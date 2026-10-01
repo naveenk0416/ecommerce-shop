@@ -1,0 +1,143 @@
+<section class="ve" [attr.lang]="i18n.lang()" data-testid="variant-editor">
+  <div class="ve__head">
+    <h3 class="ve__title">{{ allowColours() ? t('Sizes & colours', 'Size और रंग') : t('Sizes', 'Sizes') }}</h3>
+    @if (hasVariants()) {
+      <span class="ve__total" data-testid="variant-total">{{ t('Total stock', 'कुल stock') }}: {{ total() }}</span>
+    }
+  </div>
+
+  @if (!lockSizes()) {
+    <p class="ve__hint">{{ t('Choose a size set — tap a size to remove it.', 'Size set चुनें — किसी size को हटाने के लिए उस पर tap करें।') }}</p>
+    <div class="ve__chips" role="group" [attr.aria-label]="t('Size set', 'Size set')">
+      @for (p of presets; track p.id) {
+        <button type="button" class="ve__chip" [class.ve__chip--on]="preset() === p.id" [attr.aria-pressed]="preset() === p.id" (click)="choosePreset(p.id)" [attr.data-testid]="'preset-' + p.id">
+          {{ i18n.lang() === 'hi' ? p.hi : p.en }}
+          @if (suggested() === p.id) { <span class="ve__ai" data-testid="preset-suggested">✨ {{ t('Suggested', 'सुझाव') }}</span> }
+        </button>
+      }
+      <button type="button" class="ve__chip" [class.ve__chip--on]="preset() === 'custom'" (click)="choosePreset('custom')" data-testid="preset-custom">{{ t('Custom', 'अपनी sizes') }}</button>
+      <button type="button" class="ve__chip ve__chip--ghost" [class.ve__chip--on]="!sizes().length && preset() === null" (click)="choosePreset(null)" data-testid="preset-none">{{ t('No sizes', 'Size नहीं') }}</button>
+    </div>
+
+    @if (sizeChoices().length) {
+      <div class="ve__chips ve__chips--sizes" role="group" [attr.aria-label]="t('Sizes', 'Sizes')">
+        @for (s of sizeChoices(); track s) {
+          <button type="button" class="ve__size" [class.ve__size--on]="isSizeOn(s)" [attr.aria-pressed]="isSizeOn(s)" (click)="toggleSize(s)" [attr.data-testid]="'size-' + s">{{ s }}</button>
+        }
+      </div>
+    }
+    @if (preset() === 'custom' || sizes().length) {
+      <form class="ve__add" (submit)="$event.preventDefault(); addCustomSizes()">
+        <input class="ve__input" [value]="customSize()" (input)="customSize.set($any($event.target).value)" [placeholder]="t('Add sizes, e.g. 42, 44', 'Sizes जोड़ें, जैसे 42, 44')" maxlength="60" data-testid="custom-size" [attr.aria-label]="t('Add sizes', 'Sizes जोड़ें')" />
+        <button type="submit" class="ve__btn">{{ t('Add', 'जोड़ें') }}</button>
+      </form>
+    }
+  }
+
+  @if (allowColours()) {
+    <div class="ve__colours">
+      <span class="ve__label">{{ t('Colours (optional)', 'रंग (ज़रूरी नहीं)') }}</span>
+      <div class="ve__chips">
+        @for (c of colours(); track c) {
+          <span class="ve__colour" [attr.data-testid]="'colour-' + c">{{ c }}
+            @if (!lockSizes()) {
+              <button type="button" class="ve__x" (click)="removeColour(c)" [attr.aria-label]="t('Remove ' + c, c + ' हटाएं')">✕</button>
+            }
+          </span>
+        }
+      </div>
+      @if (!lockSizes()) {
+        <form class="ve__add" (submit)="$event.preventDefault(); addColour()">
+          <input class="ve__input" [value]="newColour()" (input)="newColour.set($any($event.target).value)" [placeholder]="t('Add a colour, e.g. Pink', 'रंग जोड़ें, जैसे Pink')" maxlength="30" data-testid="new-colour" [attr.aria-label]="t('Add a colour', 'रंग जोड़ें')" />
+          <button type="submit" class="ve__btn">{{ t('Add', 'जोड़ें') }}</button>
+        </form>
+      }
+    </div>
+  }
+
+  @if (hasVariants()) {
+    <div class="ve__tools">
+      <label class="ve__same">
+        <span>{{ t('Same stock for all', 'सबका stock एक जैसा') }}</span>
+        <input class="ve__num" type="number" min="0" inputmode="numeric" [value]="sameStock() ?? ''" (input)="sameStock.set($any($event.target).value === '' ? null : +$any($event.target).value)" data-testid="same-stock" />
+        <button type="button" class="ve__btn" (click)="applySameStock()" data-testid="same-stock-apply">{{ t('Apply', 'लगाएं') }}</button>
+      </label>
+      @if (sizes().length) {
+        <label class="ve__check">
+          <input type="checkbox" [checked]="perSizePrice()" (change)="togglePerSizePrice($any($event.target).checked)" data-testid="per-size-price" />
+          {{ t('Different price per size', 'हर size की अलग कीमत') }}
+        </label>
+      }
+    </div>
+
+    <div class="ve__groups">
+      @for (g of groups(); track g.colour) {
+        <div class="ve__group">
+          @if (g.colour) { <div class="ve__group-title">{{ g.colour }}</div> }
+          <div class="ve__row ve__row--head" aria-hidden="true">
+            <span>{{ t('Size', 'Size') }}</span>
+            <span>{{ t('Stock', 'Stock') }}</span>
+            @if (perSizePrice()) { <span>{{ t('Price ₹', 'कीमत ₹') }}</span> }
+            @if (showSkus()) { <span>SKU</span> }
+          </div>
+          @for (v of g.rows; track v.id) {
+            <div class="ve__row" [attr.data-testid]="'variant-row-' + label(v)">
+              <span class="ve__size-name">{{ v.size || '—' }}</span>
+              <input class="ve__num" type="number" min="0" step="1" inputmode="numeric" [value]="v.stock" (input)="setStock(v.id, $any($event.target).value)" [attr.aria-label]="t('Stock for ' + label(v), label(v) + ' का stock')" [attr.data-testid]="'stock-' + label(v)" />
+              @if (perSizePrice()) {
+                <input class="ve__num" type="number" min="0" inputmode="decimal" [value]="sizePrice(v.size) ?? ''" (change)="setSizePrice(v.size, $any($event.target).value)" [placeholder]="t('Same', 'वही')" [attr.aria-label]="t('Price for ' + (v.size || ''), (v.size || '') + ' की कीमत')" [attr.data-testid]="'price-' + label(v)" />
+              }
+              @if (showSkus()) {
+                <input class="ve__sku" [value]="v.sku" (change)="setSku(v.id, $any($event.target).value)" [placeholder]="t('Auto', 'Auto')" maxlength="40" [attr.aria-label]="'SKU ' + label(v)" />
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+    <p class="ve__note">{{ t('SKUs are made automatically, e.g. SA-1A2B3C4D-PINK-M.', 'SKU अपने-आप बनते हैं, जैसे SA-1A2B3C4D-PINK-M.') }}</p>
+  }
+
+  @if (showSizeChart() && sizes().length) {
+    <button type="button" class="ve__link" (click)="toggleChart()" [attr.aria-expanded]="chartOpen()" data-testid="size-chart-toggle">
+      <mat-icon aria-hidden="true">straighten</mat-icon>
+      {{ chartOpen() ? t('Hide size chart', 'Size chart छुपाएं') : t('Add size chart (optional)', 'Size chart जोड़ें (ज़रूरी नहीं)') }}
+    </button>
+    @if (chartOpen() && chart(); as c) {
+      <div class="ve__chart" data-testid="size-chart">
+        <p class="ve__hint">{{ t('Enter once per brand + category — we reuse it.', 'Brand + category के लिए एक बार भरें — हम दोबारा इस्तेमाल करेंगे।') }}</p>
+        <div class="ve__units">
+          <button type="button" class="ve__chip" [class.ve__chip--on]="c.unit === 'in'" (click)="setChartUnit('in')">{{ t('inches', 'इंच') }}</button>
+          <button type="button" class="ve__chip" [class.ve__chip--on]="c.unit === 'cm'" (click)="setChartUnit('cm')">cm</button>
+        </div>
+        <div class="ve__chart-scroll">
+          <table class="ve__table">
+            <thead>
+              <tr>
+                <th scope="col">{{ t('Size', 'Size') }}</th>
+                @for (m of c.measures; track $index) {
+                  <th scope="col"><input class="ve__measure" [value]="m" (change)="setChartMeasure($index, $any($event.target).value)" [attr.aria-label]="t('Measurement name', 'नाप का नाम')" /></th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of c.rows; track r.size; let ri = $index) {
+                <tr>
+                  <th scope="row">{{ r.size }}</th>
+                  @for (val of r.values; track $index) {
+                    <td><input class="ve__num" inputmode="decimal" [value]="val" (change)="setChartValue(ri, $index, $any($event.target).value)" [attr.aria-label]="r.size + ' ' + c.measures[$index]" /></td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="ve__chart-actions">
+          @if (chartMessage(); as msg) { <span [class.ve__ok]="msg.ok" [class.ve__err]="!msg.ok" role="status">{{ msg.text }}</span> }
+          <button type="button" class="ve__btn ve__btn--primary" [disabled]="chartSaving() || !category()" (click)="saveChart()" data-testid="size-chart-save">{{ t('Save size chart', 'Size chart save करें') }}</button>
+        </div>
+        @if (!category()) { <p class="ve__err">{{ t('Add the category first.', 'पहले category भरें।') }}</p> }
+      </div>
+    }
+  }
+</section>

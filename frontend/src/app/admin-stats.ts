@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/c
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { apiBase, apiFetch, getAuthToken } from './services/api';
+import { MARKETPLACE_OPTIONS } from './config/signup-options';
 
 interface AdminStatsData {
   filters: { from: string; to: string; campaign: string | null; ref: string | null };
@@ -12,6 +13,14 @@ interface AdminStatsData {
   week2RetentionPct: number;
   week2EligibleUsers: number;
   catalogSizeBand: Record<string, number>;
+  /** "Where do you sell?" — sellers can pick several, so shares add up to more than 100%. */
+  marketplaces?: {
+    signups: number;
+    respondents: number;
+    respondentsPct: number;
+    rows: { value: string; sellers: number; pctOfRespondents: number; pctOfSignups: number }[];
+    otherAnswers: { text: string; sellers: number }[];
+  };
   catalogSizeImported: { users: number; median: number | null; average: number | null; buckets: Record<string, number> };
   aiListingsPerActiveUserFirst7Days: number;
   aiListingsPerActiveUserFirst30Days: number;
@@ -145,6 +154,25 @@ function isoDay(date: Date): string {
               </tbody>
             </table>
           </div>
+
+          @if (s.marketplaces; as m) {
+            <div class="panel" data-testid="admin-marketplaces">
+              <h4>Where do you sell?</h4>
+              <p class="panel__meta">{{ m.respondents }} of {{ m.signups }} sign-ups answered ({{ m.respondentsPct }}%) · several choices allowed
+                · <button type="button" class="panel__link" (click)="download('marketplaces')">Export CSV</button></p>
+              <table>
+                <thead><tr><th scope="col">Marketplace</th><th scope="col" class="num">Sellers</th><th scope="col" class="num">% of answered</th><th scope="col" class="num">% of sign-ups</th></tr></thead>
+                <tbody>
+                  @for (row of m.rows; track row.value) {
+                    <tr><td>{{ marketplaceLabel(row.value) }}</td><td class="num">{{ row.sellers }}</td><td class="num">{{ row.pctOfRespondents }}%</td><td class="num">{{ row.pctOfSignups }}%</td></tr>
+                  }
+                </tbody>
+              </table>
+              @if (m.otherAnswers.length) {
+                <p class="panel__meta">Other: @for (o of m.otherAnswers; track o.text) { <span>{{ o.text }} ({{ o.sellers }})@if (!$last) {, }</span> }</p>
+              }
+            </div>
+          }
 
           <div class="panel">
             <h4>Products imported via Sync</h4>
@@ -308,6 +336,7 @@ function isoDay(date: Date): string {
     .panel--wide { grid-column: 1 / -1; }
     .panel h4 { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: #0f172a; }
     .panel__meta { margin: 0 0 8px; font-size: 12px; color: #64748b; }
+    .panel__link { background: none; border: 0; padding: 0; color: #c2410c; font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }
     .scroll { overflow-x: auto; }
     .scroll--short { max-height: 280px; overflow-y: auto; }
     code { font-size: 11px; }
@@ -345,6 +374,10 @@ export class AdminStats {
   });
   abuseRows = computed(() => Object.entries(this.stats()?.abuse?.events ?? {}).map(([type, count]) => ({ type, label: ABUSE_LABELS[type] ?? type, count })));
 
+  marketplaceLabel(value: string): string {
+    return MARKETPLACE_OPTIONS.find((o) => o.value === value)?.en ?? value;
+  }
+
   stepLabel(step: string): string {
     return STEP_LABELS[step] ?? step;
   }
@@ -379,7 +412,7 @@ export class AdminStats {
   }
 
   /** CSV needs the auth header, so it is fetched and saved as a blob rather than linked. */
-  async download(type: 'summary' | 'users'): Promise<void> {
+  async download(type: 'summary' | 'users' | 'marketplaces'): Promise<void> {
     this.error.set(null);
     try {
       const response = await fetch(`${apiBase}/admin/stats.csv?type=${type}&${this.query()}`, {

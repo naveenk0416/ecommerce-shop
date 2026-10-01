@@ -22,6 +22,11 @@ export interface UserProfile extends AdditionalUserData {
   signupMethod?: 'email' | 'google' | null;
   /** "Tell us about your business (+2 coins)" card after sign-up. */
   businessCard?: { show: boolean; done: boolean; bonus: number };
+  /** "Where do you sell?" (MARKETPLACE_OPTIONS values) — null until answered. */
+  marketplaces?: string[] | null;
+  marketplacesOther?: string | null;
+  /** One-time dashboard card for accounts that never answered or dismissed the question. */
+  marketplacesCard?: { show: boolean };
 }
 
 /** /register response: the new seller is signed in straight away (email verified later).
@@ -51,6 +56,9 @@ export interface BusinessDetails {
   city?: string;
   catalogSizeBand?: string;
   sellsOn?: string[];
+  /** Sent only when something is selected — skipping keeps any earlier answer. */
+  marketplaces?: string[];
+  marketplacesOther?: string;
   gstNumber?: string;
 }
 
@@ -212,7 +220,21 @@ export class AuthService {
   async dismissBusinessCard(): Promise<void> {
     await apiFetch('/me/business', { method: 'PATCH', body: { dismiss: true } });
     const profile = this.profile();
-    if (profile?.businessCard) this.profile.set({ ...profile, businessCard: { ...profile.businessCard, show: false } });
+    if (profile?.businessCard) this.profile.set({ ...profile, businessCard: { ...profile.businessCard, show: false }, marketplacesCard: { show: false } });
+  }
+
+  /** Saves "Where do you sell?" (Profile → My marketplaces, or the one-time dashboard card). */
+  async saveMarketplaces(marketplaces: string[], other: string): Promise<void> {
+    const result = await apiFetch<{ marketplaces: string[]; marketplacesOther: string | null }>('/me/marketplaces', { method: 'PUT', body: { marketplaces, other } });
+    const profile = this.profile();
+    if (profile) this.profile.set({ ...profile, marketplaces: result.marketplaces, marketplacesOther: result.marketplacesOther, marketplacesCard: { show: false } });
+  }
+
+  /** Closes the one-time "where do you sell?" card without answering; it doesn't come back. */
+  async dismissMarketplacesCard(): Promise<void> {
+    const profile = this.profile();
+    if (profile) this.profile.set({ ...profile, marketplacesCard: { show: false } });
+    await apiFetch('/me/marketplaces', { method: 'PUT', body: { dismiss: true } });
   }
 
   async loginWithEmail(email: string, password: string, rememberMe = true) {

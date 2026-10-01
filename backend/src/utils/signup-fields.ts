@@ -49,3 +49,29 @@ export function sanitizeAttribution(input: unknown): Record<string, string> | un
   }
   return Object.keys(out).length ? out : undefined;
 }
+
+/**
+ * "Where do you sell?" answers (users.marketplaces) — keep in sync with MARKETPLACE_OPTIONS in
+ * frontend/src/app/config/signup-options.ts. 'social' = Instagram / WhatsApp, 'none' = not selling yet.
+ */
+export const MARKETPLACE_VALUES = ['amazon', 'flipkart', 'meesho', 'myntra', 'ajio', 'social', 'website', 'offline', 'none', 'other'] as const;
+export const MARKETPLACE_OTHER_MAX = 30;
+
+/**
+ * Known values only (unknown ones are dropped, not rejected), de-duplicated, in the canonical
+ * order. "none" can't be combined with anything else — if both come in, "none" is dropped because
+ * the seller actively picked a channel. The "Other" text is kept only when "other" is selected.
+ */
+export function sanitizeMarketplaces(raw: unknown, otherRaw: unknown): { marketplaces: string[]; other: string | null } {
+  const picked = new Set(
+    (Array.isArray(raw) ? raw : [])
+      .filter((v): v is string => typeof v === 'string')
+      .map((v) => v.trim().toLowerCase()),
+  );
+  let marketplaces: string[] = MARKETPLACE_VALUES.filter((v) => picked.has(v));
+  if (marketplaces.includes('none') && marketplaces.length > 1) marketplaces = marketplaces.filter((v) => v !== 'none');
+  const other = marketplaces.includes('other')
+    ? String(otherRaw ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, MARKETPLACE_OTHER_MAX) || null
+    : null;
+  return { marketplaces, other };
+}

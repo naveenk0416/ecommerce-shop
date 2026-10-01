@@ -10,7 +10,9 @@ import { publishEnabled, PUBLISH_CHANNEL_LABELS, type PublishChannel } from '../
 import { User } from './common.js';
 import { clearCachedAccessToken as clearCachedAmazonAccessToken, AmazonReauthorizationRequiredError } from '../utils/amazon-token-service.js';
 import { clearCachedAccessToken as clearCachedFlipkartAccessToken, FlipkartReauthorizationRequiredError } from '../utils/flipkart-token-service.js';
-import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema, createAmazonListing, getAmazonListingItem, buildMainImageLocator } from '../utils/amazon-sp-api.js';
+import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListingPriceAndQuantity, searchAmazonProductTypes, getAmazonProductTypeSchema, createAmazonListing, getAmazonListingItem, buildMainImageLocator, putAmazonListingItem, amazonSkuExists } from '../utils/amazon-sp-api.js';
+import { buildFamily, pickVariationTheme } from '../utils/amazon-variations.js';
+import { hasRealVariants, totalStock, variantLabel, type Variant } from '../utils/variants.js';
 import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku, updateFlipkartListingPriceAndInventory } from '../utils/flipkart-listings-api.js';
 
 const router = express.Router();
@@ -417,6 +419,18 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
       const price = item.product_description?.ssp || item.product_description?.mrp || 0;
       const detail = inventoryDetails.get(sku);
 
+      // One size/colour of a product with sizes (its variant SKU was uploaded in a bulk file):
+      // update that size's stock, not a separate product.
+      const parent = await Listing.findOne({ uid, 'variants.sku': sku }).select('variants').lean() as any;
+      if (parent && hasRealVariants(parent.variants)) {
+        const variants = (parent.variants as Variant[]).map((v) => (v.sku === sku
+          ? { ...v, stock: detail?.quantity ?? v.stock, flipkartProductId: item.productId || v.flipkartProductId, flipkartLocationId: detail?.locationId || v.flipkartLocationId }
+          : v));
+        await Listing.updateOne({ _id: parent._id }, { $set: { variants, quantity: totalStock(variants) } });
+        updated += 1;
+        continue;
+      }
+
       const alreadyExists = await Listing.exists({ uid, sku });
       await Listing.findOneAndUpdate(
         { uid, sku },
@@ -661,6 +675,149 @@ router.post('/amazon/create-listing/:listingId', authMiddleware, async (req, res
   }
 });
 
+/**
+ * Sizes & colours on Amazon: one parent listing (variation theme, no offer) plus one child per
+ * size/colour with its own SKU, price and stock.
+ *  1. the variation theme must be allowed by the product type (Product Type Definitions API)
+ *  2. every child is checked against the schema, then validated by Amazon itself
+ *     (VALIDATION_PREVIEW) — nothing is created unless every member passes
+ *  3. SellAssist never touches an existing Amazon listing: a SKU that already exists there (and
+ *     wasn't created by SellAssist for this product) stops the push
+ * `test: true` uses SA-TEST-… SKUs with stock 0 on every child, so the family stays inactive.
+ * `preview: true` stops after step 2.
+ */
+router.post('/amazon/create-variations/:listingId', authMiddleware, async (req, res) => {
+  const authUser = (req as any).authUser;
+  const uid = authUser._id.toString();
+  const { productType, attributes } = req.body || {};
+  const test = req.body?.test === true;
+  const preview = req.body?.preview === true;
+  if (!productType || !attributes || typeof attributes !== 'object' || Array.isArray(attributes)) {
+    res.status(400).json({ error: 'Missing productType or attributes for the Amazon listing.' });
+    return;
+  }
+
+  await ensureConnected();
+  try {
+    const listing = await Listing.findOne({ _id: req.params['listingId'], uid });
+    if (!listing) {
+      res.status(404).json({ error: 'Product not found.' });
+      return;
+    }
+    const variants = listing.get('variants') as Variant[];
+    if (!hasRealVariants(variants)) {
+      res.status(400).json({ error: 'This product has no sizes or colours — publish it as a single listing.' });
+      return;
+    }
+    const family = listing.get('amazonFamily') as { parentSku?: string; skus?: string[]; test?: boolean } | undefined;
+    if (family?.skus?.length && !family.test && !test) {
+      res.status(409).json({ error: 'This product is already on Amazon. Use Publish to update its prices and stock.' });
+      return;
+    }
+
+    const connection = await MarketplaceConnection.findOne({ uid, marketplace: 'amazon', status: 'connected' });
+    if (!connection?.sellingPartnerId) {
+      res.status(409).json({ error: 'Your Amazon Selling Partner ID is missing — please reconnect Amazon and try again.' });
+      return;
+    }
+    const sellerId = connection.sellingPartnerId as string;
+
+    const schema = await getAmazonProductTypeSchema(uid, String(productType));
+    const { theme, error: themeError } = pickVariationTheme(schema, variants);
+    if (!theme) {
+      res.status(422).json({ error: themeError, code: 'NO_THEME', childErrors: [] });
+      return;
+    }
+    const listingId = listing._id.toString();
+    const built = buildFamily({
+      listing: {
+        id: listingId,
+        sellingPrice: Number(listing.get('sellingPrice')) || 0,
+        mrp: Number(listing.get('mrp')) || null,
+        imageUrl: (listing.get('processedImage') || listing.get('originalImage')) ? `${publicApiUrl()}/api/listings/${listingId}/image.jpg` : undefined,
+      },
+      variants,
+      productType: String(productType),
+      attributes,
+      theme,
+      schema,
+      test,
+      photoUrl: (imageId) => `${publicApiUrl()}/api/images/${imageId}.jpg`,
+    });
+    if (built.errors.length) {
+      res.status(422).json({ error: 'Fix these before publishing to Amazon.', code: 'INVALID_CHILDREN', theme, childErrors: built.errors });
+      return;
+    }
+
+    // Never change a live listing: every SKU must be new (or one SellAssist created for this product).
+    const ours = new Set((family?.skus ?? []).map((s) => s.toUpperCase()));
+    const members = [built.parent, ...built.children];
+    for (const member of members) {
+      if (ours.has(member.sku.toUpperCase())) continue;
+      if (await amazonSkuExists(uid, sellerId, member.sku)) {
+        res.status(409).json({
+          error: `SKU ${member.sku} already exists on your Amazon account. SellAssist never changes existing listings — change this size's SKU and try again.`,
+          code: 'SKU_EXISTS',
+          childErrors: [{ variantId: member.variantId, label: member.label, sku: member.sku, errors: ['Already exists on Amazon.'] }],
+        });
+        return;
+      }
+    }
+
+    // Amazon's own validation for every member first — nothing is created unless all pass.
+    const issueText = (issues: Array<{ message?: string; attributeNames?: string[] }> = []) => issues
+      .map((i) => [i.message, i.attributeNames?.length ? `(${i.attributeNames.join(', ')})` : ''].filter(Boolean).join(' '))
+      .filter(Boolean);
+    const previewErrors: Array<{ variantId: string; label: string; sku: string; errors: string[] }> = [];
+    for (const member of members) {
+      const check = await putAmazonListingItem(uid, sellerId, member.sku, member.body, true);
+      if (!check.ok) previewErrors.push({ variantId: member.variantId, label: member.label, sku: member.sku, errors: issueText(check.issues) });
+    }
+    if (previewErrors.length) {
+      res.status(422).json({ error: 'Amazon found problems — nothing was published.', code: 'AMAZON_VALIDATION', theme, childErrors: previewErrors });
+      return;
+    }
+    if (preview) {
+      res.json({ ok: true, preview: true, theme, parentSku: built.parent.sku, children: built.children.map((c) => ({ variantId: c.variantId, label: c.label, sku: c.sku })) });
+      return;
+    }
+
+    const parentResult = await putAmazonListingItem(uid, sellerId, built.parent.sku, built.parent.body, false);
+    if (!parentResult.ok) {
+      res.status(422).json({ error: 'Amazon rejected the parent listing — nothing else was sent.', code: 'PARENT_REJECTED', childErrors: [{ variantId: 'parent', label: 'Parent', sku: built.parent.sku, errors: issueText(parentResult.issues) }] });
+      return;
+    }
+    const created: string[] = [built.parent.sku];
+    const childResults: Array<{ variantId: string; label: string; sku: string; ok: boolean; errors: string[] }> = [];
+    for (const child of built.children) {
+      const result = await putAmazonListingItem(uid, sellerId, child.sku, child.body, false);
+      if (result.ok) created.push(child.sku);
+      childResults.push({ variantId: child.variantId, label: child.label, sku: child.sku, ok: result.ok, errors: result.ok ? [] : issueText(result.issues) });
+    }
+
+    const accepted = new Map(childResults.filter((c) => c.ok).map((c) => [c.variantId, c.sku]));
+    const updatedVariants = variants.map((v) => (accepted.has(v.id) ? { ...v, amazonSku: accepted.get(v.id) } : v));
+    const $set: Record<string, unknown> = {
+      variants: updatedVariants,
+      amazonFamily: { parentSku: built.parent.sku, theme, productType: String(productType), skus: [...new Set([...(family?.skus ?? []), ...created])], test, createdAt: new Date() },
+    };
+    // A real family behaves like a synced Amazon product (Publish updates each child's price/stock).
+    if (!test) Object.assign($set, { source: 'amazon', sku: built.parent.sku, listingStatus: 'ACTIVE' });
+    await Listing.updateOne({ _id: listing._id }, { $set });
+    if (!test && childResults.some((c) => c.ok)) await grantBonusSafely(uid, 'firstPublish');
+    await setCoinBalanceHeader(res, uid);
+    const failed = childResults.filter((c) => !c.ok);
+    res.status(failed.length ? 207 : 200).json({ ok: failed.length === 0, test, theme, parentSku: built.parent.sku, children: childResults });
+  } catch (err: any) {
+    if (err instanceof AmazonReauthorizationRequiredError) {
+      res.status(409).json({ error: 'Your Amazon authorization is no longer valid. Please reconnect Amazon and try again.' });
+      return;
+    }
+    console.error('Amazon create variations error', err);
+    res.status(500).json({ error: err?.message || 'Failed to publish the sizes to Amazon.' });
+  }
+});
+
 // Diagnostic-only: reads back whatever Amazon currently has stored for this listing's SKU,
 // straight from the Listings Items API — used to tell apart "our payload is wrong" from "Amazon
 // is auto-generating/retaining an attribute server-side regardless of what we send", which looks
@@ -708,6 +865,11 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
   await ensureConnected();
   try {
     const listing = await Listing.findOne({ _id: req.params['listingId'], uid });
+    const family = listing?.get('amazonFamily') as { test?: boolean } | undefined;
+    if (family?.test) {
+      res.status(400).json({ error: 'This is a test listing on Amazon — it stays inactive and its stock is never sent.' });
+      return;
+    }
     if (!listing || listing.source !== 'amazon' || !listing.sku) {
       res.status(400).json({ error: 'This product was not synced from Amazon, so there is nothing to publish it to.' });
       return;
@@ -716,6 +878,31 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
     const connection = await MarketplaceConnection.findOne({ uid, marketplace: 'amazon', status: 'connected' });
     if (!connection?.sellingPartnerId) {
       res.status(409).json({ error: 'Your Amazon Selling Partner ID is missing — please reconnect Amazon and try again.' });
+      return;
+    }
+
+    // Sizes & colours: price and stock go to each child SKU.
+    const children = (hasRealVariants(listing.get('variants')) ? listing.get('variants') as Variant[] : []).filter((v) => v.amazonSku);
+    if (children.length) {
+      const results: Array<{ variantId: string; label: string; sku: string; ok: boolean; error?: string }> = [];
+      for (const v of children) {
+        const photo = v.imageIds?.[0] ? `${publicApiUrl()}/api/images/${v.imageIds[0]}.jpg` : undefined;
+        const result = await updateAmazonListingPriceAndQuantity(
+          uid, connection.sellingPartnerId, v.amazonSku!, v.price ?? (listing.sellingPrice || 0), Math.max(0, v.stock), v.mrp ?? (listing.mrp || undefined), photo,
+        );
+        results.push({
+          variantId: v.id, label: variantLabel(v), sku: v.amazonSku!, ok: result.ok,
+          ...(result.ok ? {} : { error: (result.issues || []).map((i) => i.message).filter(Boolean).join('; ') || 'Rejected by Amazon.' }),
+        });
+      }
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length === results.length) {
+        res.status(422).json({ error: `Amazon rejected the update: ${failed.map((f) => `${f.label}: ${f.error}`).join(' · ')}`, children: results });
+        return;
+      }
+      await grantBonusSafely(uid, 'firstPublish');
+      await setCoinBalanceHeader(res, uid);
+      res.status(failed.length ? 207 : 200).json({ ok: failed.length === 0, children: results });
       return;
     }
 
@@ -767,6 +954,30 @@ router.post('/flipkart/publish/:listingId', authMiddleware, async (req, res) => 
   await ensureConnected();
   try {
     const listing = await Listing.findOne({ _id: req.params['listingId'], uid });
+    // Sizes & colours matched by "Sync from Flipkart": stock and price go to each size's SKU.
+    const flipkartChildren = listing && hasRealVariants(listing.get('variants'))
+      ? (listing.get('variants') as Variant[]).filter((v) => v.flipkartProductId && v.flipkartLocationId)
+      : [];
+    if (listing && flipkartChildren.length) {
+      const results: Array<{ variantId: string; label: string; sku: string; ok: boolean; error?: string }> = [];
+      for (const v of flipkartChildren) {
+        const price = v.price ?? (listing.sellingPrice || 0);
+        const result = await updateFlipkartListingPriceAndInventory(uid, v.sku, v.flipkartProductId!, v.mrp ?? (listing.mrp || price), price, v.flipkartLocationId!, Math.max(0, v.stock));
+        results.push({
+          variantId: v.id, label: variantLabel(v), sku: v.sku, ok: result.ok,
+          ...(result.ok ? {} : { error: (result.issues || []).map((i) => i.description).filter(Boolean).join('; ') || 'Rejected by Flipkart.' }),
+        });
+      }
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length === results.length) {
+        res.status(422).json({ error: `Flipkart rejected the update: ${failed.map((f) => `${f.label}: ${f.error}`).join(' · ')}`, children: results });
+        return;
+      }
+      await grantBonusSafely(uid, 'firstPublish');
+      await setCoinBalanceHeader(res, uid);
+      res.status(failed.length ? 207 : 200).json({ ok: failed.length === 0, children: results });
+      return;
+    }
     if (!listing || listing.source !== 'flipkart' || !listing.sku || !listing.flipkartProductId || !listing.flipkartLocationId) {
       res.status(400).json({ error: 'This product is missing Flipkart details needed to publish — try running "Sync from Flipkart" again first.' });
       return;

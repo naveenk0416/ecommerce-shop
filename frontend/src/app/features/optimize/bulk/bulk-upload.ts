@@ -1,0 +1,292 @@
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ApiError } from '../../../services/api';
+import {
+  BulkCell, BulkColumn, BulkMarketplace, BulkReport, BulkRow, BulkTemplateInfo, BulkUploadService, MAX_TEMPLATE_BYTES, SellerProfile,
+} from '../../../services/bulk-upload';
+import { LanguageService } from '../../../services/language';
+import { ListingDraftSummary, ListingService } from '../../../services/listing';
+
+type Step = 1 | 2 | 3 | 4 | 5;
+
+const normalize = (s: string) => s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+const stem = (w: string) => w.replace(/(ies)$/, 'y').replace(/(es|s)$/, '');
+const tokens = (s: string) => normalize(s).split(' ').filter((w) => w.length > 1).map(stem);
+
+/** Same rule as the server: the listing's category words should overlap the template's category. */
+function categoryMatches(templateCategory: string | null, listingCategory: string | undefined): boolean {
+  if (!templateCategory || !listingCategory) return true;
+  const a = new Set(tokens(templateCategory));
+  return tokens(listingCategory).some((t) => a.has(t) || [...a].some((x) => x.length > 3 && (t.startsWith(x) || x.startsWith(t))));
+}
+
+/**
+ * "Bulk upload file": 1) Meesho or Flipkart + how to download the template, 2) upload it,
+ * 3) pick listings, 4) check / edit the filled rows, 5) download and upload it on the marketplace.
+ * No marketplace login, no coins.
+ */
+@Component({
+  selector: 'app-bulk-upload',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterLink],
+  templateUrl: './bulk-upload.html',
+  styleUrl: './bulk-upload.css',
+})
+export class BulkUpload {
+  protected readonly i18n = inject(LanguageService);
+  private readonly bulk = inject(BulkUploadService);
+  private readonly listings = inject(ListingService);
+  protected readonly t = (en: string, hi: string) => this.i18n.t(en, hi);
+
+  readonly step = signal<Step>(1);
+  readonly marketplace = signal<BulkMarketplace | null>(null);
+  readonly marketName = computed(() => (this.marketplace() === 'flipkart' ? 'Flipkart' : 'Meesho'));
+
+  // Step 2
+  readonly template = signal<BulkTemplateInfo | null>(null);
+  readonly uploading = signal(false);
+  readonly uploadError = signal<string | null>(null);
+  readonly requiredCount = computed(() => this.template()?.columns.filter((c) => c.required).length ?? 0);
+
+  // Step 3
+  readonly drafts = signal<ListingDraftSummary[]>([]);
+  readonly draftsLoading = signal(false);
+  readonly search = signal('');
+  readonly selected = signal<ReadonlySet<string>>(new Set());
+  readonly filteredDrafts = computed(() => {
+    const q = this.search().trim().toLowerCase();
+    return this.drafts().filter((d) => !q || (d.title || '').toLowerCase().includes(q) || (d.category || '').toLowerCase().includes(q));
+  });
+  readonly mismatchedSelected = computed(() => {
+    const cat = this.template()?.category ?? null;
+    return this.drafts().filter((d) => this.selected().has(d.id) && !categoryMatches(cat, d.category));
+  });
+  readonly maxRows = computed(() => this.template()?.maxRows ?? 100);
+
+  // Step 4
+  readonly filling = signal(false);
+  readonly fillError = signal<string | null>(null);
+  readonly rows = signal<BulkRow[]>([]);
+  readonly report = signal<BulkReport | null>(null);
+  readonly columns = computed(() => this.template()?.columns ?? []);
+  readonly mustFillHeaders = computed(() => (this.report()?.emptyMandatory ?? []).map((m) => m.header).join(', '));
+  readonly mustFillLeft = computed(() => {
+    const req = this.columns().filter((c) => c.required);
+    return this.rows().reduce((n, r) => n + req.filter((c) => !r.cells[c.col]?.value).length, 0);
+  });
+
+  // Step 5
+  readonly downloading = signal(false);
+  readonly downloadError = signal<string | null>(null);
+  readonly downloaded = signal<string | null>(null);
+
+  // Seller profile
+  readonly profile = signal<SellerProfile>({});
+  readonly profileOpen = signal(false);
+  readonly profileSaving = signal(false);
+  readonly profileMessage = signal<{ ok: boolean; text: string } | null>(null);
+
+  constructor() {
+    const params = inject(ActivatedRoute).snapshot.queryParamMap;
+    const market = params.get('marketplace');
+    if (market === 'meesho' || market === 'flipkart') this.marketplace.set(market);
+    const preselect = params.get('ids');
+    if (preselect) this.selected.set(new Set(preselect.split(',').filter((id) => /^[a-f0-9]{24}$/.test(id))));
+    this.bulk.getProfile().then((p) => this.profile.set(p)).catch(() => undefined);
+  }
+
+  chooseMarketplace(m: BulkMarketplace): void {
+    this.marketplace.set(m);
+    this.template.set(null);
+    this.uploadError.set(null);
+  }
+
+  goTo(step: Step): void {
+    this.step.set(step);
+    if (step === 3 && this.drafts().length === 0) void this.loadDrafts();
+  }
+
+  // ---- Step 2: upload ----
+  async onFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    const market = this.marketplace();
+    if (!file || !market) return;
+    this.uploadError.set(null);
+    if (file.size > MAX_TEMPLATE_BYTES) {
+      this.uploadError.set(this.t('The file is larger than 10 MB.', 'File 10 MB से बड़ी है।'));
+      return;
+    }
+    this.uploading.set(true);
+    try {
+      this.template.set(await this.bulk.uploadTemplate(file, market));
+    } catch (error) {
+      const code = ((error as ApiError).data as { code?: string } | undefined)?.code;
+      this.uploadError.set(
+        code === 'BAD_FILE' ? this.t('This is not an Excel template. Upload the .xlsx, .xls or .xlsm file you downloaded from the marketplace.', 'यह Excel template नहीं है। Marketplace से download की हुई .xlsx, .xls या .xlsm file upload करें।')
+        : code === 'TOO_LARGE' ? this.t('The file is larger than 10 MB.', 'File 10 MB से बड़ी है।')
+        : code === 'DAILY_LIMIT' ? this.t('You can make 20 files a day. Please try again tomorrow.', 'एक दिन में 20 files बना सकते हैं। कल फिर try करें।')
+        : code === 'UNREADABLE' ? this.t('We couldn’t read this file. Upload the template exactly as downloaded, without changing it.', 'यह file पढ़ी नहीं जा सकी। Template को बिना बदले, जैसा download हुआ वैसा ही upload करें।')
+        : this.t('Upload failed. Please try again.', 'Upload नहीं हुआ। फिर से try करें।'),
+      );
+    } finally {
+      this.uploading.set(false);
+    }
+  }
+
+  // ---- Step 3: select listings ----
+  private async loadDrafts(): Promise<void> {
+    this.draftsLoading.set(true);
+    try {
+      this.drafts.set(await this.listings.listDrafts());
+    } finally {
+      this.draftsLoading.set(false);
+    }
+  }
+
+  isSelected(id: string): boolean {
+    return this.selected().has(id);
+  }
+
+  toggle(id: string, on: boolean): void {
+    this.selected.update((set) => {
+      const next = new Set(set);
+      if (on && next.size < this.maxRows()) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  selectAllShown(on: boolean): void {
+    this.selected.update((set) => {
+      const next = new Set(set);
+      for (const d of this.filteredDrafts()) {
+        if (on && next.size < this.maxRows()) next.add(d.id);
+        if (!on) next.delete(d.id);
+      }
+      return next;
+    });
+  }
+
+  mismatch(d: ListingDraftSummary): boolean {
+    return !categoryMatches(this.template()?.category ?? null, d.category);
+  }
+
+  // ---- Step 4: fill + preview ----
+  async fill(): Promise<void> {
+    const tpl = this.template();
+    const ids = this.drafts().filter((d) => this.selected().has(d.id)).map((d) => d.id);
+    if (!tpl || ids.length === 0) return;
+    this.filling.set(true);
+    this.fillError.set(null);
+    try {
+      const { rows, report } = await this.bulk.fill(tpl.id, ids);
+      this.rows.set(rows);
+      this.report.set(report);
+      this.step.set(4);
+    } catch (error) {
+      const code = ((error as ApiError).data as { code?: string } | undefined)?.code;
+      this.fillError.set(code === 'EXPIRED'
+        ? this.t('This template has expired (we keep it for 24 hours). Please upload it again.', 'यह template expire हो गया (24 घंटे तक रखते हैं)। फिर से upload करें।')
+        : this.t('Could not fill the file. Please try again.', 'File नहीं भरी जा सकी। फिर से try करें।'));
+    } finally {
+      this.filling.set(false);
+    }
+  }
+
+  cell(row: BulkRow, col: BulkColumn): BulkCell {
+    return row.cells[col.col] ?? { value: '', status: col.required ? 'must_fill' : 'empty' };
+  }
+
+  edit(rowIndex: number, col: BulkColumn, value: string): void {
+    this.rows.update((rows) => rows.map((r, i) => i !== rowIndex ? r : {
+      ...r,
+      cells: { ...r.cells, [col.col]: { value, status: value ? 'filled' : (col.required ? 'must_fill' : 'empty') } },
+    }));
+  }
+
+  cellTitle(cell: BulkCell): string {
+    if (cell.status === 'adjusted') return cell.from ? this.t(`Changed from “${cell.from}” to fit the list`, `List के हिसाब से “${cell.from}” से बदला`) : this.t('Chosen from the list', 'List से चुना');
+    if (cell.status === 'ai') return this.t('Picked by AI from your listing — please check', 'AI ने आपकी listing से चुना — कृपया check करें');
+    if (cell.status === 'must_fill') return cell.from
+      ? this.t(`“${cell.from}” isn’t in this template’s list — choose a value`, `“${cell.from}” इस template की list में नहीं है — value चुनें`)
+      : this.t('You must fill this', 'यह आपको भरना होगा');
+    return '';
+  }
+
+  instructionText(code: string): string {
+    switch (code) {
+      case 'IMAGES_SEPARATE': return this.t(`This template has no image columns — upload the product photos in the ${this.marketName()} panel after the file.`, `इस template में photo के columns नहीं हैं — file के बाद ${this.marketName()} panel में photos upload करें।`);
+      case 'SAVE_TO_INVENTORY_FOR_PRICE': return this.t('Some listings have no price or stock — save them to Inventory first, or type them in the table.', 'कुछ listings में price या stock नहीं है — पहले Inventory में save करें, या table में लिखें।');
+      default: return code;
+    }
+  }
+
+  // ---- Step 5: download ----
+  async download(): Promise<void> {
+    const tpl = this.template();
+    if (!tpl) return;
+    this.downloading.set(true);
+    this.downloadError.set(null);
+    try {
+      const rows = this.rows().map((r) => ({ cells: Object.fromEntries(Object.entries(r.cells).map(([k, c]) => [k, c.value])) as Record<number, string> }));
+      const { blob, fileName } = await this.bulk.download(tpl.id, rows);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      this.downloaded.set(fileName);
+      this.step.set(5);
+    } catch (error) {
+      const code = ((error as ApiError).data as { code?: string } | undefined)?.code;
+      this.downloadError.set(code === 'EXPIRED'
+        ? this.t('This template has expired. Please upload it again.', 'यह template expire हो गया। फिर से upload करें।')
+        : this.t('Could not create the file. Please try again.', 'File नहीं बन सकी। फिर से try करें।'));
+    } finally {
+      this.downloading.set(false);
+    }
+  }
+
+  startOver(): void {
+    this.step.set(1);
+    this.template.set(null);
+    this.rows.set([]);
+    this.report.set(null);
+    this.downloaded.set(null);
+  }
+
+  // ---- Seller profile ----
+  readonly profileIncomplete = computed(() => {
+    const p = this.profile();
+    return !p.manufacturerName || !p.countryOfOrigin;
+  });
+
+  openProfile(): void {
+    this.profileOpen.set(true);
+    setTimeout(() => document.getElementById('bulk-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }
+
+  setProfile(key: keyof SellerProfile, value: string): void {
+    this.profile.update((p) => ({ ...p, [key]: value || undefined }));
+  }
+
+  async saveProfile(): Promise<void> {
+    this.profileSaving.set(true);
+    this.profileMessage.set(null);
+    try {
+      this.profile.set(await this.bulk.saveProfile(this.profile()));
+      this.profileMessage.set({ ok: true, text: this.t('Saved — used in every file.', 'Save हो गया — हर file में use होगा।') });
+    } catch (error) {
+      const field = ((error as ApiError).data as { field?: string } | undefined)?.field;
+      this.profileMessage.set({ ok: false, text: field === 'pickupPincode' ? this.t('Enter a valid 6-digit pincode.', 'सही 6 अंकों का pincode लिखें।') : this.t('Could not save. Please try again.', 'Save नहीं हुआ। फिर से try करें।') });
+    } finally {
+      this.profileSaving.set(false);
+    }
+  }
+}

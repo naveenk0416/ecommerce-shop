@@ -224,8 +224,28 @@
     <p class="hint hint--info">{{ retryNotice() }}</p>
   }
 
+  @if (sizes.length) {
+    <div class="sizes-note" data-testid="amazon-sizes">
+      <p><strong>{{ i18n.t('Sizes', 'Sizes') }}:</strong> {{ sizeLabels.join(', ') }}</p>
+      <p>{{ i18n.t('Amazon gets 1 parent listing and 1 child per size, each with its own SKU, price and stock. We check every size with Amazon before anything is created.', 'Amazon पर 1 parent listing और हर size की 1 child listing बनेगी — हर एक का अपना SKU, कीमत और stock। कुछ भी बनाने से पहले हम हर size Amazon से जांचते हैं।') }}</p>
+      <mat-checkbox [ngModel]="testPush()" (ngModelChange)="testPush.set($event)" data-testid="amazon-test-push">
+        {{ i18n.t('Test push — SA-TEST SKUs, stock 0 (stays inactive, nobody can order)', 'Test push — SA-TEST SKUs, stock 0 (inactive रहेगा, कोई order नहीं कर सकता)') }}
+      </mat-checkbox>
+    </div>
+  }
+
   @if (submitError()) {
     <p class="hint hint--error">{{ submitError() }}</p>
+  }
+
+  @if (childErrors().length) {
+    <ul class="child-errors" data-testid="amazon-child-errors">
+      @for (c of childErrors(); track c.variantId) {
+        <li><strong>{{ c.label }}</strong> <span class="child-errors__sku">{{ c.sku }}</span>
+          <ul>@for (e of c.errors; track $index) { <li>{{ e }}</li> }</ul>
+        </li>
+      }
+    </ul>
   }
 
   @if (selectedProductType() && !isValid() && !submitting() && missingFields().length > 0) {
@@ -241,6 +261,6 @@
     } @else {
       <mat-icon>publish</mat-icon>
     }
-    {{ submitting() ? 'Publishing…' : 'Publish to Amazon' }}
+    {{ submitting() ? 'Publishing…' : sizes.length ? (testPush() ? 'Test push (' + sizes.length + ' sizes)' : 'Publish ' + sizes.length + ' sizes') : 'Publish to Amazon' }}
   </button>
 </mat-dialog-actions>

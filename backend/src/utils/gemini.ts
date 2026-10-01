@@ -12,6 +12,8 @@ export interface GeminiRequest {
   model: string;
   prompt: string;
   image?: { data: string; mimeType: string };
+  /** Further photos of the same product (front/back/detail, other colours), after `image`. */
+  extraImages?: Array<{ data: string; mimeType: string }>;
   schema?: Record<string, unknown>;
   temperature?: number;
   maxOutputTokens?: number;
@@ -47,6 +49,7 @@ const realGenerator: GeminiGenerator = async (req) => {
   }
   const parts: Array<Record<string, unknown>> = [{ text: req.prompt }];
   if (req.image) parts.push({ inlineData: { data: req.image.data, mimeType: req.image.mimeType } });
+  for (const extra of req.extraImages ?? []) parts.push({ inlineData: { data: extra.data, mimeType: extra.mimeType } });
   const response = await client.models.generateContent({
     model: req.model,
     contents: [{ role: 'user', parts }],
@@ -136,7 +139,22 @@ export function friendlyGeminiError(err: unknown): string {
   return raw || 'The AI request failed. Please try again.';
 }
 
-export class AiCallError extends Error {}
+export class AiCallError extends Error {
+  /** The AI was busy, rate-limited, out of credits or down — worth trying again later. */
+  transient = false;
+}
+
+/**
+ * 429 / 5xx / RESOURCE_EXHAUSTED / UNAVAILABLE / network failures / missing key: not the fault of
+ * this request, so a batch pauses and continues later instead of failing the product.
+ */
+export function isTransientAiError(err: unknown): boolean {
+  const e = err as { status?: number; code?: number | string; message?: string } | null;
+  const status = Number(e?.status ?? e?.code);
+  if (status === 429 || (status >= 500 && status < 600)) return true;
+  const raw = String(e?.message ?? err ?? '');
+  return /RESOURCE_EXHAUSTED|UNAVAILABLE|INTERNAL|DEADLINE_EXCEEDED|quota|rate limit|overloaded|(429|500|502|503|504)|fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up|GEMINI_API_KEY is missing/i.test(raw);
+}
 
 /** Milliseconds the last Gemini call took, per request — read by the routes for Server-Timing. */
 export interface AiTiming {
@@ -147,7 +165,7 @@ export interface AiTiming {
  * Makes one Gemini call and logs it. Returns the parsed JSON (when a schema was given) or text.
  * Throws AiCallError with a friendly message on failure (the failure is logged too).
  */
-export async function callGemini(uid: string, purpose: 'listing' | 'field_fix' | 'marketplace_autofill' | 'guest_listing', req: GeminiRequest, log: {
+export async function callGemini(uid: string, purpose: 'listing' | 'field_fix' | 'marketplace_autofill' | 'guest_listing' | 'bulk_mapping', req: GeminiRequest, log: {
   listingKey?: string; marketplace?: string; coinsCharged?: number;
 } = {}, timing?: AiTiming): Promise<unknown> {
   const started = { uid, purpose, model: req.model, listingKey: log.listingKey, marketplace: log.marketplace };
@@ -162,7 +180,9 @@ export async function callGemini(uid: string, purpose: 'listing' | 'field_fix' |
     if (timing) timing.geminiMs = durationMs;
     console.log(`[ai] ${purpose} ${req.model} FAILED after ${durationMs}ms: ${message.slice(0, 120)}`);
     await AiUsage.create({ ...started, success: false, durationMs, error: message.slice(0, 300) }).catch(() => undefined);
-    throw new AiCallError(message);
+    const wrapped = new AiCallError(message);
+    wrapped.transient = isTransientAiError(err);
+    throw wrapped;
   }
   const durationMs = Date.now() - t0;
   if (timing) timing.geminiMs = durationMs;

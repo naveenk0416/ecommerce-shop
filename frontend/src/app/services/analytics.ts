@@ -26,7 +26,9 @@ const ATTRIBUTION_PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_con
 export type FunnelStep =
   | 'landing_view' | 'signup_view' | 'sign_up_start' | 'signup_submit' | 'sign_up' | 'email_verified'
   | 'first_listing_created' | 'onboarding_details_added'
-  | 'guest_try_start' | 'guest_try_success' | 'guest_try_signup_click';
+  | 'guest_try_start' | 'guest_try_success' | 'guest_try_signup_click'
+  /** "Where do you sell?" saved — { marketplaces: 'amazon,meesho' } (values only, no personal data). */
+  | 'marketplaces_selected';
 
 /** Steps the server can't see on its own — sent to POST /api/events. */
 const STORED_FROM_BROWSER = new Set<FunnelStep>(['landing_view', 'signup_view', 'sign_up_start', 'signup_submit', 'guest_try_start', 'guest_try_success', 'guest_try_signup_click']);

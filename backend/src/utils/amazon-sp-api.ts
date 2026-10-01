@@ -38,7 +38,18 @@ export class ReportFailedError extends Error {
   }
 }
 
+export const AMAZON_INDIA_MARKETPLACE_ID = INDIA_MARKETPLACE_ID;
+
+type SpApiFetch = (uid: string, path: string, init?: RequestInit) => Promise<Response>;
+let spApiOverride: SpApiFetch | null = null;
+
+/** Tests replace every SP-API call with a fake Amazon — nothing ever reaches a real account. */
+export function setSpApiFetchForTests(fn: SpApiFetch | null): void {
+  spApiOverride = fn;
+}
+
 async function spApiFetch(uid: string, path: string, init: RequestInit = {}) {
+  if (spApiOverride) return spApiOverride(uid, path, init);
   const accessToken = await getAccessToken(uid);
   return fetch(`${SP_API_HOST}${path}`, {
     ...init,
@@ -248,6 +259,41 @@ export async function createAmazonListing(
   return { ok: true, issues: body.issues };
 }
 
+/**
+ * putListingsItem with a full attribute set (parent or child of a variation family). With
+ * `preview`, Amazon only validates it (mode=VALIDATION_PREVIEW) and nothing is created.
+ */
+export async function putAmazonListingItem(
+  uid: string,
+  sellerId: string,
+  sku: string,
+  body: { productType: string; requirements: 'LISTING' | 'LISTING_PRODUCT_ONLY'; attributes: Record<string, unknown> },
+  preview: boolean,
+): Promise<PublishResult> {
+  const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID });
+  if (preview) params.set('mode', 'VALIDATION_PREVIEW');
+  const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => ({})) as ListingsPatchResponse;
+  const errors = (result.issues ?? []).filter((i) => (i.severity ?? 'ERROR') === 'ERROR');
+  if (!response.ok || result.status === 'INVALID' || errors.length) {
+    console.error(`Amazon ${preview ? 'validation' : 'listing'} failed`, sku, response.status, JSON.stringify(result.issues));
+    return { ok: false, issues: result.issues?.length ? result.issues : [{ message: `Amazon returned HTTP ${response.status}.` }] };
+  }
+  return { ok: true, issues: result.issues };
+}
+
+/** Whether a SKU already exists on the seller's Amazon account (so we never overwrite it). */
+export async function amazonSkuExists(uid: string, sellerId: string, sku: string): Promise<boolean> {
+  const params = new URLSearchParams({ marketplaceIds: INDIA_MARKETPLACE_ID, includedData: 'summaries' });
+  const response = await spApiFetch(uid, `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`);
+  if (response.status === 404) return false;
+  if (response.ok) return true;
+  throw new Error(`Could not check SKU ${sku} on Amazon (HTTP ${response.status}).`);
+}
+
 /** Reads back whatever Amazon currently has stored for a SKU — attributes plus any standing
  * issues — straight from the Listings Items API. Diagnostic tool for cases where a rejection
  * keeps naming an attribute that the outgoing payload no longer even includes (e.g.
@@ -298,7 +344,7 @@ export async function getAmazonProductTypeSchema(uid: string, productType: strin
   // Try unauthenticated first (Reports API's document links are presigned S3 URLs needing no
   // Amazon auth) — fall back to an authenticated fetch if that's rejected, since it's unconfirmed
   // whether this particular link works the same way.
-  let schemaResponse = await fetch(schemaUrl);
+  let schemaResponse = spApiOverride ? await spApiOverride(uid, schemaUrl) : await fetch(schemaUrl);
   if (!schemaResponse.ok) {
     schemaResponse = await spApiFetch(uid, schemaUrl.replace(SP_API_HOST, ''));
   }

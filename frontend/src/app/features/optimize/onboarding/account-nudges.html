@@ -62,14 +62,9 @@
               </label>
             }
           </fieldset>
-          <fieldset class="biz__chips">
-            <legend>{{ t('Where do you sell?', 'आप कहाँ बेचते हैं?') }}</legend>
-            @for (c of channels; track c) {
-              <label class="chip" [class.chip--on]="sellsOn().includes(c)">
-                <input type="checkbox" [checked]="sellsOn().includes(c)" (change)="toggleChannel(c, $any($event.target).checked)" />{{ c }}
-              </label>
-            }
-          </fieldset>
+          @if (!marketplacesSkipped()) {
+            <app-marketplace-picker [(selected)]="marketplaces" [(other)]="marketplacesOther" [skippable]="true" (skip)="skipMarketplaces()" />
+          }
           <label class="biz__field">
             <span>{{ t('GST number (optional)', 'GST number (optional)') }}</span>
             <input type="text" maxlength="15" autocapitalize="characters" [value]="gst()" (input)="gst.set($any($event.target).value)" placeholder="24ABCDE1234F1Z5" />
@@ -78,10 +73,27 @@
           @if (saveError()) { <p class="nudge__err" role="alert">{{ saveError() }}</p> }
           <div class="biz__actions">
             <button type="button" class="nudge__link" (click)="open.set(false)">{{ t('Later', 'बाद में') }}</button>
-            <button type="submit" class="nudge__btn nudge__btn--primary" [disabled]="saving()" data-testid="biz-save">{{ saving() ? t('Saving…', 'Save हो रहा है…') : t('Save', 'Save करें') }}</button>
+            <button type="submit" class="nudge__btn nudge__btn--primary" [disabled]="saving()" data-testid="biz-save">{{ saving() ? t('Saving…', 'Save हो रहा है…') : t('Continue', 'आगे बढ़ें') }}</button>
           </div>
         </form>
       }
+    </section>
+  }
+
+  @if (showMarketplacesCard()) {
+    <section class="nudge nudge--business" aria-labelledby="marketplaces-title" data-testid="marketplaces-card">
+      <div class="nudge__head">
+        <span class="nudge__icon" aria-hidden="true">🛒</span>
+        <p id="marketplaces-title" class="nudge__text"><strong>{{ t('Help us build what you need — where do you sell?', 'आपकी ज़रूरत के features बनाने में मदद करें — आप कहाँ बेचते हैं?') }}</strong></p>
+        <button type="button" class="nudge__close" (click)="dismissMarketplacesCard()" [attr.aria-label]="t('Dismiss', 'बंद करें')" data-testid="marketplaces-dismiss">✕</button>
+      </div>
+      <form class="biz" (submit)="$event.preventDefault(); saveMarketplacesCard()" novalidate>
+        <app-marketplace-picker [(selected)]="cardMarketplaces" [(other)]="cardOther" [skippable]="true" (skip)="dismissMarketplacesCard()" />
+        @if (cardError()) { <p class="nudge__err" role="alert">{{ cardError() }}</p> }
+        <div class="biz__actions">
+          <button type="submit" class="nudge__btn nudge__btn--primary" [disabled]="cardSaving() || !cardMarketplaces().length" data-testid="marketplaces-save">{{ cardSaving() ? t('Saving…', 'Save हो रहा है…') : t('Continue', 'आगे बढ़ें') }}</button>
+        </div>
+      </form>
     </section>
   }
 </div>

@@ -20,7 +20,11 @@
     </label>
     <label class="field" for="pf-quantity">
       <span class="field__label">Stock (units) *</span>
-      <input id="pf-quantity" class="field__input" type="number" min="0" step="1" inputmode="numeric" [ngModel]="quantity()" (ngModelChange)="quantity.set($event)" [attr.aria-invalid]="!!errors()['quantity']" />
+      @if (hasSizes()) {
+        <input id="pf-quantity" class="field__input" type="number" [value]="sizeTotal()" readonly title="Total of all sizes — edit stock per size below" />
+      } @else {
+        <input id="pf-quantity" class="field__input" type="number" min="0" step="1" inputmode="numeric" [ngModel]="quantity()" (ngModelChange)="quantity.set($event)" [attr.aria-invalid]="!!errors()['quantity']" />
+      }
       @if (errors()['quantity']) { <span class="field__error">{{ errors()['quantity'] }}</span> }
     </label>
   </div>
@@ -73,6 +77,10 @@
     <span class="field__label">Description</span>
     <textarea id="pf-description" class="field__input field__input--textarea" rows="3" [ngModel]="description()" (ngModelChange)="description.set($event)" placeholder="Optional notes about this product…"></textarea>
   </label>
+
+  <div class="sizes-box">
+    <app-variant-editor [(variants)]="variants" [(preset)]="sizePreset" [category]="category()" [title]="name()" [showSkus]="true" [lockSizes]="sizesLocked" [showSizeChart]="false" />
+  </div>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">

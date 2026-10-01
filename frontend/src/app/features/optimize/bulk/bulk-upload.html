@@ -1,0 +1,219 @@
+<section class="bulk" [attr.lang]="i18n.lang()" aria-labelledby="bulk-title">
+  <header class="bulk__head">
+    <h2 id="bulk-title" class="bulk__title">{{ t('Bulk upload file', 'Bulk upload file') }}</h2>
+    <p class="bulk__sub">{{ t('Fill the official Meesho or Flipkart bulk template with your listings. You upload the file on the marketplace yourself — we never log in to your panel. Free, no coins.', 'Meesho या Flipkart के official bulk template में आपकी listings भर देते हैं। File marketplace पर आप खुद upload करें — हम आपके panel में login नहीं करते। Free, कोई coin नहीं।') }}</p>
+    <ol class="bulk__steps" aria-label="Steps">
+      @for (s of [1, 2, 3, 4, 5]; track s) {
+        <li [class.bulk__step--on]="step() === s" [class.bulk__step--done]="step() > s" [attr.aria-current]="step() === s ? 'step' : null">{{ s }}</li>
+      }
+    </ol>
+  </header>
+
+
+  <!-- Step 1: marketplace -->
+  @if (step() === 1) {
+    <div class="bulk__card">
+      <h3 class="bulk__h3">1. {{ t('Choose the marketplace', 'Marketplace चुनें') }}</h3>
+      <div class="bulk__choices" role="radiogroup">
+        <button type="button" role="radio" class="bulk__choice" [class.bulk__choice--on]="marketplace() === 'meesho'" [attr.aria-checked]="marketplace() === 'meesho'" (click)="chooseMarketplace('meesho')" data-testid="choose-meesho">Meesho</button>
+        <button type="button" role="radio" class="bulk__choice" [class.bulk__choice--on]="marketplace() === 'flipkart'" [attr.aria-checked]="marketplace() === 'flipkart'" (click)="chooseMarketplace('flipkart')" data-testid="choose-flipkart">Flipkart</button>
+      </div>
+      @if (marketplace(); as m) {
+        <div class="bulk__guide">
+          <p class="bulk__guide-title">{{ t('How to download the template', 'Template कैसे download करें') }}</p>
+          @if (m === 'meesho') {
+            <ol>
+              <li>{{ t('Open Meesho Supplier Panel → Catalog Uploads → Add Bulk Catalog.', 'Meesho Supplier Panel खोलें → Catalog Uploads → Add Bulk Catalog.') }}</li>
+              <li>{{ t('Choose your category (e.g. Kurtis) and download the template.', 'अपनी category चुनें (जैसे Kurtis) और template download करें।') }}</li>
+              <li>{{ t('Upload that file here — don’t change it first.', 'वही file यहाँ upload करें — पहले उसमें कुछ न बदलें।') }}</li>
+            </ol>
+            <img class="bulk__shot" src="assets/bulk/meesho-template.png" alt="Meesho Supplier Panel: Catalog Uploads, Add Bulk Catalog" (error)="$any($event.target).hidden = true" />
+          } @else {
+            <ol>
+              <li>{{ t('Open Flipkart Seller Hub → Listings → Add in bulk.', 'Flipkart Seller Hub खोलें → Listings → Add in bulk.') }}</li>
+              <li>{{ t('Choose the category (e.g. Kurta) and download the template.', 'Category चुनें (जैसे Kurta) और template download करें।') }}</li>
+              <li>{{ t('Upload that file here — don’t change it first.', 'वही file यहाँ upload करें — पहले उसमें कुछ न बदलें।') }}</li>
+            </ol>
+            <img class="bulk__shot" src="assets/bulk/flipkart-template.png" alt="Flipkart Seller Hub: Listings, Add in bulk" (error)="$any($event.target).hidden = true" />
+          }
+          <button type="button" class="bulk__btn bulk__btn--primary" (click)="goTo(2)" data-testid="to-step-2">{{ t('Next: upload template', 'आगे: template upload करें') }}</button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Step 2: upload -->
+  @if (step() === 2) {
+    <div class="bulk__card">
+      <h3 class="bulk__h3">2. {{ t('Upload the ' + marketName() + ' template', marketName() + ' का template upload करें') }}</h3>
+      <label class="bulk__drop">
+        <input type="file" accept=".xlsx,.xls,.xlsm,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="onFile($event)" [disabled]="uploading()" data-testid="template-file" />
+        <span class="bulk__drop-icon" aria-hidden="true">📄</span>
+        <span class="bulk__drop-text">{{ uploading() ? t('Reading the template…', 'Template पढ़ रहे हैं…') : t('Choose the template file (.xlsx, .xls, .xlsm · up to 10 MB)', 'Template file चुनें (.xlsx, .xls, .xlsm · 10 MB तक)') }}</span>
+      </label>
+      @if (uploadError()) { <p class="bulk__err" role="alert" data-testid="upload-error">{{ uploadError() }}</p> }
+      @if (template(); as tpl) {
+        <div class="bulk__summary" data-testid="template-summary">
+          <p><strong>{{ tpl.category || tpl.sheetName }}</strong> · {{ tpl.columns.length }} {{ t('columns', 'columns') }} · {{ requiredCount() }} {{ t('mandatory', 'ज़रूरी') }}</p>
+          @if (tpl.warnings.includes('XLS_CONVERTED')) {
+            <p class="bulk__warn">{{ t('This is an old .xls file. Your filled file will be .xlsx (same columns) — the dropdown lists inside .xls files can’t be kept.', 'यह पुरानी .xls file है। भरी हुई file .xlsx होगी (वही columns) — .xls की dropdown lists नहीं रखी जा सकतीं।') }}</p>
+          }
+          @if (tpl.warnings.includes('DEPENDENT_LISTS')) {
+            <p class="bulk__warn">{{ t('Some dropdowns depend on other columns — check those in Excel before uploading.', 'कुछ dropdowns दूसरे columns पर निर्भर हैं — upload से पहले Excel में check करें।') }}</p>
+          }
+        </div>
+      }
+      <div class="bulk__row-actions">
+        <button type="button" class="bulk__link" (click)="goTo(1)">{{ t('Back', 'वापस') }}</button>
+        <button type="button" class="bulk__btn bulk__btn--primary" [disabled]="!template()" (click)="goTo(3)" data-testid="to-step-3">{{ t('Next: choose listings', 'आगे: listings चुनें') }}</button>
+      </div>
+    </div>
+  }
+
+  <!-- Step 3: select listings -->
+  @if (step() === 3) {
+    <div class="bulk__card">
+      <h3 class="bulk__h3">3. {{ t('Choose listings', 'Listings चुनें') }} <span class="bulk__count">{{ selected().size }}/{{ maxRows() }}</span></h3>
+      <div class="bulk__toolbar">
+        <input type="search" class="bulk__search" [value]="search()" (input)="search.set($any($event.target).value)" [placeholder]="t('Search by name or category', 'नाम या category से खोजें')" [attr.aria-label]="t('Search listings', 'Listings खोजें')" />
+        <label class="bulk__check"><input type="checkbox" (change)="selectAllShown($any($event.target).checked)" /> {{ t('Select all shown', 'दिख रहीं सब चुनें') }}</label>
+      </div>
+      @if (draftsLoading()) {
+        <p class="bulk__muted" role="status">{{ t('Loading your listings…', 'आपकी listings load हो रही हैं…') }}</p>
+      } @else if (drafts().length === 0) {
+        <p class="bulk__muted">{{ t('No listings yet — create one first.', 'अभी कोई listing नहीं — पहले एक बनाएं।') }} <a routerLink="/optimize/general">{{ t('New listing', 'नई listing') }}</a></p>
+      } @else {
+        <ul class="bulk__list" data-testid="listing-picker">
+          @for (d of filteredDrafts(); track d.id) {
+            <li>
+              <label class="bulk__item" [class.bulk__item--on]="isSelected(d.id)">
+                <input type="checkbox" [checked]="isSelected(d.id)" (change)="toggle(d.id, $any($event.target).checked)" [disabled]="!isSelected(d.id) && selected().size >= maxRows()" />
+                @if (d.imageUrl) { <img [src]="d.imageUrl" alt="" loading="lazy" /> }
+                <span class="bulk__item-text">
+                  <span class="bulk__item-title">{{ d.title || t('Untitled product', 'बिना नाम का product') }}</span>
+                  <span class="bulk__item-cat">{{ d.category || '—' }}</span>
+                  @if (isSelected(d.id) && mismatch(d)) {
+                    <span class="bulk__warn bulk__warn--inline" data-testid="category-warning">{{ t('Doesn’t look like ' + (template()?.category || 'this category'), (template()?.category || 'इस category') + ' जैसा नहीं लगता') }}</span>
+                  }
+                </span>
+              </label>
+            </li>
+          }
+        </ul>
+      }
+      @if (mismatchedSelected().length) {
+        <p class="bulk__warn" role="status">{{ t(mismatchedSelected().length + ' selected listing(s) don’t match this template’s category. The marketplace may reject those rows.', mismatchedSelected().length + ' चुनी हुई listing(s) इस template की category से मेल नहीं खातीं। Marketplace उन rows को reject कर सकता है।') }}</p>
+      }
+      @if (fillError()) { <p class="bulk__err" role="alert">{{ fillError() }}</p> }
+      <div class="bulk__row-actions">
+        <button type="button" class="bulk__link" (click)="goTo(2)">{{ t('Back', 'वापस') }}</button>
+        <button type="button" class="bulk__btn bulk__btn--primary" [disabled]="selected().size === 0 || filling()" (click)="fill()" data-testid="fill">{{ filling() ? t('Filling…', 'भर रहे हैं…') : t('Fill ' + selected().size + ' row(s)', selected().size + ' rows भरें') }}</button>
+      </div>
+    </div>
+  }
+
+  <!-- Step 4: preview + edit -->
+  @if (step() === 4 || step() === 5) {
+    <div class="bulk__card">
+      <h3 class="bulk__h3">4. {{ t('Check the rows', 'Rows check करें') }}</h3>
+      @if (report(); as r) {
+        <div class="bulk__report" data-testid="fill-report">
+          <p><strong>{{ r.filledPercent }}%</strong> {{ t('of mandatory cells filled', 'ज़रूरी cells भरे') }} · {{ mustFillLeft() }} {{ t('left for you', 'आपको भरने हैं') }}</p>
+          @if (r.emptyMandatory.length) {
+            <p class="bulk__muted">{{ t('You must fill:', 'आपको भरना होगा:') }} {{ mustFillHeaders() }}</p>
+          }
+          @for (code of r.instructions; track code) { <p class="bulk__warn">{{ instructionText(code) }}</p> }
+          @if (profileIncomplete()) {
+            <p class="bulk__warn">
+              {{ t('Brand, manufacturer and country of origin come from your business details.', 'Brand, manufacturer और country of origin आपकी business details से भरते हैं।') }}
+              <button type="button" class="bulk__link" (click)="openProfile()">{{ t('Add business details', 'Business details भरें') }}</button>
+            </p>
+          }
+        </div>
+      }
+      <div class="bulk__legend" aria-hidden="true">
+        <span class="lg lg--must">{{ t('You must fill', 'आपको भरना है') }}</span>
+        <span class="lg lg--adjusted">{{ t('Changed to fit the list', 'List के हिसाब से बदला') }}</span>
+        <span class="lg lg--ai">{{ t('AI picked — check', 'AI ने चुना — check करें') }}</span>
+      </div>
+      <div class="bulk__table-wrap">
+        <table class="bulk__table" data-testid="preview-table">
+          <thead>
+            <tr>
+              <th scope="col" class="bulk__sticky">{{ t('Listing', 'Listing') }}</th>
+              @for (col of columns(); track col.col) {
+                <th scope="col" [class.bulk__th--req]="col.required">{{ col.header }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.rowKey; let i = $index) {
+              <tr [attr.data-testid]="'bulk-row-' + i">
+                <th scope="row" class="bulk__sticky">
+                  {{ row.title }}
+                  @if (row.variantLabel) { <span class="bulk__variant" data-testid="bulk-row-variant">{{ row.variantLabel }}</span> }
+                  @if (row.categoryMismatch) { <span class="bulk__warn bulk__warn--inline">{{ t('Other category', 'दूसरी category') }}</span> }
+                </th>
+                @for (col of columns(); track col.col) {
+                  @let c = cell(row, col);
+                  <td [class]="'cell cell--' + c.status" [title]="cellTitle(c)">
+                    @if (col.allowed) {
+                      <select [value]="c.value" (change)="edit(i, col, $any($event.target).value)" [attr.aria-label]="col.header + ' — ' + row.title">
+                        <option value="">—</option>
+                        @for (opt of col.allowed; track opt) { <option [value]="opt" [selected]="opt === c.value">{{ opt }}</option> }
+                      </select>
+                    } @else {
+                      <input [value]="c.value" (change)="edit(i, col, $any($event.target).value)" [attr.aria-label]="col.header + ' — ' + row.title" />
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (downloadError()) { <p class="bulk__err" role="alert">{{ downloadError() }}</p> }
+      <div class="bulk__row-actions">
+        <button type="button" class="bulk__link" (click)="goTo(3)">{{ t('Back', 'वापस') }}</button>
+        <button type="button" class="bulk__btn bulk__btn--primary" [disabled]="downloading()" (click)="download()" data-testid="download">{{ downloading() ? t('Preparing…', 'तैयार कर रहे हैं…') : t('Download filled file', 'भरी हुई file download करें') }}</button>
+      </div>
+    </div>
+  }
+
+  <!-- Step 5: done -->
+  @if (step() === 5) {
+    <div class="bulk__card bulk__done" role="status" data-testid="download-done">
+      <h3 class="bulk__h3">5. ✅ {{ t('File downloaded', 'File download हो गई') }}: {{ downloaded() }}</h3>
+      <p>{{ t('Upload this file in ' + marketName() + ' bulk upload (' + (marketplace() === 'flipkart' ? 'Seller Hub → Listings → Add in bulk' : 'Supplier Panel → Catalog Uploads → Add Bulk Catalog') + ').', 'यह file ' + marketName() + ' bulk upload में upload करें (' + (marketplace() === 'flipkart' ? 'Seller Hub → Listings → Add in bulk' : 'Supplier Panel → Catalog Uploads → Add Bulk Catalog') + ')।') }}</p>
+      @if (mustFillLeft() > 0) {
+        <p class="bulk__warn">{{ t(mustFillLeft() + ' mandatory cell(s) are still empty — fill them in Excel first, or the marketplace will reject those rows.', mustFillLeft() + ' ज़रूरी cells अभी खाली हैं — पहले Excel में भरें, वरना marketplace उन rows को reject करेगा।') }}</p>
+      }
+      <button type="button" class="bulk__link" (click)="startOver()">{{ t('Make another file', 'दूसरी file बनाएं') }}</button>
+    </div>
+  }
+
+  <!-- Seller profile: saved once, reused in every file -->
+  <details id="bulk-profile" class="bulk__card bulk__profile" [open]="profileOpen()" (toggle)="profileOpen.set($any($event.target).open)" data-testid="bulk-profile">
+    <summary>{{ t('Your business details (used in every file)', 'आपकी business details (हर file में use होंगी)') }}</summary>
+    <form class="bulk__profile-form" (submit)="$event.preventDefault(); saveProfile()">
+      <label>{{ t('Brand', 'Brand') }}<input [value]="profile().brand ?? ''" (input)="setProfile('brand', $any($event.target).value)" maxlength="100" /></label>
+      <label>{{ t('Country of origin', 'Country of origin') }}<input [value]="profile().countryOfOrigin ?? ''" (input)="setProfile('countryOfOrigin', $any($event.target).value)" placeholder="India" maxlength="60" /></label>
+      <label>{{ t('Manufacturer name', 'Manufacturer का नाम') }}<input [value]="profile().manufacturerName ?? ''" (input)="setProfile('manufacturerName', $any($event.target).value)" maxlength="150" /></label>
+      <label>{{ t('Manufacturer address', 'Manufacturer का पता') }}<input [value]="profile().manufacturerAddress ?? ''" (input)="setProfile('manufacturerAddress', $any($event.target).value)" maxlength="400" /></label>
+      <label>{{ t('Packer name (if different)', 'Packer का नाम (अगर अलग है)') }}<input [value]="profile().packerName ?? ''" (input)="setProfile('packerName', $any($event.target).value)" maxlength="150" /></label>
+      <label>{{ t('Packer address (if different)', 'Packer का पता (अगर अलग है)') }}<input [value]="profile().packerAddress ?? ''" (input)="setProfile('packerAddress', $any($event.target).value)" maxlength="400" /></label>
+      <label>{{ t('Your prices include GST?', 'आपके prices में GST शामिल है?') }}
+        <select [value]="profile().gstHandling ?? ''" (change)="setProfile('gstHandling', $any($event.target).value)">
+          <option value="">{{ t('Choose', 'चुनें') }}</option>
+          <option value="inclusive" [selected]="profile().gstHandling === 'inclusive'">{{ t('Yes, GST included', 'हाँ, GST शामिल है') }}</option>
+          <option value="exclusive" [selected]="profile().gstHandling === 'exclusive'">{{ t('No, GST extra', 'नहीं, GST अलग से') }}</option>
+        </select>
+      </label>
+      <label>{{ t('Pickup pincode', 'Pickup pincode') }}<input inputmode="numeric" maxlength="6" [value]="profile().pickupPincode ?? ''" (input)="setProfile('pickupPincode', $any($event.target).value)" /></label>
+      <div class="bulk__row-actions">
+        @if (profileMessage(); as m) { <span [class.bulk__ok]="m.ok" [class.bulk__err]="!m.ok" role="status">{{ m.text }}</span> }
+        <button type="submit" class="bulk__btn" [disabled]="profileSaving()">{{ profileSaving() ? t('Saving…', 'Save हो रहा है…') : t('Save details', 'Details save करें') }}</button>
+      </div>
+    </form>
+  </details>
+</section>

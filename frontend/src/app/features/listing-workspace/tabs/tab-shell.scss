@@ -85,6 +85,19 @@
   }
 }
 
+.tab-shell__copy-note.tab-shell__copy-note--bulk {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #7c2d12;
+
+  a {
+    color: #c2410c;
+    font-weight: 800;
+    text-decoration: underline;
+    margin-left: 4px;
+  }
+}
+
 // "Copy these details into Flipkart Seller Hub. Direct publishing coming soon."
 .tab-shell__copy-note {
   display: flex;

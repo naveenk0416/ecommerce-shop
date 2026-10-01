@@ -1,7 +1,22 @@
 <h2 mat-dialog-title>Log Sale — {{ listing.name }}</h2>
 
 <mat-dialog-content class="form-dialog">
-  <p class="stock-note">{{ availableStock }} unit{{ availableStock === 1 ? '' : 's' }} currently in stock.</p>
+  @if (variants.length) {
+    <label class="field" for="sale-variant">
+      <span class="field__label">{{ i18n.t('Size / colour sold', 'कौन सा size / रंग बिका') }}</span>
+      <select id="sale-variant" class="field__input" [value]="variantId() ?? ''" (change)="chooseVariant($any($event.target).value)" data-testid="sale-variant">
+        <option value="">{{ i18n.t('Choose…', 'चुनें…') }}</option>
+        @for (v of variants; track v.id) {
+          <option [value]="v.id" [disabled]="v.stock <= 0">{{ label(v) }} — {{ v.stock }} {{ i18n.t('in stock', 'stock में') }}</option>
+        }
+      </select>
+    </label>
+    @if (selectedVariant(); as v) {
+      <p class="stock-note" data-testid="sale-variant-stock">{{ label(v) }}: {{ availableStock }} {{ i18n.t('in stock', 'stock में') }}</p>
+    }
+  } @else {
+    <p class="stock-note">{{ availableStock }} unit{{ availableStock === 1 ? '' : 's' }} currently in stock.</p>
+  }
 
   <label class="field" for="sale-platform">
     <span class="field__label">Platform</span>

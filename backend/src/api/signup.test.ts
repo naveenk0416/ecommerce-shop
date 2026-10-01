@@ -396,3 +396,93 @@ test('existing (pre-change) accounts keep the single 10-coin welcome on verifica
   await verify(user._id.toString());
   assert.deepEqual(await ledger(user._id.toString()), [['Welcome bonus', 10]]);
 });
+
+// ---- "Where do you sell?" (marketplaces) ----
+
+test('marketplaces: unknown values ignored, "none" exclusive, "other" text capped at 30; persists across logins', async () => {
+  const res = await register();
+  const { token } = res.data;
+  let me = (await api('GET', '/me', undefined, { token })).data.user;
+  assert.equal(me.marketplaces, null, 'not answered yet');
+  assert.equal(me.marketplacesCard.show, true);
+
+  const saved = await api('PUT', '/me/marketplaces', { marketplaces: ['Meesho', 'amazon', 'ebay', 42, 'amazon', 'other'], other: '  GlowRoad <b>and</b> a very long shop name here ' }, { token });
+  assert.equal(saved.status, 200);
+  assert.deepEqual(saved.data.marketplaces, ['amazon', 'meesho', 'other']);
+  assert.equal(saved.data.marketplacesOther.length <= 30, true);
+  assert.doesNotMatch(saved.data.marketplacesOther, /[<>]/);
+
+  // "none" + a channel → the channel wins; "none" alone stays; other text dropped without "other".
+  assert.deepEqual((await api('PUT', '/me/marketplaces', { marketplaces: ['none', 'flipkart'], other: 'x' }, { token })).data, { ok: true, marketplaces: ['flipkart'], marketplacesOther: null });
+  assert.deepEqual((await api('PUT', '/me/marketplaces', { marketplaces: ['none'] }, { token })).data.marketplaces, ['none']);
+  assert.equal((await api('PUT', '/me/marketplaces', { marketplaces: 'amazon' }, { token })).status, 400);
+  await api('PUT', '/me/marketplaces', { marketplaces: ['social', 'website', 'offline'] }, { token });
+
+  // New session (login) sees the same answer and no card.
+  const login = await api('POST', '/login', { email: res.data.user.email, password: 'Str0ng!Pass' });
+  me = (await api('GET', '/me', undefined, { token: login.data.token })).data.user;
+  assert.deepEqual(me.marketplaces, ['social', 'website', 'offline']);
+  assert.equal(me.marketplacesCard.show, false);
+  const doc = await common.User.findById(res.data.user.uid).lean();
+  assert.ok(doc.marketplaces_updated_at instanceof Date);
+});
+
+test('marketplaces card: dismiss hides it for good; business card saves marketplaces and counts them for the +2', async () => {
+  const a = await register();
+  await api('PUT', '/me/marketplaces', { dismiss: true }, { token: a.data.token });
+  let me = (await api('GET', '/me', undefined, { token: a.data.token })).data.user;
+  assert.equal(me.marketplacesCard.show, false);
+  assert.equal(me.marketplaces, null);
+
+  const b = await register();
+  await verify(b.data.user.uid);
+  const full = await api('PATCH', '/me/business', { state: 'Telangana', catalogSizeBand: '11-50', marketplaces: ['meesho', 'nope'], marketplacesOther: 'ignored' }, { token: b.data.token });
+  assert.equal(full.data.complete, true);
+  assert.equal(full.data.bonusGranted, true);
+  me = (await api('GET', '/me', undefined, { token: b.data.token })).data.user;
+  assert.deepEqual(me.marketplaces, ['meesho']);
+  assert.equal(me.marketplacesOther, null);
+  assert.equal(me.marketplacesCard.show, false);
+  // Saving the card without touching the question keeps the earlier answer.
+  await api('PATCH', '/me/business', { city: 'Hyderabad', marketplaces: [] }, { token: b.data.token });
+  assert.deepEqual((await api('GET', '/me', undefined, { token: b.data.token })).data.user.marketplaces, ['meesho']);
+
+  // Dismissing the business card (which holds the question) also retires the marketplaces card.
+  const c = await register();
+  await api('PATCH', '/me/business', { dismiss: true }, { token: c.data.token });
+  assert.equal((await api('GET', '/me', undefined, { token: c.data.token })).data.user.marketplacesCard.show, false);
+});
+
+test('admin marketplaces table: counts and shares match the database, filtered by utm_campaign; CSV export', async () => {
+  const answers: Array<[string, string[]]> = [
+    ['mp_surat', ['meesho', 'amazon']], ['mp_surat', ['meesho']], ['mp_surat', ['none']], ['mp_surat', []],
+    ['mp_hyd', ['flipkart']],
+  ];
+  for (const [campaign, list] of answers) {
+    const r = await register({ attribution: { utm_source: 'facebook', utm_campaign: campaign } });
+    if (list.length) await api('PUT', '/me/marketplaces', { marketplaces: list }, { token: r.data.token });
+  }
+  const admin = await new common.User({ email: 'mp-admin@realmail.test', passwordHash: 'x', emailVerified: true, role: 'ADMIN' }).save();
+  const adminToken = jwt.sign({ uid: admin._id.toString(), email: admin.email }, 'test-secret');
+  assert.equal((await api('GET', '/admin/stats?campaign=mp_surat', undefined, { token: (await register()).data.token })).status, 403);
+
+  const stats = (await api('GET', '/admin/stats?campaign=mp_surat', undefined, { token: adminToken })).data.marketplaces;
+  const users = await common.User.find({ 'attribution.utm_campaign': 'mp_surat' }).lean();
+  const answered = users.filter((u: any) => u.marketplaces_updated_at);
+  assert.equal(stats.signups, users.length);
+  assert.equal(stats.respondents, answered.length);
+  for (const row of stats.rows) {
+    const inDb = answered.filter((u: any) => (u.marketplaces ?? []).includes(row.value)).length;
+    assert.equal(row.sellers, inDb, row.value);
+  }
+  const meesho = stats.rows.find((r: any) => r.value === 'meesho');
+  assert.deepEqual([meesho.sellers, meesho.pctOfRespondents, meesho.pctOfSignups], [2, 66.7, 50]);
+  assert.equal(stats.rows.find((r: any) => r.value === 'flipkart').sellers, 0, 'Hyderabad campaign filtered out');
+
+  const csv = await api('GET', '/admin/stats.csv?type=marketplaces&campaign=mp_hyd', undefined, { token: adminToken });
+  assert.equal(csv.status, 200);
+  assert.match(csv.data, /^marketplace,sellers,pct_of_respondents,pct_of_signups\n/);
+  assert.match(csv.data, /"flipkart","1","100","100"/);
+  const perSeller = await api('GET', '/admin/stats.csv?type=users&campaign=mp_surat', undefined, { token: adminToken });
+  assert.match(perSeller.data, /"amazon\|meesho"/);
+});

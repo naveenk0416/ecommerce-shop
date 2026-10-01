@@ -5,6 +5,7 @@ import { INSTAGRAM_SEO_CHECKS } from '../listing-workspace/tabs/instagram-conten
 import { computeSeoScore, SeoCheck } from '../listing-workspace/ui/seo-score-card/seo-score.util';
 import { MarketplaceId } from '../listing-workspace/ui/marketplace-icon/marketplace-icon';
 import { OptimizeTabKey, TabResult } from './optimize-session.service';
+import { orderTabsByMarketplaces } from '../../config/signup-options';
 
 export interface MarketplaceReadinessRow {
   tab: OptimizeTabKey;
@@ -32,9 +33,12 @@ const LABELS: Record<Marketplace, string> = {
 
 const MARKETPLACES: readonly Marketplace[] = ['amazon', 'flipkart', 'meesho', 'instagram'];
 
-/** Live per-marketplace readiness, scored from whatever's been generated so far in this session. */
-export function computeMarketplaceRows(results: Partial<Record<OptimizeTabKey, TabResult>>): MarketplaceReadinessRow[] {
-  return MARKETPLACES.map((tab) => {
+/**
+ * Live per-marketplace readiness, scored from whatever's been generated so far in this session.
+ * The seller's own marketplaces ("where do you sell?") come first; every tab is always listed.
+ */
+export function computeMarketplaceRows(results: Partial<Record<OptimizeTabKey, TabResult>>, sellerMarketplaces?: readonly string[] | null): MarketplaceReadinessRow[] {
+  return orderTabsByMarketplaces(MARKETPLACES, (tab) => tab, sellerMarketplaces).map((tab) => {
     const result = results[tab];
     if (!result) {
       return { tab, marketplace: tab, label: LABELS[tab], score: null, ready: false };

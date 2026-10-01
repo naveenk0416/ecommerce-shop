@@ -1,0 +1,295 @@
+<section class="bp" [attr.lang]="i18n.lang()">
+  <header class="bp__head">
+    <h2 class="bp__title">{{ t('Add many products', 'कई products जोड़ें') }}</h2>
+    @if (step() === 'pick' || step() === 'group' || step() === 'details' || step() === 'confirm') {
+      <ol class="bp__steps" [attr.aria-label]="t('Steps', 'Steps')">
+        <li [class.bp__step--on]="step() === 'pick'">1. {{ t('Photos', 'Photos') }}</li>
+        <li [class.bp__step--on]="step() === 'group'">2. {{ t('Group', 'Group') }}</li>
+        <li [class.bp__step--on]="step() === 'details'">3. {{ t('Details', 'Details') }}</li>
+        <li [class.bp__step--on]="step() === 'confirm'">4. {{ t('Coins', 'Coins') }}</li>
+      </ol>
+    }
+  </header>
+
+  @if (loading()) {
+    <p class="bp__muted" role="status">{{ t('Loading…', 'Load हो रहा है…') }}</p>
+  } @else {
+    @if (notice()) {
+      <div class="bp__notice" role="status">
+        <span>{{ notice() }}</span>
+        <button type="button" class="bp__btn" (click)="cancelUnfinished()" data-testid="cancel-unfinished">{{ t('Cancel it', 'Cancel करें') }}</button>
+      </div>
+    }
+    @if (error()) { <p class="bp__error" role="alert" data-testid="batch-error">{{ error() }}</p> }
+
+    <!-- 1. Pick photos -->
+    @if (step() === 'pick') {
+      <div class="bp__card">
+        <label class="bp__drop" data-testid="batch-pick">
+          <mat-icon aria-hidden="true">add_photo_alternate</mat-icon>
+          <strong>{{ t('Choose up to ' + maxPhotos() + ' photos', maxPhotos() + ' photos तक चुनें') }}</strong>
+          <span class="bp__muted">{{ t('From your gallery or camera. Each photo becomes one product — you can group front/back photos next.', 'Gallery या camera से। हर photo एक product बनेगी — अगले step में आगे/पीछे की photos को group कर सकते हैं।') }}</span>
+          <input type="file" accept="image/*" multiple hidden (change)="onFiles($event)" data-testid="batch-files" />
+        </label>
+        @if (preparing() > 0) { <p class="bp__muted" role="status">{{ t('Preparing ' + preparing() + ' photo(s)…', preparing() + ' photo तैयार हो रही हैं…') }}</p> }
+        @if (photos().length) {
+          <div class="bp__thumbs">
+            @for (p of photos(); track p.id) {
+              <div class="bp__thumb">
+                <img [src]="p.dataUrl" alt="" />
+                <button type="button" class="bp__x" (click)="removePhoto(p.id)" [attr.aria-label]="t('Remove photo', 'Photo हटाएं')">✕</button>
+              </div>
+            }
+          </div>
+          <div class="bp__bar">
+            <span class="bp__muted">{{ photos().length }} / {{ maxPhotos() }} {{ t('photos', 'photos') }}</span>
+            <button type="button" class="bp__btn bp__btn--primary" [disabled]="preparing() > 0" (click)="goTo('group')" data-testid="to-group">{{ t('Next', 'आगे') }}</button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- 2. Group photos of the same product -->
+    @if (step() === 'group') {
+      <div class="bp__card">
+        <p class="bp__muted">{{ t('1 photo = 1 product. Long-press (or tap "Select") to pick photos of the same product, then tap "Group". The first photo is the main one.', '1 photo = 1 product। एक ही product की photos चुनने के लिए दबाकर रखें (या "चुनें" दबाएं), फिर "Group" दबाएं। पहली photo मुख्य होगी।') }}</p>
+        <div class="bp__toolbar">
+          @if (selectMode()) {
+            <button type="button" class="bp__btn bp__btn--primary" [disabled]="selected().size < 2" (click)="groupSelected()" data-testid="group-selected">{{ t('Group as 1 product', '1 product बनाएं') }} ({{ selected().size }})</button>
+            <button type="button" class="bp__btn" (click)="cancelSelect()">{{ t('Cancel', 'रद्द करें') }}</button>
+          } @else {
+            <button type="button" class="bp__btn" (click)="startSelect()" data-testid="select-mode">{{ t('Select', 'चुनें') }}</button>
+          }
+          <span class="bp__muted">{{ groups().length }} {{ t('products', 'products') }}</span>
+        </div>
+        <div class="bp__grid" role="list">
+          @for (g of groups(); track g[0]; let gi = $index) {
+            <div class="bp__product" role="listitem"
+              [class.bp__product--selected]="selected().has(gi)"
+              [class.bp__product--open]="openGroup() === gi"
+              draggable="true" (dragstart)="dragStart(gi)" (dragover)="allowDrop($event)" (drop)="drop(gi, $event)"
+              [attr.data-testid]="'product-' + gi">
+              <button type="button" class="bp__product-btn" (pointerdown)="pressStart(gi)" (pointerup)="pressEnd()" (pointerleave)="pressEnd()" (pointercancel)="pressEnd()" (contextmenu)="$event.preventDefault()"
+                (click)="tapGroup(gi)" [attr.aria-pressed]="selected().has(gi)" [attr.aria-label]="t('Product ' + (gi + 1) + ', ' + g.length + ' photos', 'Product ' + (gi + 1) + ', ' + g.length + ' photos')">
+                @if (photoById().get(g[0]); as main) { <img [src]="main.dataUrl" alt="" /> }
+                @if (g.length > 1) { <span class="bp__count">{{ g.length }}</span> }
+                @if (selectMode()) { <span class="bp__tick" aria-hidden="true">{{ selected().has(gi) ? '✓' : '' }}</span> }
+              </button>
+              @if (openGroup() === gi) {
+                <div class="bp__group-detail">
+                  <div class="bp__mini">
+                    @for (id of g; track id; let pi = $index) {
+                      <div class="bp__mini-item">
+                        @if (photoById().get(id); as ph) { <img [src]="ph.dataUrl" alt="" /> }
+                        @if (pi === 0) { <span class="bp__main">{{ t('Main', 'मुख्य') }}</span> }
+                        @else { <button type="button" class="bp__link" (click)="makeMain(gi, id)">{{ t('Make main', 'मुख्य बनाएं') }}</button> }
+                      </div>
+                    }
+                  </div>
+                  @if (g.length > 1) { <button type="button" class="bp__link" (click)="splitGroup(gi)" data-testid="split-group">{{ t('Separate photos', 'Photos अलग करें') }}</button> }
+                </div>
+              }
+            </div>
+          }
+        </div>
+        <div class="bp__bar">
+          <button type="button" class="bp__btn" (click)="goTo('pick')">{{ t('Back', 'पीछे') }}</button>
+          <button type="button" class="bp__btn bp__btn--primary" (click)="goTo('details')" data-testid="to-details">{{ t('Next', 'आगे') }}</button>
+        </div>
+      </div>
+    }
+
+    <!-- 3. Common details -->
+    @if (step() === 'details') {
+      <div class="bp__card">
+        <p class="bp__muted">{{ t('Same for every product in this batch (optional). Filled in from your last batch.', 'इस batch के हर product के लिए एक जैसा (ज़रूरी नहीं)। पिछले batch से भरा गया है।') }}</p>
+        <div class="bp__fields">
+          <label class="bp__field">
+            <span>{{ t('Category', 'Category') }}</span>
+            <input [value]="category()" (input)="category.set($any($event.target).value)" [placeholder]="t('Leave empty — AI detects it', 'खाली छोड़ें — AI पहचान लेगा')" data-testid="common-category" />
+          </label>
+          <label class="bp__field">
+            <span>{{ t('Brand', 'Brand') }}</span>
+            <input [value]="brand()" (input)="brand.set($any($event.target).value)" placeholder="e.g. Rangoli" data-testid="common-brand" />
+          </label>
+          <label class="bp__field">
+            <span>{{ t('Price ₹', 'कीमत ₹') }}</span>
+            <input inputmode="decimal" [value]="price()" (input)="price.set($any($event.target).value)" data-testid="common-price" />
+          </label>
+          <label class="bp__field">
+            <span>MRP ₹</span>
+            <input inputmode="decimal" [value]="mrp()" (input)="mrp.set($any($event.target).value)" data-testid="common-mrp" />
+          </label>
+          <label class="bp__field">
+            <span>{{ t('Cost price ₹', 'लागत ₹') }}</span>
+            <input inputmode="decimal" [value]="costPrice()" (input)="costPrice.set($any($event.target).value)" />
+          </label>
+          <div class="bp__field">
+            <span>GST</span>
+            <div class="bp__seg" role="group">
+              <button type="button" [class.bp__seg--on]="gstHandling() === 'inclusive'" (click)="gstHandling.set('inclusive')">{{ t('Price includes GST', 'कीमत में GST शामिल') }}</button>
+              <button type="button" [class.bp__seg--on]="gstHandling() === 'exclusive'" (click)="gstHandling.set('exclusive')">{{ t('GST extra', 'GST अलग') }}</button>
+            </div>
+          </div>
+        </div>
+        <div class="bp__sizes">
+          <app-variant-editor [(variants)]="sizeVariants" [(preset)]="sizePreset" [category]="category()" [brand]="brand()" [allowColours]="false" />
+          <p class="bp__muted">{{ t('Different colours in one product? Group their photos — the AI names each colour and gives it its own sizes.', 'एक product के अलग रंग? उनकी photos group करें — AI हर रंग का नाम देगा और उसकी अलग sizes बनेंगी।') }}</p>
+          @if (!hasSizes()) {
+            <label class="bp__field bp__field--narrow">
+              <span>{{ t('Stock per product', 'हर product का stock') }}</span>
+              <input inputmode="numeric" [value]="plainStock()" (input)="plainStock.set($any($event.target).value)" data-testid="common-stock" />
+            </label>
+          }
+          <label class="bp__field bp__field--narrow">
+            <span>{{ t('Low-stock alert at', 'Low-stock alert') }}</span>
+            <input inputmode="numeric" [value]="lowStock()" (input)="lowStock.set($any($event.target).value)" placeholder="5" />
+          </label>
+        </div>
+        <div class="bp__bar">
+          <button type="button" class="bp__btn" (click)="goTo('group')">{{ t('Back', 'पीछे') }}</button>
+          <button type="button" class="bp__btn bp__btn--primary" (click)="goTo('confirm')" data-testid="to-confirm">{{ t('Next', 'आगे') }}</button>
+        </div>
+      </div>
+    }
+
+    <!-- 4. Coin cost, before anything starts -->
+    @if (step() === 'confirm') {
+      <div class="bp__card">
+        <p class="bp__cost" data-testid="batch-cost">
+          {{ t(chosen().length + ' products = ' + needed() + ' coins (you have ' + balance() + ')', chosen().length + ' products = ' + needed() + ' coins (आपके पास ' + balance() + ')') }}
+        </p>
+        <p class="bp__muted">{{ t('A coin is used only for a listing that is made. Failed ones are free.', 'Coin सिर्फ़ बनी हुई listing पर लगेगा। जो नहीं बनी, वो free है।') }}</p>
+        @if (!enough()) {
+          <p class="bp__error" role="alert" data-testid="not-enough">{{ t('Not enough coins — untick some products.', 'Coins कम हैं — कुछ products हटाएं।') }}</p>
+        }
+        <div class="bp__grid">
+          @for (g of groups(); track g[0]; let gi = $index) {
+            <label class="bp__pick" [class.bp__pick--off]="excluded().has(gi)">
+              <input type="checkbox" [checked]="!excluded().has(gi)" (change)="toggleExcluded(gi)" [attr.data-testid]="'include-' + gi" />
+              @if (photoById().get(g[0]); as main) { <img [src]="main.dataUrl" alt="" /> }
+              @if (g.length > 1) { <span class="bp__count">{{ g.length }}</span> }
+            </label>
+          }
+        </div>
+        <div class="bp__bar">
+          <button type="button" class="bp__btn" (click)="goTo('details')">{{ t('Back', 'पीछे') }}</button>
+          <button type="button" class="bp__btn bp__btn--primary" [disabled]="!enough() || !chosen().length" (click)="startBatch()" data-testid="start-batch">
+            {{ t('Start — ' + needed() + ' coins', 'शुरू करें — ' + needed() + ' coins') }}
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (step() === 'upload') {
+      <div class="bp__card" role="status">
+        <p class="bp__cost">{{ t('Uploading photos…', 'Photos upload हो रही हैं…') }} {{ uploaded() }} / {{ uploadTotal() }}</p>
+        <progress class="bp__progress" [value]="uploaded()" [max]="uploadTotal() || 1"></progress>
+        <p class="bp__muted">{{ t('Keep this page open until the upload finishes. After that you can leave.', 'Upload पूरा होने तक यह page खुला रखें। उसके बाद आप जा सकते हैं।') }}</p>
+      </div>
+    }
+
+    <!-- Progress: runs on the server -->
+    @if (step() === 'progress' && batch(); as b) {
+      <div class="bp__card">
+        <p class="bp__cost" data-testid="batch-progress">{{ t(b.done + ' of ' + b.total + ' ready', b.total + ' में से ' + b.done + ' तैयार') }}@if (b.failed) { · {{ t(b.failed + ' failed', b.failed + ' नहीं बनीं') }} }</p>
+        <progress class="bp__progress" [value]="b.done + b.failed" [max]="b.total || 1"></progress>
+        @if (b.status === 'paused') {
+          <p class="bp__notice" role="status" data-testid="batch-paused">
+            {{ b.pauseReason === 'coins'
+              ? t('Paused — you’re out of coins. Add coins and we’ll continue.', 'रुका है — coins खत्म। Coins जोड़ें, हम आगे बढ़ेंगे।')
+              : t('We’ll continue shortly — the AI is busy right now.', 'हम थोड़ी देर में जारी रखेंगे — AI अभी व्यस्त है।') }}
+          </p>
+        }
+        <p class="bp__muted">{{ t('You can leave this page — we’ll keep going and tell you when it’s done.', 'आप यह page छोड़ सकते हैं — हम काम जारी रखेंगे और पूरा होने पर बताएंगे।') }}</p>
+        <div class="bp__grid">
+          @for (item of b.items; track item.id) {
+            <div class="bp__status" [attr.data-status]="item.status" [attr.data-testid]="'item-' + item.index">
+              <img [src]="item.photoUrls[0]" alt="" loading="lazy" />
+              <span class="bp__badge">{{ statusText(item) }}</span>
+              @if (item.status === 'failed') {
+                <button type="button" class="bp__btn bp__btn--small" [disabled]="busy() === item.id" (click)="retry(item)" [attr.data-testid]="'retry-' + item.index">{{ t('Retry', 'दोबारा') }}</button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Review -->
+    @if (step() === 'review' && batch(); as b) {
+      <div class="bp__card">
+        <div class="bp__bar bp__bar--top">
+          <p class="bp__cost" data-testid="review-summary">{{ t(readyItems().length + ' listings ready', readyItems().length + ' listings तैयार') }}@if (b.failed) { · {{ t(b.failed + ' failed', b.failed + ' नहीं बनीं') }} }</p>
+          <button type="button" class="bp__btn" [disabled]="busy() === 'all'" (click)="approve(null)" data-testid="approve-all">{{ t('Approve all', 'सभी approve करें') }}</button>
+        </div>
+        <div class="bp__review">
+          @for (item of b.items; track item.id) {
+            @if (item.status === 'ready' && item.listing) {
+              <article class="bp__listing" [class.bp__listing--approved]="item.approved" [attr.data-testid]="'review-' + item.index">
+                <button type="button" class="bp__listing-main" (click)="startEdit(item)" [attr.aria-expanded]="editing() === item.id">
+                  <img [src]="item.photoUrls[0]" alt="" loading="lazy" />
+                  <span class="bp__listing-text">
+                    <strong>{{ item.listing!.title }}</strong>
+                    <span class="bp__muted">{{ item.listing!.category }}</span>
+                    <span class="bp__muted">
+                      @if (item.listing!.price) { ₹{{ item.listing!.price }} · }
+                      {{ t('Stock', 'Stock') }} {{ item.listing!.stock ?? 0 }}
+                    </span>
+                    @if (sizesText(item)) { <span class="bp__chip" data-testid="review-sizes">{{ sizesText(item) }}</span> }
+                  </span>
+                </button>
+                <div class="bp__listing-actions">
+                  @if (item.approved) {
+                    <button type="button" class="bp__btn bp__btn--small bp__btn--ok" (click)="approve(item, false)" [attr.data-testid]="'approved-' + item.index">✓ {{ t('Approved', 'Approved') }}</button>
+                  } @else {
+                    <button type="button" class="bp__btn bp__btn--small" [disabled]="busy() === item.id" (click)="approve(item)" [attr.data-testid]="'approve-' + item.index">{{ t('Approve', 'Approve') }}</button>
+                  }
+                  @if (item.inventoryListingId) { <span class="bp__chip">{{ t('In Inventory', 'Inventory में') }}</span> }
+                </div>
+                @if (editing() === item.id) {
+                  <div class="bp__edit">
+                    <label class="bp__field"><span>{{ t('Title', 'Title') }}</span><input [value]="editTitle()" (input)="editTitle.set($any($event.target).value)" data-testid="edit-title" /></label>
+                    <div class="bp__fields">
+                      <label class="bp__field"><span>{{ t('Price ₹', 'कीमत ₹') }}</span><input inputmode="decimal" [value]="editPrice()" (input)="editPrice.set($any($event.target).value)" data-testid="edit-price" /></label>
+                      <label class="bp__field"><span>MRP ₹</span><input inputmode="decimal" [value]="editMrp()" (input)="editMrp.set($any($event.target).value)" /></label>
+                      @if (!editVariants().length) {
+                        <label class="bp__field"><span>{{ t('Stock', 'Stock') }}</span><input inputmode="numeric" [value]="editStock()" (input)="editStock.set($any($event.target).value)" /></label>
+                      }
+                    </div>
+                    @if (editVariants().length) {
+                      <app-variant-editor [(variants)]="editVariants" [category]="item.listing!.category" [title]="editTitle()" [showSizeChart]="false" [showSkus]="true" />
+                    }
+                    <div class="bp__bar">
+                      <button type="button" class="bp__link" (click)="openFullEditor(item)">{{ t('Edit every field', 'हर field बदलें') }} →</button>
+                      <button type="button" class="bp__btn bp__btn--primary" [disabled]="busy() === item.id" (click)="saveEdit(item)" data-testid="edit-save">{{ t('Save', 'Save करें') }}</button>
+                    </div>
+                  </div>
+                }
+              </article>
+            }
+          }
+        </div>
+        @for (item of b.items; track item.id) {
+          @if (item.status === 'failed') {
+            <p class="bp__error">{{ t('Product ' + (item.index + 1) + ' failed', 'Product ' + (item.index + 1) + ' नहीं बना') }}: {{ item.error }}
+              <button type="button" class="bp__btn bp__btn--small" (click)="retry(item)" [attr.data-testid]="'retry-' + item.index">{{ t('Retry', 'दोबारा') }}</button>
+            </p>
+          }
+        }
+        <button type="button" class="bp__link" (click)="newBatch()" data-testid="new-batch">+ {{ t('Start another batch', 'नया batch शुरू करें') }}</button>
+      </div>
+
+      <!-- One action bar for the approved listings -->
+      <div class="bp__actions" role="toolbar" [attr.aria-label]="t('Approved listings', 'Approved listings')" data-testid="action-bar">
+        <span class="bp__actions-count">{{ approvedItems().length }} {{ t('approved', 'approved') }}</span>
+        <button type="button" class="bp__btn bp__btn--primary" [disabled]="!approvedItems().length || !!busy()" (click)="publishToAmazon()" data-testid="publish-amazon">{{ t('Publish to Amazon', 'Amazon पर publish') }}</button>
+        <button type="button" class="bp__btn" [disabled]="!approvedItems().length" (click)="downloadFile('meesho')" data-testid="download-meesho">{{ t('Meesho file', 'Meesho file') }}</button>
+        <button type="button" class="bp__btn" [disabled]="!approvedItems().length" (click)="downloadFile('flipkart')" data-testid="download-flipkart">{{ t('Flipkart file', 'Flipkart file') }}</button>
+        <button type="button" class="bp__btn" [disabled]="!approvedItems().length || !!busy()" (click)="addToInventory()" data-testid="add-inventory">{{ t('Add to Inventory', 'Inventory में जोड़ें') }}</button>
+      </div>
+    }
+
+    <p class="bp__muted bp__foot"><a routerLink="/optimize/general">{{ t('Add one product instead', 'एक product जोड़ें') }}</a></p>
+  }
+</section>
