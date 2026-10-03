@@ -8,9 +8,11 @@ export type FieldKey =
   | 'hsn' | 'gst' | 'mrp' | 'price' | 'stock'
   | 'color' | 'material' | 'pattern' | 'sleeve' | 'neck' | 'occasion' | 'size' | 'fit' | 'length' | 'ideal_for'
   | 'net_quantity' | 'country_of_origin' | 'manufacturer' | 'packer' | 'importer'
-  | 'image' | 'main_image'
+  | 'image' | 'main_image' | 'generic_name'
+  // A dropdown column we don't know by name — the AI may pick a value only if the product text states it.
+  | 'attribute'
   // Never filled by us (we don't have them) — always listed under "You must fill" when mandatory.
-  | 'weight' | 'dimension' | 'size_chart' | 'model_number' | 'ean' | 'group_id';
+  | 'weight' | 'dimension' | 'size_chart' | 'model_number' | 'ean' | 'group_id' | 'return_price';
 
 export interface FieldRule {
   key: FieldKey;
@@ -32,9 +34,12 @@ export const FIELD_RULES: readonly FieldRule[] = [
   { key: 'description', patterns: [/\b(product )?description\b/, /\babout (the )?product\b/] },
   { key: 'keywords', patterns: [/\b(search )?keywords?\b/, /\bsearch terms?\b/, /\btags\b/] },
   { key: 'brand', patterns: [/\bbrand( name)?\b/] },
+  { key: 'generic_name', patterns: [/^generic name$/, /^common name$/] },
   { key: 'hsn', patterns: [/\bhsn( code)?\b/] },
   { key: 'gst', patterns: [/\bgst\b/, /\btax (rate|code|slab|percentage)\b/, /\btax %/, /\btax$/] },
   { key: 'mrp', patterns: [/\bmrp\b/, /\bmaximum retail price\b/, /\blist price\b/] },
+  // Meesho "Wrong/Defective Returns Price" is not the selling price.
+  { key: 'return_price', patterns: [/\b(return|returns|rto|defective)\b.*\bprice\b/], neverInvent: true },
   { key: 'price', patterns: [/\b(selling|sale|your|meesho|offer|supplier|wholesale) price\b/, /\bprice\b/] },
   { key: 'stock', patterns: [/\bstock\b/, /\binventory\b/, /\bquantity available\b/, /\bavailable quantity\b/, /^quantity$/] },
   { key: 'net_quantity', patterns: [/\bnet quantity\b/, /\bnet qty\b/, /\bpack of\b/, /\bnumber of (items|pieces)\b/, /\bpcs\b/] },
@@ -43,7 +48,7 @@ export const FIELD_RULES: readonly FieldRule[] = [
   { key: 'packer', patterns: [/\bpacker/] },
   { key: 'importer', patterns: [/\bimporter/] },
   { key: 'weight', patterns: [/\bweight\b/], neverInvent: true },
-  { key: 'dimension', patterns: [/\b(length|breadth|width|height|depth)\b.*\b(cm|mm|inch|package|packaging|shipping)\b/, /\b(package|packaging|shipping) (length|breadth|width|height|dimension)/, /\bdimensions?\b/], neverInvent: true },
+  { key: 'dimension', patterns: [/^product (length|breadth|width|height|depth)$/,/\b(length|breadth|width|height|depth)\b.*\b(cm|mm|inch|package|packaging|shipping)\b/, /\b(package|packaging|shipping) (length|breadth|width|height|dimension)/, /\bdimensions?\b/], neverInvent: true },
   { key: 'model_number', patterns: [/\bmodel (number|no|name|id)\b/], neverInvent: true },
   { key: 'ean', patterns: [/\b(ean|upc|gtin|barcode|isbn)\b/], neverInvent: true },
   { key: 'color', patterns: [/\bcolou?r\b/, /\bshade\b/] },
@@ -55,7 +60,7 @@ export const FIELD_RULES: readonly FieldRule[] = [
   { key: 'ideal_for', patterns: [/\bideal for\b/, /\bgender\b/, /\btarget audience\b/] },
   { key: 'fit', patterns: [/\bfit\b/] },
   { key: 'length', patterns: [/\b(kurta|kurti|dress|top|saree) length\b/, /^length$/, /\blength type\b/] },
-  { key: 'size', patterns: [/\bsize\b/] },
+  { key: 'size', patterns: [/\bsize\b/, /^variation$/] },
 ];
 
 export function normalizeHeader(raw: unknown): string {
@@ -70,16 +75,34 @@ export function normalizeHeader(raw: unknown): string {
     .trim();
 }
 
+/**
+ * The field-name part of a header cell. Meesho puts "Product Name⏎⏎Please enter …" (a long
+ * description) in the same cell — only the first line is the name.
+ */
+export function headerName(raw: unknown): string {
+  const lines = String(raw ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  return (lines[0] ?? '').replace(/\s*:$/, '');
+}
+
+/** Label / system columns that are never filled ("Fields + Description", "ERROR STATUS" …). */
+const SKIP_HEADER = /^(fields? (and )?description|field names?|error (status|message)|s ?no|sr ?no|serial (no|number))$/;
+
+export function isSkippedHeader(raw: unknown): boolean {
+  return SKIP_HEADER.test(normalizeHeader(headerName(raw).replace(/\+/g, ' and ')));
+}
+
 /** The field a header means, or null if we don't recognise it. */
 export function matchHeader(raw: unknown): FieldRule | null {
-  const header = normalizeHeader(raw);
+  if (isSkippedHeader(raw)) return null;
+  const header = normalizeHeader(headerName(raw));
   if (!header || header.length > 80) return null;
   return FIELD_RULES.find((rule) => rule.patterns.some((p) => p.test(header))) ?? null;
 }
 
 /** "Key Feature 3" → 3; used to spread bullet points and images over numbered columns. */
 export function headerNumber(raw: unknown): number | null {
-  const match = /(\d+)\s*\)?\s*$/.exec(normalizeHeader(raw));
+  // "Image 1 (Front)" → 1
+  const match = /(\d+)\s*\)?\s*$/.exec(normalizeHeader(headerName(raw)).replace(/ (front|back|side|main)$/, ''));
   return match ? Number(match[1]) : null;
 }
 

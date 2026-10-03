@@ -157,6 +157,19 @@ function formatGst(rate: number | null, hsn: string, col: TemplateColumn): strin
   return String(rate);
 }
 
+/**
+ * Price / MRP / stock: the Inventory item's, else what the seller entered on the listing itself
+ * (e.g. "Add many products" listings not yet saved to Inventory). Never the AI's price guess.
+ */
+function listingNumber(src: ListingSource, key: 'sellingPrice' | 'mrp' | 'stock', allowZero = false): string {
+  const inv = src.inventory ?? {};
+  const fromInventory = key === 'sellingPrice' ? inv.sellingPrice : key === 'mrp' ? (inv.mrp || inv.sellingPrice) : inv.quantity;
+  if (typeof fromInventory === 'number' && (fromInventory > 0 || (allowZero && fromInventory === 0))) return String(fromInventory);
+  const raw = first(src.results, 'general', key) || (key === 'mrp' ? first(src.results, 'general', 'sellingPrice') : '');
+  const n = Number(String(raw).replace(/[₹,\s]/g, ''));
+  return raw && Number.isFinite(n) && (n > 0 || (allowZero && n === 0)) ? String(n) : '';
+}
+
 /** Values we know for a listing, by field (before fitting to dropdowns). */
 function knownValue(field: FieldKey, col: TemplateColumn, src: ListingSource, marketplace: Marketplace, profile: SellerProfile, variant: Variant | null = null): string {
   const r = src.results ?? {};
@@ -171,8 +184,8 @@ function knownValue(field: FieldKey, col: TemplateColumn, src: ListingSource, ma
       case 'sku': return /\bstyle\b/.test(header) ? (src.styleId ?? variant.sku) : variant.sku;
       case 'group_id': return src.styleId ?? '';
       case 'stock': return String(variant.stock ?? 0);
-      case 'price': return variant.price ? String(variant.price) : inv.sellingPrice ? String(inv.sellingPrice) : '';
-      case 'mrp': return variant.mrp ? String(variant.mrp) : inv.mrp ? String(inv.mrp) : '';
+      case 'price': return variant.price ? String(variant.price) : listingNumber(src, 'sellingPrice');
+      case 'mrp': return variant.mrp ? String(variant.mrp) : listingNumber(src, 'mrp');
       case 'size': if (variant.size) return variant.size; break;
       case 'color': if (variant.colour) return variant.colour; break;
       case 'main_image': if (colourPhoto) return colourPhoto; break;
@@ -195,9 +208,14 @@ function knownValue(field: FieldKey, col: TemplateColumn, src: ListingSource, ma
     case 'keywords': return pick(first(r, tab, 'searchKeywords'), first(r, 'general', 'searchTags'));
     case 'brand': return pick(profile.brand ?? '', first(r, tab, 'brand'), first(r, 'general', 'brand'));
     case 'hsn': return normalizeHsn(inv.hsnCode || first(r, 'general', 'hsnCode'));
-    case 'mrp': return inv.mrp ? String(inv.mrp) : '';
-    case 'price': return inv.sellingPrice ? String(inv.sellingPrice) : '';
-    case 'stock': return typeof inv.quantity === 'number' ? String(inv.quantity) : '';
+    case 'mrp': return listingNumber(src, 'mrp');
+    case 'price': return listingNumber(src, 'sellingPrice');
+    case 'stock': return typeof inv.quantity === 'number' ? String(inv.quantity) : listingNumber(src, 'stock', true);
+    // "Water Bottles" from "Home & Kitchen > Drinkware > Water Bottles".
+    case 'generic_name': {
+      const path = first(r, 'general', 'category') || inv.category || '';
+      return path.split(/\s*[>/|]\s*/).filter(Boolean).pop() ?? '';
+    }
     case 'color': return pick(first(r, tab, 'color'), first(r, 'amazon', 'color'));
     case 'material': return pick(first(r, 'flipkart', 'material'), first(r, 'amazon', 'material'));
     case 'size': return pick(first(r, tab, 'size'), first(r, 'amazon', 'size'));
@@ -221,7 +239,7 @@ function knownValue(field: FieldKey, col: TemplateColumn, src: ListingSource, ma
 }
 
 /** Attribute columns we may ask the AI to choose from the dropdown using the listing's text. */
-const INFERABLE: ReadonlySet<FieldKey> = new Set(['color', 'material', 'pattern', 'sleeve', 'neck', 'occasion', 'fit', 'length', 'ideal_for', 'size']);
+const INFERABLE: ReadonlySet<FieldKey> = new Set(['color', 'material', 'pattern', 'sleeve', 'neck', 'occasion', 'fit', 'length', 'ideal_for', 'size', 'attribute', 'net_quantity']);
 
 interface AiItem { key: string; col: TemplateColumn; row: number; ourValue: string; context: string }
 
@@ -256,6 +274,10 @@ export async function fillRows(
     hasRealVariants(src.variants) ? src.variants!.map((variant) => ({ src, variant })) : [{ src, variant: null }]
   ));
 
+  // Group-ID dropdowns ("Group 01", "Group 02" …): one group per product with sizes.
+  const groupOf = new Map<string, number>();
+  for (const { src, variant } of expanded) if (variant && !groupOf.has(src.draftId)) groupOf.set(src.draftId, groupOf.size);
+
   expanded.forEach(({ src, variant }, rowIndex) => {
     const r = src.results ?? {};
     const category = first(r, 'general', 'category') || src.inventory?.category || '';
@@ -268,7 +290,7 @@ export async function fillRows(
     for (const col of template.columns) {
       let value = '';
       if (col.field === 'group_id' && variant) {
-        value = knownValue('group_id', col, src, marketplace, profile, variant);
+        value = col.allowed ? (col.allowed[groupOf.get(src.draftId) ?? 0] ?? '') : knownValue('group_id', col, src, marketplace, profile, variant);
       } else if (col.field && !col.neverInvent) {
         if (col.field === 'gst') {
           const hsn = normalizeHsn(src.inventory?.hsnCode || first(r, 'general', 'hsnCode'));
@@ -283,7 +305,10 @@ export async function fillRows(
         const cachedFit = cached.get(`${col.header}\u0000${normalize(value)}`);
         // Sizes: "M" also matches "Medium", "UK 7" matches "7", "2-3Y" matches "2-3 Years" …
         const sizeFit = col.field === 'size' ? sizeSpellings(value).map((v) => fitAllowed(v, col.allowed!)).find(Boolean) ?? null : null;
-        const fitted = sizeFit ?? fitAllowed(value, col.allowed) ?? (cachedFit || null);
+        // A brand is never "close enough": "Eagle" must not become "EAGLE WELL" — exact (any case) only.
+        const fitted = col.field === 'brand'
+          ? col.allowed.find((a) => normalize(a) === normalize(value)) ?? null
+          : sizeFit ?? fitAllowed(value, col.allowed) ?? (cachedFit || null);
         if (fitted) {
           if (fitted !== value) adjusted.push({ header: col.header, from: value, to: fitted });
           cells[col.col] = fitted === value ? { value, status: 'filled' } : { value: fitted, status: 'adjusted', from: value };
@@ -307,6 +332,11 @@ export async function fillRows(
       if (!value && col.field === 'brand' && col.allowed) {
         const generic = col.allowed.find((a) => /^generic$/i.test(a));
         if (generic) { cells[col.col] = { value: generic, status: 'adjusted', from: '' }; continue; }
+      }
+      // A required dropdown with only one choice (Meesho "Variation": "Free Size") has one answer.
+      if (!value && col.required && !col.neverInvent && col.allowed?.length === 1 && !(variant && col.field === 'size')) {
+        cells[col.col] = { value: col.allowed[0], status: 'adjusted', from: '' };
+        continue;
       }
       if (!value && col.allowed && col.field && INFERABLE.has(col.field)) {
         const hit = cached.get(`${col.header}\u0000${cacheFrom('', context)}`);

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import * as XLSX from 'xlsx';
-import { FieldKey, headerNumber, isMandatoryText, matchHeader, normalizeHeader } from './fields.js';
+import { FieldKey, headerName, headerNumber, isMandatoryText, isSkippedHeader, matchHeader, normalizeHeader } from './fields.js';
 import type { SheetFormat } from './format.js';
 
 /**
@@ -183,7 +183,8 @@ function scoreHeaderRow(ws: ExcelJS.Worksheet, row: number): number {
   for (let c = 1; c <= Math.min(ws.columnCount, 300); c++) {
     const text = cellText(r.getCell(c).value);
     if (!text) continue;
-    if (text.length <= 60) texts += 1;
+    // Headers may carry a long description after the name (Meesho) — the name is what counts.
+    if (headerName(text).length <= 60) texts += 1;
     if (matchHeader(text)) matches += 1;
   }
   return texts < 2 ? 0 : matches * 3 + texts * 0.2;
@@ -194,6 +195,8 @@ function isInstructionRow(ws: ExcelJS.Worksheet, row: number, cols: number[]): b
   if (texts.length === 0) return false;
   if (texts.some((t) => /^(mandatory|optional|required|compulsory|conditional)$/i.test(t))) return true;
   if (/^(example|sample|e\.?g\.?|note|instructions?)\b/i.test(texts[0])) return true;
+  // Meesho: "Tutorial Link | Watch Explainer Video" under the header.
+  if (texts.some((t) => /\b(tutorial|explainer video|watch (the )?video)\b/i.test(t))) return true;
   if (texts.some((t) => /\b(please (enter|select|fill|provide)|enter the|select (the|from)|should be|must be|maximum \d+ characters|allowed values)\b/i.test(t))) return true;
   return texts.filter((t) => t.length > 45).length > texts.length / 2;
 }
@@ -253,12 +256,15 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat): 
   let dataStartRow = headerRow + 1;
   while (dataStartRow <= headerRow + 5 && isInstructionRow(ws, dataStartRow, cols)) dataStartRow += 1;
 
-  // "Mandatory"/"Required" markers in the rows around the header.
+  // "Mandatory" / "* Compulsory Field" / "Do not fill these columns" markers around the header.
   const markerRequired = new Set<number>();
+  const doNotFill = new Set<number>();
   for (let r = Math.max(1, headerRow - 2); r < dataStartRow; r++) {
     if (r === headerRow) continue;
     for (const c of cols) {
-      if (/^(mandatory|required|compulsory)\b/i.test(cellText(ws.getRow(r).getCell(c).value))) markerRequired.add(c);
+      const marker = cellText(ws.getRow(r).getCell(c).value);
+      if (/^\*?\s*(mandatory|required|compulsory)\b/i.test(marker)) markerRequired.add(c);
+      if (/\bdo not (fill|edit|change)\b/i.test(marker)) doNotFill.add(c);
     }
   }
 
@@ -277,17 +283,21 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat): 
     }
   }
 
-  const columns: TemplateColumn[] = headerCells.map((h) => {
+  // Label/system columns ("Fields + Description", "ERROR STATUS", "Do not fill…") are left alone.
+  const fillable = headerCells.filter((h) => !isSkippedHeader(h.text) && !doNotFill.has(h.col));
+  const columns: TemplateColumn[] = fillable.map((h) => {
     const rule = matchHeader(h.text);
     const list = allowedByCol.get(h.col);
     const allowed = list?.values ? Array.from(new Set(list.values)).slice(0, 2000) : null;
+    const name = headerName(h.text) || h.text;
     return {
       col: h.col,
       letter: columnLetter(h.col),
-      header: h.text,
-      field: rule?.key ?? null,
+      header: name,
+      // Unknown dropdown columns: the AI may pick a value the product text clearly states.
+      field: rule?.key ?? (allowed?.length ? 'attribute' : null),
       number: headerNumber(h.text),
-      required: isMandatoryText(h.text) || h.red || markerRequired.has(h.col),
+      required: isMandatoryText(name) || h.red || markerRequired.has(h.col),
       neverInvent: !!rule?.neverInvent,
       allowed: allowed && allowed.length ? allowed : null,
       dependentList: !!list?.dependent,

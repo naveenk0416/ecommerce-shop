@@ -415,3 +415,76 @@ test('seller profile: saved once and reused; pincode validated; logs keep no fil
   assert.ok(typeof log.filledPercent === 'number');
   assert.equal(JSON.stringify(log).includes('Pink'), false, 'no file contents in logs');
 });
+
+test('Meesho 2026 layout: name + long description in one header cell, label/"do not fill" columns skipped, single-option Variation, exact brands only, Group ID dropdown', async () => {
+  const { parseTemplate, workingBytes } = await import('./workbook.js');
+  const { fillRows } = await import('./fill.js');
+  const { assignSkus, sanitizeVariants } = await import('../utils/variants.js');
+  const wb = new ExcelJS.Workbook();
+  wb.addWorksheet('Instructions').getCell('A1').value = 'Meesho Product Uploading';
+  const ws = wb.addWorksheet('Water-Bottles-Fill this');
+  const lists = wb.addWorksheet('Validation Sheet', { state: 'hidden' });
+  const longText = (name: string) => `\n\n${name}\n\nPlease enter the ${name.toLowerCase()} exactly as it should appear. ${'This text is long on purpose. '.repeat(4)}`;
+  const cols: Array<[string, string]> = [
+    ['Field Names', 'Fields + Description:'], ['Do not fill these 2 columns.', 'ERROR STATUS'], ['Do not fill these 2 columns.', 'ERROR MESSAGE'],
+    ['* Compulsory Field', 'Product Name'], ['* Compulsory Field', 'Variation'], ['* Compulsory Field', 'Meesho Price'],
+    ['Optional Field', 'Wrong/Defective Returns Price'], ['* Compulsory Field', 'MRP'], ['* Compulsory Field', 'Inventory'],
+    ['* Compulsory Field', 'Generic Name'], ['* Compulsory Field', 'Leak Proof'], ['Optional Field', 'SKU ID'],
+    ['Optional Field', 'Brand'], ['Optional Field', 'Group ID'], ['Optional Field', 'Product Description'],
+  ];
+  ws.getCell('A1').value = 'Water Bottles Template (Home & Kitchen)';
+  cols.forEach(([marker, name], i) => {
+    ws.getCell(2, i + 1).value = marker;
+    ws.getCell(3, i + 1).value = i === 0 ? name : longText(name);
+  });
+  ws.getCell('A4').value = 'Tutorial Link';
+  ws.getCell('D4').value = 'Watch Explainer Video';
+  [['Free Size'], ['Water Bottles', 'Sippers'], ['Yes', 'No'], ['EAGLE WELL', 'Eagle', 'Milton'], ['Group 01', 'Group 02', 'Group 03']]
+    .forEach((values, c) => values.forEach((v, r) => { lists.getCell(r + 1, c + 1).value = v; }));
+  const list = (col: number, range: string) => { for (let r = 5; r <= 50; r++) ws.getCell(r, col).dataValidation = { type: 'list', allowBlank: true, formulae: [range] }; };
+  list(5, "'Validation Sheet'!$A$1:$A$1");
+  list(10, "'Validation Sheet'!$B$1:$B$2");
+  list(11, "'Validation Sheet'!$C$1:$C$2");
+  list(13, "'Validation Sheet'!$D$1:$D$3");
+  list(14, "'Validation Sheet'!$E$1:$E$3");
+  const buf = Buffer.from(await wb.xlsx.writeBuffer());
+
+  const t = await parseTemplate(workingBytes(buf, 'xlsx'), 'xlsx');
+  assert.equal(t.headerRow, 3);
+  assert.equal(t.firstEmptyRow, 5, 'the tutorial row is not a data row');
+  const byName = Object.fromEntries(t.columns.map((c) => [c.header, c]));
+  assert.ok(!t.columns.some((c) => c.letter === 'A' || c.letter === 'B' || c.letter === 'C'), 'label and "do not fill" columns are skipped');
+  assert.equal(byName['Product Name'].field, 'title');
+  assert.equal(byName['Meesho Price'].field, 'price');
+  assert.equal(byName['Wrong/Defective Returns Price'].field, 'return_price');
+  assert.equal(byName['Inventory'].field, 'stock');
+  assert.equal(byName['Leak Proof'].field, 'attribute');
+  assert.ok(byName['Product Name'].required && byName['Inventory'].required && !byName['SKU ID'].required, '"* Compulsory Field" marks required columns');
+
+  const f = (v: string) => ({ values: [v] });
+  const plain = {
+    draftId: '6abd5a62f293c5fc0136b048',
+    results: { general: { productTitle: f('Kids Water Bottle'), category: f('Home > Drinkware > Water Bottles'), sellingPrice: f('249'), mrp: f('499'), stock: f('20'), description: f('Leak-proof bottle.') } },
+    imageUrl: null, inventory: null,
+  };
+  const sized = {
+    draftId: '6abd5a62f293c5fc0136b049', results: { general: { productTitle: f('Sipper'), sellingPrice: f('199') } }, imageUrl: null, inventory: null,
+    variants: assignSkus('6abd5a62f293c5fc0136b049', sanitizeVariants([{ size: 'S', stock: 2 }, { size: 'M', stock: 3 }]).variants!),
+    styleId: 'SA-36B049',
+  };
+  const { rows } = await fillRows('u', t, 'meesho', [plain, sized], { brand: 'Eagle' }, { useCacheAndAi: false });
+  const cell = (row: number, name: string) => rows[row].cells[byName[name].col];
+  assert.equal(cell(0, 'Product Name').value, 'Kids Water Bottle');
+  assert.equal(cell(0, 'Meesho Price').value, '249', 'price from the listing when it is not in Inventory');
+  assert.equal(cell(0, 'MRP').value, '499');
+  assert.equal(cell(0, 'Inventory').value, '20');
+  assert.equal(cell(0, 'Wrong/Defective Returns Price').value, '', 'the returns price is never the selling price');
+  assert.equal(cell(0, 'Variation').value, 'Free Size', 'single-option required dropdown');
+  assert.equal(cell(0, 'Generic Name').value, 'Water Bottles');
+  assert.equal(cell(0, 'Brand').value, 'Eagle', 'exact brand, never the look-alike "EAGLE WELL"');
+  assert.equal(cell(0, 'Product Description').value, 'Leak-proof bottle.');
+  assert.equal(rows.length, 3);
+  assert.equal(cell(1, 'Group ID').value, 'Group 01', 'sizes of one product share a Group ID from the dropdown');
+  assert.equal(cell(2, 'Group ID').value, 'Group 01');
+  assert.equal(cell(0, 'Group ID').value, '', 'a product without sizes has no group');
+});
