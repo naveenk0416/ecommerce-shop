@@ -48,7 +48,7 @@ for (const file of files) {
   if (!format) { console.log('  NOT an Excel workbook'); continue; }
   try {
     const working = workingBytes(buf, format);
-    const t = await parseTemplate(working, format);
+    const t = await parseTemplate(working, format, buf);
     console.log(`  format ${format} → output ${t.outputFormat}; sheet "${t.sheetName}"; header row ${t.headerRow}; data from row ${t.dataStartRow}; first empty row ${t.firstEmptyRow}; category ${t.category ?? '(not found)'}`);
     console.log(`  ${t.columns.length} columns, ${t.columns.filter((c) => c.required).length} mandatory, ${t.columns.filter((c) => c.allowed).length} with dropdowns, warnings: ${t.warnings.join(', ') || 'none'}`);
     for (const c of t.columns) {

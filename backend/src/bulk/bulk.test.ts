@@ -488,3 +488,47 @@ test('Meesho 2026 layout: name + long description in one header cell, label/"do 
   assert.equal(cell(2, 'Group ID').value, 'Group 01');
   assert.equal(cell(0, 'Group ID').value, '', 'a product without sizes has no group');
 });
+
+test('Flipkart .xls: overlapping merges are tolerated, "To be filled by Flipkart" columns skipped, Index "Allowed Values" + DropDownValuesForColumnN lists, Brand Color / Necklace Width / Supplier Image', async () => {
+  const { parseTemplate, workingBytes } = await import('./workbook.js');
+  const { detectFormat } = await import('./format.js');
+  const wb = XLSX.utils.book_new();
+  const summary = XLSX.utils.aoa_to_sheet([['Understanding Colour Codes'], ['Blue cells: Blue cells have to be mandatorily filled by you.'], ['Grey cells: Grey cells will be filled by Flipkart.']]);
+  XLSX.utils.book_append_sheet(wb, summary, 'Summary Sheet');
+  const index = XLSX.utils.aoa_to_sheet([
+    ['Sub-categories in the file', 'Please Note', 'Allowed Values', 'Necklace Chain'],
+    ['necklace_chain', '', '', 'Base Material', 'Type', 'Ideal For'],
+    ['', '', '', 'Alloy', 'Chain', 'Women'],
+    ['', '', '', 'Brass', 'Choker', 'Men'],
+  ]);
+  // Overlapping merged ranges (Excel allows them in .xls; .xlsx readers don't).
+  index['!merges'] = [XLSX.utils.decode_range('A1:A4'), XLSX.utils.decode_range('A2:B3'), XLSX.utils.decode_range('B1:B2')];
+  XLSX.utils.book_append_sheet(wb, index, 'Index');
+  const header = ['Flipkart Serial Number', 'Catalog QC Status', 'Seller SKU ID', 'MRP (INR)', 'Your selling price (INR)', 'Stock', 'Country Of Origin',
+    'Brand', 'Base Material', 'Type', 'Ideal For', 'Necklace Width', 'Brand Color', 'Main Image URL', 'Supplier Image', 'Description'];
+  const data = XLSX.utils.aoa_to_sheet([
+    header,
+    header.map(() => 'Single - Text'),
+    header.map((h, i) => (i < 2 ? '' : `e.g. ${h}`)),
+    header.map((_, i) => (i < 2 ? 'To be filled by Flipkart' : 'Please fill this')),
+  ]);
+  XLSX.utils.book_append_sheet(wb, data, 'necklace_chain');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['India'], ['China']]), 'DropDownValuesForColumn6');
+  wb.Workbook = { Sheets: [{}, {}, {}, { Hidden: 1 }] };
+  const xls = Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'biff8' }));
+
+  assert.equal(await detectFormat(xls), 'xls');
+  const t = await parseTemplate(workingBytes(xls, 'xls'), 'xls', xls);
+  assert.equal(t.sheetName, 'necklace_chain');
+  assert.equal(t.firstEmptyRow, 5);
+  const by = Object.fromEntries(t.columns.map((c) => [c.header, c]));
+  assert.ok(!by['Flipkart Serial Number'] && !by['Catalog QC Status'], '"To be filled by Flipkart" columns are skipped');
+  assert.deepEqual(by['Base Material'].allowed, ['Alloy', 'Brass']);
+  assert.deepEqual(by['Ideal For'].allowed, ['Women', 'Men']);
+  assert.equal(by['Type'].field, 'attribute');
+  assert.deepEqual(by['Country Of Origin'].allowed, ['India', 'China'], 'DropDownValuesForColumn6 → column G (0-based 6)');
+  assert.equal(by['Brand Color'].field, 'color');
+  assert.notEqual(by['Necklace Width'].field, 'neck');
+  assert.equal(by['Brand'].field, 'brand');
+  assert.ok(t.warnings.includes('XLS_CONVERTED'));
+});

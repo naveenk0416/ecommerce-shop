@@ -120,7 +120,7 @@ router.post(
     let parsed: ParsedTemplate;
     try {
       working = workingBytes(body, format);
-      parsed = await parseTemplate(working, format);
+      parsed = await parseTemplate(working, format, body);
     } catch (err: any) {
       const message = /column headings/.test(String(err?.message)) ? err.message : 'We couldn\'t read this file. Please upload the template exactly as downloaded from the marketplace.';
       console.warn('[bulk] template not readable', marketplace, format, err?.message);

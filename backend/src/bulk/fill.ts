@@ -189,7 +189,7 @@ function knownValue(field: FieldKey, col: TemplateColumn, src: ListingSource, ma
       case 'size': if (variant.size) return variant.size; break;
       case 'color': if (variant.colour) return variant.colour; break;
       case 'main_image': if (colourPhoto) return colourPhoto; break;
-      case 'image': if (colourPhoto && !/other|additional|back|side|extra/.test(header) && (col.number ?? 1) <= 1) return colourPhoto; break;
+      case 'image': if (colourPhoto && !/other|additional|back|side|extra|supplier|swatch/.test(header) && (col.number ?? 1) <= 1) return colourPhoto; break;
       default: break;
     }
   }
@@ -233,7 +233,7 @@ function knownValue(field: FieldKey, col: TemplateColumn, src: ListingSource, ma
     case 'main_image': return src.imageUrl ?? '';
     // We keep one photo per listing: it goes in the first image column only. "Other / additional /
     // back / side image" columns are further photos, which we don't have.
-    case 'image': return /other|additional|back|side|extra/.test(header) || (col.number ?? 1) > 1 ? '' : (src.imageUrl ?? '');
+    case 'image': return /other|additional|back|side|extra|supplier|swatch/.test(header) || (col.number ?? 1) > 1 ? '' : (src.imageUrl ?? '');
     default: return '';
   }
 }

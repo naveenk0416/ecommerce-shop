@@ -204,6 +204,17 @@ function isInstructionRow(ws: ExcelJS.Worksheet, row: number, cols: number[]): b
 /** Old .xls → .xlsx bytes (SheetJS), so the rest of the pipeline is one format. */
 function xlsToXlsx(buf: Buffer): Buffer {
   const wb = XLSX.read(buf, { type: 'buffer', cellStyles: true, cellDates: false });
+  // Excel tolerates overlapping merged ranges in old .xls files (Flipkart's "Index" sheet has
+  // hundreds); .xlsx readers reject them. Keep the first of any overlapping set.
+  for (const name of wb.SheetNames) {
+    const merges = wb.Sheets[name]?.['!merges'];
+    if (!merges?.length) continue;
+    const kept: XLSX.Range[] = [];
+    for (const m of merges) {
+      if (!kept.some((k) => m.s.r <= k.e.r && k.s.r <= m.e.r && m.s.c <= k.e.c && k.s.c <= m.e.c)) kept.push(m);
+    }
+    wb.Sheets[name]['!merges'] = kept;
+  }
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', cellStyles: true }) as Buffer;
 }
 
@@ -212,7 +223,30 @@ export function workingBytes(buf: Buffer, format: SheetFormat): Buffer {
   return format === 'xls' ? xlsToXlsx(buf) : buf;
 }
 
-export async function parseTemplate(working: Buffer, inputFormat: SheetFormat): Promise<ParsedTemplate> {
+/** Header fill colour as "RRGGBB" (uppercase), or null. */
+function fillRgb(cell: ExcelJS.Cell): string | null {
+  const argb = (cell.fill as any)?.fgColor?.argb as string | undefined;
+  return argb && /^[0-9A-F]{6,8}$/i.test(argb) ? argb.slice(-6).toUpperCase() : null;
+}
+
+/** Flipkart legend: "Blue cells have to be mandatorily filled" (blue, not purple). */
+function isBlue(rgb: string | null): boolean {
+  if (!rgb) return false;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(rgb.slice(i, i + 2), 16));
+  return b > r + 40 && g >= r;
+}
+
+function isGrey(rgb: string | null): boolean {
+  if (!rgb) return false;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(rgb.slice(i, i + 2), 16));
+  return Math.max(r, g, b) - Math.min(r, g, b) < 12 && r > 150 && r < 230;
+}
+
+/**
+ * @param original the file as uploaded — for .xls, header colours are read from it because the
+ *   conversion to .xlsx doesn't keep cell fills.
+ */
+export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, original?: Buffer): Promise<ParsedTemplate> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(working as any);
   const zip = await JSZip.loadAsync(working);
@@ -238,7 +272,7 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat): 
   if (!sheetPath) throw new Error('This workbook is missing its sheet data.');
 
   // Header cells (a header can span a merged cell; ExcelJS reports the master's value on each).
-  const headerCells: Array<{ col: number; text: string; red: boolean }> = [];
+  const headerCells: Array<{ col: number; text: string; red: boolean; fill: string | null }> = [];
   const headerRowObj = ws.getRow(headerRow);
   const seen = new Set<string>();
   for (let c = 1; c <= Math.min(ws.columnCount, 300); c++) {
@@ -248,7 +282,7 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat): 
     const master = (cell as any).master?.address ?? cell.address;
     if (seen.has(master)) continue;
     seen.add(master);
-    headerCells.push({ col: c, text, red: isRed((cell.font?.color as any)?.argb) });
+    headerCells.push({ col: c, text, red: isRed((cell.font?.color as any)?.argb), fill: fillRgb(cell) });
   }
   const cols = headerCells.map((h) => h.col);
 
@@ -259,12 +293,14 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat): 
   // "Mandatory" / "* Compulsory Field" / "Do not fill these columns" markers around the header.
   const markerRequired = new Set<number>();
   const doNotFill = new Set<number>();
-  for (let r = Math.max(1, headerRow - 2); r < dataStartRow; r++) {
+  // Up to 4 rows under the header: Flipkart has types, an example and descriptions before row 5.
+  for (let r = Math.max(1, headerRow - 2); r <= Math.max(dataStartRow - 1, headerRow + 4); r++) {
     if (r === headerRow) continue;
     for (const c of cols) {
       const marker = cellText(ws.getRow(r).getCell(c).value);
       if (/^\*?\s*(mandatory|required|compulsory)\b/i.test(marker)) markerRequired.add(c);
-      if (/\bdo not (fill|edit|change)\b/i.test(marker)) doNotFill.add(c);
+      // Meesho "Do not fill these 2 columns."; Flipkart "To be filled by Flipkart" / "To be filled later".
+      if (/\bdo not (fill|edit|change)\b|\bto be filled (by flipkart|by meesho|by marketplace|later)\b/i.test(marker)) doNotFill.add(c);
     }
   }
 
@@ -283,6 +319,63 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat): 
     }
   }
 
+  // Flipkart keeps value lists outside data validations (which old .xls files lose anyway):
+  // hidden "DropDownValuesForColumnN" sheets (N = 0-based column) …
+  for (const sheet of wb.worksheets) {
+    const m = /^DropDownValuesForColumn(\d+)$/i.exec(sheet.name);
+    const col = m ? Number(m[1]) + 1 : 0;
+    if (!m || allowedByCol.has(col)) continue;
+    const values: string[] = [];
+    sheet.eachRow((row) => { const t = cellText(row.getCell(1).value); if (t) values.push(t); });
+    if (values.length) allowedByCol.set(col, { values, dependent: false });
+  }
+  // … and an "Allowed Values" sheet (Index): a row of attribute names with their values below.
+  const colByName = new Map(headerCells.map((h) => [normalizeHeader(headerName(h.text)), h.col]));
+  for (const sheet of wb.worksheets) {
+    if (sheet === ws) continue;
+    let hasAllowedValues = false;
+    sheet.eachRow((row, r) => { if (r <= 5) row.eachCell((cell) => { if (/^allowed values$/i.test(cellText(cell.value))) hasAllowedValues = true; }); });
+    if (!hasAllowedValues) continue;
+    sheet.eachRow((row, r) => {
+      const hits: Array<[number, number]> = [];
+      row.eachCell((cell, c) => { const col = colByName.get(normalizeHeader(cellText(cell.value))); if (col) hits.push([c, col]); });
+      if (hits.length < 2) return;
+      for (const [c, col] of hits) {
+        if (allowedByCol.has(col)) continue;
+        const values: string[] = [];
+        for (let rr = r + 1; rr <= sheet.rowCount; rr++) {
+          const t = cellText(sheet.getRow(rr).getCell(c).value);
+          if (!t) break;
+          values.push(t);
+        }
+        if (values.length) allowedByCol.set(col, { values, dependent: false });
+      }
+    });
+  }
+
+  // Colour-coded templates (Flipkart): the legend says blue = mandatory, grey = filled by Flipkart.
+  const colourLegend = { blueRequired: false, greyByMarketplace: false };
+  for (const sheet of wb.worksheets) {
+    if (sheet === ws) continue;
+    sheet.eachRow((row, r) => {
+      if (r > 300) return;
+      row.eachCell((cell) => {
+        const t = cellText(cell.value);
+        if (/blue cells?[^.]*mandator/i.test(t)) colourLegend.blueRequired = true;
+        if (/gr[ae]y cells?[^.]*filled by (flipkart|meesho|the marketplace)/i.test(t)) colourLegend.greyByMarketplace = true;
+      });
+    });
+  }
+  // .xls: the conversion drops cell fills — read the header colours from the original file.
+  if ((colourLegend.blueRequired || colourLegend.greyByMarketplace) && inputFormat === 'xls' && original) {
+    const sheet = XLSX.read(original, { type: 'buffer', cellStyles: true }).Sheets[ws.name];
+    for (const h of headerCells) {
+      const rgb = sheet?.[XLSX.utils.encode_cell({ r: headerRow - 1, c: h.col - 1 })]?.s?.fgColor?.rgb as string | undefined;
+      if (rgb) h.fill = rgb.slice(-6).toUpperCase();
+    }
+  }
+  if (colourLegend.greyByMarketplace) for (const h of headerCells) if (isGrey(h.fill)) doNotFill.add(h.col);
+
   // Label/system columns ("Fields + Description", "ERROR STATUS", "Do not fill…") are left alone.
   const fillable = headerCells.filter((h) => !isSkippedHeader(h.text) && !doNotFill.has(h.col));
   const columns: TemplateColumn[] = fillable.map((h) => {
@@ -297,7 +390,7 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat): 
       // Unknown dropdown columns: the AI may pick a value the product text clearly states.
       field: rule?.key ?? (allowed?.length ? 'attribute' : null),
       number: headerNumber(h.text),
-      required: isMandatoryText(name) || h.red || markerRequired.has(h.col),
+      required: isMandatoryText(name) || h.red || markerRequired.has(h.col) || (colourLegend.blueRequired && isBlue(h.fill)),
       neverInvent: !!rule?.neverInvent,
       allowed: allowed && allowed.length ? allowed : null,
       dependentList: !!list?.dependent,

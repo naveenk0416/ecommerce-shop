@@ -33,7 +33,8 @@ export const FIELD_RULES: readonly FieldRule[] = [
   { key: 'bullet', patterns: [/\bkey (feature|highlight)s?( \d+)?\b/, /\bhighlights?( \d+)?\b/, /\bbullet( point)?s?( \d+)?\b/, /\bfeatures?( \d+)?$/] },
   { key: 'description', patterns: [/\b(product )?description\b/, /\babout (the )?product\b/] },
   { key: 'keywords', patterns: [/\b(search )?keywords?\b/, /\bsearch terms?\b/, /\btags\b/] },
-  { key: 'brand', patterns: [/\bbrand( name)?\b/] },
+  // "Brand Color" is a colour, not the brand.
+  { key: 'brand', patterns: [/\bbrand( name)?\b(?! colou?r)/] },
   { key: 'generic_name', patterns: [/^generic name$/, /^common name$/] },
   { key: 'hsn', patterns: [/\bhsn( code)?\b/] },
   { key: 'gst', patterns: [/\bgst\b/, /\btax (rate|code|slab|percentage)\b/, /\btax %/, /\btax$/] },
@@ -55,7 +56,8 @@ export const FIELD_RULES: readonly FieldRule[] = [
   { key: 'material', patterns: [/\bfabric\b/, /\bmaterial\b/] },
   { key: 'pattern', patterns: [/\bpattern\b/, /\bprint (type|or pattern)\b/] },
   { key: 'sleeve', patterns: [/\bsleeve/] },
-  { key: 'neck', patterns: [/\bneck/, /\bcollar\b/] },
+  // "Neck", "Neck Type", "Neckline" — but not "Necklace Width".
+  { key: 'neck', patterns: [/\bneck(line)?\b/, /\bcollar\b/] },
   { key: 'occasion', patterns: [/\boccasion\b/] },
   { key: 'ideal_for', patterns: [/\bideal for\b/, /\bgender\b/, /\btarget audience\b/] },
   { key: 'fit', patterns: [/\bfit\b/] },
