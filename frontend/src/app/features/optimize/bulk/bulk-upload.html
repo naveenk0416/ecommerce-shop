@@ -131,6 +131,14 @@
           }
         </div>
       }
+      @if (priceProblems().length) {
+        <div class="bulk__problems" role="alert" data-testid="price-problems">
+          <strong>{{ t(priceProblems().length + ' row(s) will be rejected by ' + marketName() + ' — fix the MRP or price below:', priceProblems().length + ' row(s) ' + marketName() + ' reject करेगा — नीचे MRP या कीमत ठीक करें:') }}</strong>
+          <ul>
+            @for (p of priceProblems(); track p.rowIndex) { <li data-testid="price-problem">{{ priceProblemText(p) }}</li> }
+          </ul>
+        </div>
+      }
       <div class="bulk__legend" aria-hidden="true">
         <span class="lg lg--must">{{ t('You must fill', 'आपको भरना है') }}</span>
         <span class="lg lg--adjusted">{{ t('Changed to fit the list', 'List के हिसाब से बदला') }}</span>
@@ -156,7 +164,7 @@
                 </th>
                 @for (col of columns(); track col.col) {
                   @let c = cell(row, col);
-                  <td [class]="'cell cell--' + c.status" [title]="cellTitle(c)">
+                  <td [class]="'cell cell--' + c.status" [class.cell--problem]="isPriceProblem(i, col)" [title]="isPriceProblem(i, col) ? t('MRP too low for this price', 'इस कीमत के लिए MRP कम है') : cellTitle(c)">
                     @if (col.allowed) {
                       <select [value]="c.value" (change)="edit(i, col, $any($event.target).value)" [attr.aria-label]="col.header + ' — ' + row.title">
                         <option value="">—</option>

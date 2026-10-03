@@ -9,6 +9,43 @@ import { ListingDraftSummary, ListingService } from '../../../services/listing';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
+/**
+ * Meesho rejects a row unless MRP is at least 10% above the Meesho price ("MRP should be greater
+ * than listing price by 35.00 Rs" for ₹350) — so resellers can add their margin.
+ */
+export const MEESHO_MRP_MARGIN = 0.1;
+
+export interface PriceProblem {
+  rowIndex: number;
+  title: string;
+  price: number;
+  mrp: number;
+  /** Lowest MRP the marketplace accepts for this price. */
+  minMrp: number;
+}
+
+const money = (v: string | undefined) => {
+  const n = Number(String(v ?? '').replace(/[₹,\s]/g, ''));
+  return v && Number.isFinite(n) && n > 0 ? n : null;
+};
+
+/** Rows the marketplace will reject for their price / MRP. */
+export function priceProblems(rows: BulkRow[], columns: BulkColumn[], marketplace: BulkMarketplace | null): PriceProblem[] {
+  const priceCol = columns.find((c) => c.field === 'price');
+  const mrpCol = columns.find((c) => c.field === 'mrp');
+  if (!priceCol || !mrpCol) return [];
+  const out: PriceProblem[] = [];
+  rows.forEach((row, rowIndex) => {
+    const price = money(row.cells[priceCol.col]?.value);
+    const mrp = money(row.cells[mrpCol.col]?.value);
+    if (!price || !mrp) return;
+    // Rounded to paise first: 350 × 1.1 is 385.00000000000006 in floating point.
+    const minMrp = marketplace === 'meesho' ? Math.ceil(Math.round(price * (1 + MEESHO_MRP_MARGIN) * 100) / 100) : price;
+    if (mrp < minMrp) out.push({ rowIndex, title: row.variantLabel ? `${row.title} (${row.variantLabel})` : row.title, price, mrp, minMrp });
+  });
+  return out;
+}
+
 const normalize = (s: string) => s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
 const stem = (w: string) => w.replace(/(ies)$/, 'y').replace(/(es|s)$/, '');
 const tokens = (s: string) => normalize(s).split(' ').filter((w) => w.length > 1).map(stem);
@@ -75,6 +112,21 @@ export class BulkUpload {
     const req = this.columns().filter((c) => c.required);
     return this.rows().reduce((n, r) => n + req.filter((c) => !r.cells[c.col]?.value).length, 0);
   });
+
+  /** Price / MRP the marketplace will reject (checked again after every edit). */
+  readonly priceProblems = computed(() => priceProblems(this.rows(), this.columns(), this.marketplace()));
+  readonly mrpCol = computed(() => this.columns().find((c) => c.field === 'mrp')?.col ?? null);
+
+  isPriceProblem(rowIndex: number, col: BulkColumn): boolean {
+    return col.col === this.mrpCol() && this.priceProblems().some((p) => p.rowIndex === rowIndex);
+  }
+
+  priceProblemText(p: PriceProblem): string {
+    return this.marketplace() === 'meesho'
+      ? this.t(`${p.title}: MRP ₹${p.mrp} is too low for price ₹${p.price}. Meesho needs MRP at least 10% above the price — ₹${p.minMrp} or more (or lower the price).`,
+        `${p.title}: कीमत ₹${p.price} के लिए MRP ₹${p.mrp} कम है। Meesho को MRP कीमत से कम से कम 10% ज़्यादा चाहिए — ₹${p.minMrp} या उससे ज़्यादा (या कीमत कम करें)।`)
+      : this.t(`${p.title}: MRP ₹${p.mrp} is lower than the price ₹${p.price}.`, `${p.title}: MRP ₹${p.mrp} कीमत ₹${p.price} से कम है।`);
+  }
 
   // Step 5
   readonly downloading = signal(false);
@@ -228,6 +280,11 @@ export class BulkUpload {
   async download(): Promise<void> {
     const tpl = this.template();
     if (!tpl) return;
+    const problems = this.priceProblems().length;
+    if (problems && !confirm(this.t(
+      `${problems} row(s) have an MRP that ${this.marketName()} will reject. Download anyway?`,
+      `${problems} row(s) का MRP ${this.marketName()} reject करेगा। फिर भी download करें?`,
+    ))) return;
     this.downloading.set(true);
     this.downloadError.set(null);
     try {
