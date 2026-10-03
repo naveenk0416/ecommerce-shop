@@ -7,6 +7,7 @@ import { publicApiUrl } from '../utils/public-url.js';
 import { detectFormat, MAX_TEMPLATE_BYTES, mimeFor } from '../bulk/format.js';
 import { parseTemplate, workingBytes, writeCells, type CellWrite, type ParsedTemplate } from '../bulk/workbook.js';
 import { fillRows, type ListingSource, type Marketplace, type SellerProfile } from '../bulk/fill.js';
+import { readErrorReport } from '../bulk/errors.js';
 import { hasRealVariants, styleId } from '../utils/variants.js';
 
 /**
@@ -260,5 +261,42 @@ router.post('/templates/:id/download', authMiddleware, async (req, res) => {
   res.setHeader('X-Output-Format', parsed.outputFormat);
   res.send(file);
 });
+
+// ---- Read the marketplace's error file (rows it rejected) ----
+
+router.post(
+  '/templates/:id/errors',
+  authMiddleware,
+  express.raw({ type: () => true, limit: MAX_TEMPLATE_BYTES + 1024 }),
+  async (req, res) => {
+    const doc = await loadTemplate(req, res);
+    if (!doc) return;
+    const body = req.body as Buffer;
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      res.status(400).json({ error: 'Please choose the error file.', code: 'NO_FILE' });
+      return;
+    }
+    if (body.length > MAX_TEMPLATE_BYTES) {
+      res.status(413).json({ error: 'The file is larger than 10 MB.', code: 'TOO_LARGE' });
+      return;
+    }
+    const format = await detectFormat(body);
+    if (!format) {
+      res.status(400).json({ error: 'This is not an Excel file. Upload the error file you downloaded from the marketplace.', code: 'BAD_FILE' });
+      return;
+    }
+    try {
+      const rows = await readErrorReport(workingBytes(body, format), doc.parsed as ParsedTemplate);
+      res.json({ rows });
+    } catch (err: any) {
+      if (err?.code === 'NO_ERROR_COLUMNS') {
+        res.status(400).json({ error: 'This file has no error columns. Upload the error file the marketplace gave you for this upload.', code: 'NOT_ERROR_FILE' });
+        return;
+      }
+      console.warn('[bulk] error file not readable', doc.marketplace, format, err?.message);
+      res.status(400).json({ error: 'We couldn\'t read this file.', code: 'UNREADABLE' });
+    }
+  },
+);
 
 export default router;

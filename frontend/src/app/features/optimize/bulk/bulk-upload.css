@@ -91,3 +91,14 @@
 .bulk__problems { margin: 8px 0; padding: 10px 12px; border: 1px solid #fca5a5; border-radius: 12px; background: #fef2f2; color: #991b1b; font-size: 13.5px; }
 .bulk__problems ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .cell--problem { outline: 2px solid #dc2626; outline-offset: -2px; background: #fef2f2 !important; }
+
+/* Rows the marketplace rejected (from its error file) */
+.bulk__problems--done { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.bulk__problems li { display: flex; flex-direction: column; gap: 2px; }
+.bulk__err-row { font-weight: 800; }
+.bulk__err-msg { font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.bulk__fixed { opacity: 0.65; }
+.bulk__badge { display: inline-block; margin-top: 2px; padding: 1px 6px; border-radius: 999px; background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 700; }
+.bulk__badge--ok { background: #dcfce7; color: #166534; }
+.bulk__fix { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+.bulk__fix p { margin: 0; }

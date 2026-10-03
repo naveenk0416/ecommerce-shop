@@ -63,6 +63,19 @@ export interface BulkReport {
   filledPercent: number;
 }
 
+/** A row the marketplace rejected, read from its error file. */
+export interface BulkErrorRow {
+  rowNumber: number;
+  /** 0-based position among the rows we wrote. */
+  index: number;
+  sku: string;
+  title: string;
+  /** "INVALID" (Meesho), "Failed" (Flipkart) */
+  status: string;
+  /** col: the template column the message is about, when known. */
+  messages: Array<{ text: string; col: number | null }>;
+}
+
 export interface SellerProfile {
   brand?: string;
   manufacturerName?: string;
@@ -80,13 +93,13 @@ export const MAX_TEMPLATE_BYTES = 10 * 1024 * 1024;
 @Injectable({ providedIn: 'root' })
 export class BulkUploadService {
   /** Sends the file's bytes as-is (a 10 MB template doesn't fit the JSON body limit as base64). */
-  async uploadTemplate(file: File, marketplace: BulkMarketplace): Promise<BulkTemplateInfo> {
+  private async postFile<T>(path: string, file: File): Promise<T> {
     const headers = new Headers({ 'Content-Type': 'application/octet-stream' });
     const token = getAuthToken();
     if (token) headers.set('Authorization', `Bearer ${token}`);
     const device = getDeviceId();
     if (device) headers.set('X-Device-Id', device);
-    const response = await fetch(`${apiBase}/bulk/templates?marketplace=${marketplace}&name=${encodeURIComponent(file.name)}`, { method: 'POST', headers, body: file });
+    const response = await fetch(`${apiBase}${path}`, { method: 'POST', headers, body: file });
     const data = await response.json().catch(() => null);
     if (!response.ok) {
       const error: ApiError = new Error(data?.error || 'Upload failed');
@@ -94,7 +107,16 @@ export class BulkUploadService {
       error.data = data;
       throw error;
     }
-    return data as BulkTemplateInfo;
+    return data as T;
+  }
+
+  uploadTemplate(file: File, marketplace: BulkMarketplace): Promise<BulkTemplateInfo> {
+    return this.postFile(`/bulk/templates?marketplace=${marketplace}&name=${encodeURIComponent(file.name)}`, file);
+  }
+
+  /** The error file Meesho / Flipkart gives back after rejecting rows → the rows it rejected. */
+  async uploadErrors(templateId: string, file: File): Promise<BulkErrorRow[]> {
+    return (await this.postFile<{ rows: BulkErrorRow[] }>(`/bulk/templates/${templateId}/errors`, file)).rows;
   }
 
   fill(templateId: string, draftIds: string[]): Promise<{ rows: BulkRow[]; report: BulkReport }> {

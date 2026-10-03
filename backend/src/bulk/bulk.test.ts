@@ -533,3 +533,53 @@ test('Flipkart .xls: overlapping merges are tolerated, "To be filled by Flipkart
   assert.ok(t.warnings.includes('XLS_CONVERTED'));
   assert.deepEqual(by['Fullfilment by'].allowed, ['seller', 'FA', 'SellerSmart'], 'Flipkart rejected a business name here — only its own values');
 });
+
+test('marketplace error file: Meesho INVALID rows and Flipkart QC failures come back with their messages and columns', async () => {
+  const { token } = await seller();
+  const wb = new ExcelJS.Workbook();
+  wb.addWorksheet('Instructions').getCell('A1').value = 'Meesho Product Uploading';
+  const ws = wb.addWorksheet('Water-Bottles-Fill this');
+  const cols: Array<[string, string]> = [
+    ['Field Names', 'Fields + Description:'], ['Do not fill these 2 columns.', 'ERROR STATUS'], ['Do not fill these 2 columns.', 'ERROR MESSAGE'],
+    ['* Compulsory Field', 'Product Name'], ['* Compulsory Field', 'Meesho Price'], ['* Compulsory Field', 'MRP'], ['Optional Field', 'SKU ID'],
+  ];
+  ws.getCell('A1').value = 'Water Bottles Template (Home & Kitchen)';
+  cols.forEach(([marker, name], i) => {
+    ws.getCell(2, i + 1).value = marker;
+    ws.getCell(3, i + 1).value = i === 0 ? name : `\n\n${name}\n\nPlease enter the ${name.toLowerCase()}.`;
+  });
+  ws.getCell('A4').value = 'Tutorial Link';
+  ws.getCell('D4').value = 'Watch Explainer Video';
+  const template = Buffer.from(await wb.xlsx.writeBuffer());
+  const t = (await upload(token, template, 'meesho', 'Water-Bottles.xlsx')).data;
+  assert.equal(t.firstRow, 5);
+
+  // Not an error file → told so.
+  const post = (file: Buffer) => fetch(`${base}/bulk/templates/${t.id}/errors`, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/octet-stream' }, body: file,
+  }).then(async (r) => ({ status: r.status, data: await r.json() as any }));
+  const noCols = await flipkartKurta();
+  assert.equal((await post(noCols)).data.code, 'NOT_ERROR_FILE');
+
+  // What Meesho sends back: the same file with the two system columns filled.
+  [['', '', 'Cute Bear Bottle', 350, 220, 'SA-1'], ['INVALID', 'MRP should be greater than listing price by 45.00 Rs. Please lower the price or increase the MRP', 'Steel Bottle', 450, 250, 'SA-2'], ['VALID', '', 'Glass Bottle', 200, 400, 'SA-3']]
+    .forEach((row, i) => row.forEach((v, c) => { if (v !== '') ws.getCell(5 + i, c + 2).value = v; }));
+  const back = await post(Buffer.from(await wb.xlsx.writeBuffer()));
+  assert.equal(back.status, 200, JSON.stringify(back.data));
+  assert.equal(back.data.rows.length, 1, 'VALID and blank-status rows are not errors');
+  const [row] = back.data.rows;
+  assert.equal(row.index, 1);
+  assert.equal(row.sku, 'SA-2');
+  assert.equal(row.title, 'Steel Bottle');
+  assert.equal(row.status, 'INVALID');
+  const mrpCol = t.columns.find((c: any) => c.header === 'MRP').col;
+  assert.deepEqual(row.messages, [{ text: 'MRP should be greater than listing price by 45.00 Rs. Please lower the price or increase the MRP', col: mrpCol }]);
+
+  // Flipkart: "1 error(s) found⏎1. [fulfilled_by]: …" → the "Fullfilment by" column.
+  const { splitMessages } = await import('./errors.js');
+  const parsed: any = { columns: [{ col: 3, header: 'Seller SKU ID' }, { col: 17, header: 'Fullfilment by' }, { col: 12, header: 'MRP (INR)' }] };
+  assert.deepEqual(
+    splitMessages('1 error(s) found\n1. [fulfilled_by]: Invalid value given for attribute: service_profile. Allowed values are: FA,seller,SellerSmart\n', parsed),
+    [{ text: '[fulfilled_by]: Invalid value given for attribute: service_profile. Allowed values are: FA,seller,SellerSmart', col: 17 }],
+  );
+});

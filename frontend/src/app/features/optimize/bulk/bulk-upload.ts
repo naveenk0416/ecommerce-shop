@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiError } from '../../../services/api';
 import {
-  BulkCell, BulkColumn, BulkMarketplace, BulkReport, BulkRow, BulkTemplateInfo, BulkUploadService, MAX_TEMPLATE_BYTES, SellerProfile,
+  BulkCell, BulkColumn, BulkErrorRow, BulkMarketplace, BulkReport, BulkRow, BulkTemplateInfo, BulkUploadService, MAX_TEMPLATE_BYTES, SellerProfile,
 } from '../../../services/bulk-upload';
 import { LanguageService } from '../../../services/language';
 import { ListingDraftSummary, ListingService } from '../../../services/listing';
@@ -44,6 +44,34 @@ export function priceProblems(rows: BulkRow[], columns: BulkColumn[], marketplac
     if (mrp < minMrp) out.push({ rowIndex, title: row.variantLabel ? `${row.title} (${row.variantLabel})` : row.title, price, mrp, minMrp });
   });
   return out;
+}
+
+/** What the marketplace said about one of our rows (from its error file). */
+export interface MarketError {
+  status: string;
+  messages: Array<{ text: string; col: number | null }>;
+}
+
+/** Error-file rows → our rows: by SKU, then product name, then position in the file. */
+export function matchMarketErrors(errors: BulkErrorRow[], rows: BulkRow[], columns: BulkColumn[]): { byRow: Map<string, MarketError>; unmatched: BulkErrorRow[] } {
+  const skuCol = columns.find((c) => c.field === 'sku')?.col;
+  const titleCol = columns.find((c) => c.field === 'title')?.col;
+  const value = (row: BulkRow, col: number | undefined) => (col === undefined ? '' : (row.cells[col]?.value ?? '').trim().toLowerCase());
+  const byRow = new Map<string, MarketError>();
+  const unmatched: BulkErrorRow[] = [];
+  for (const e of errors) {
+    const sku = e.sku.trim().toLowerCase();
+    const title = e.title.trim().toLowerCase();
+    const free = (r: BulkRow | undefined): r is BulkRow => !!r && !byRow.has(r.rowKey);
+    const atIndex = rows[e.index];
+    const row = (sku ? rows.find((r) => free(r) && value(r, skuCol) === sku) : undefined)
+      ?? (title ? rows.find((r) => free(r) && value(r, titleCol) === title) : undefined)
+      // Same position, unless that row's SKU says it's a different product.
+      ?? (free(atIndex) && (!sku || !value(atIndex, skuCol)) ? atIndex : undefined);
+    if (row) byRow.set(row.rowKey, { status: e.status, messages: e.messages });
+    else unmatched.push(e);
+  }
+  return { byRow, unmatched };
 }
 
 const normalize = (s: string) => s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
@@ -132,6 +160,94 @@ export class BulkUpload {
   readonly downloading = signal(false);
   readonly downloadError = signal<string | null>(null);
   readonly downloaded = signal<string | null>(null);
+
+  // The marketplace's error file: rows it rejected, checked again as the seller fixes them.
+  readonly marketErrors = signal<ReadonlyMap<string, MarketError>>(new Map());
+  /** Columns edited per row since the error file was read. */
+  readonly touched = signal<ReadonlyMap<string, ReadonlySet<number>>>(new Map());
+  readonly unmatchedErrors = signal<BulkErrorRow[]>([]);
+  readonly errorsUploading = signal(false);
+  readonly errorsError = signal<string | null>(null);
+  readonly errorsInfo = signal<string | null>(null);
+  readonly marketErrorList = computed(() => {
+    const errors = this.marketErrors();
+    return this.rows()
+      .map((row, i) => ({ row, i, err: errors.get(row.rowKey) }))
+      .filter((x): x is { row: BulkRow; i: number; err: MarketError } => !!x.err)
+      .map((x) => ({ ...x, fixed: this.isFixed(x.row, x.i, x.err) }));
+  });
+  readonly marketErrorsLeft = computed(() => this.marketErrorList().filter((e) => !e.fixed).length);
+
+  /**
+   * Fixed = every cell the marketplace complained about was changed (a message about no column
+   * needs any change in the row), no mandatory cell it named is empty, and our own price check passes.
+   */
+  private isFixed(row: BulkRow, rowIndex: number, err: MarketError): boolean {
+    const touched = this.touched().get(row.rowKey) ?? new Set<number>();
+    const required = new Set(this.columns().filter((c) => c.required).map((c) => c.col));
+    return err.messages.every((m) => (m.col === null ? touched.size > 0 : touched.has(m.col) && (!required.has(m.col) || !!row.cells[m.col]?.value)))
+      && !this.priceProblems().some((p) => p.rowIndex === rowIndex);
+  }
+
+  rowFixed(rowKey: string): boolean {
+    return !!this.marketErrorList().find((e) => e.row.rowKey === rowKey)?.fixed;
+  }
+
+  isMarketErrorCell(row: BulkRow, col: BulkColumn): boolean {
+    const err = this.marketErrors().get(row.rowKey);
+    return !!err && err.messages.some((m) => m.col === col.col) && !this.touched().get(row.rowKey)?.has(col.col);
+  }
+
+  marketErrorText(row: BulkRow, col: BulkColumn): string {
+    return (this.marketErrors().get(row.rowKey)?.messages ?? []).filter((m) => m.col === col.col).map((m) => m.text).join('\n');
+  }
+
+  columnName(col: number | null): string | null {
+    return col === null ? null : this.columns().find((c) => c.col === col)?.header ?? null;
+  }
+
+  rowLabel(row: BulkRow): string {
+    return row.variantLabel ? `${row.title} (${row.variantLabel})` : row.title;
+  }
+
+  async onErrorFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    const tpl = this.template();
+    if (!file || !tpl) return;
+    this.errorsError.set(null);
+    this.errorsInfo.set(null);
+    if (file.size > MAX_TEMPLATE_BYTES) {
+      this.errorsError.set(this.t('The file is larger than 10 MB.', 'File 10 MB से बड़ी है।'));
+      return;
+    }
+    this.errorsUploading.set(true);
+    try {
+      const errors = await this.bulk.uploadErrors(tpl.id, file);
+      const { byRow, unmatched } = matchMarketErrors(errors, this.rows(), this.columns());
+      this.marketErrors.set(byRow);
+      this.touched.set(new Map());
+      this.unmatchedErrors.set(unmatched);
+      if (errors.length === 0) {
+        this.errorsInfo.set(this.t(`No rejected rows in this file — ${this.marketName()} accepted every row.`, `इस file में कोई rejected row नहीं — ${this.marketName()} ने सब rows ले लीं।`));
+        return;
+      }
+      this.step.set(4);
+      setTimeout(() => document.getElementById('bulk-market-errors')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    } catch (error) {
+      const code = ((error as ApiError).data as { code?: string } | undefined)?.code;
+      this.errorsError.set(
+        code === 'NOT_ERROR_FILE' ? this.t(`This file has no error columns. Upload the error file ${this.marketName()} gave you for this upload.`, `इस file में error columns नहीं हैं। इस upload के लिए ${this.marketName()} से मिली error file upload करें।`)
+        : code === 'BAD_FILE' ? this.t('This is not an Excel file.', 'यह Excel file नहीं है।')
+        : code === 'TOO_LARGE' ? this.t('The file is larger than 10 MB.', 'File 10 MB से बड़ी है।')
+        : code === 'EXPIRED' ? this.t('This template has expired (we keep it for 24 hours). Please start again.', 'यह template expire हो गया (24 घंटे तक रखते हैं)। फिर से शुरू करें।')
+        : this.t('We couldn’t read this file. Please try again.', 'यह file पढ़ी नहीं जा सकी। फिर से try करें।'),
+      );
+    } finally {
+      this.errorsUploading.set(false);
+    }
+  }
 
   // Seller profile
   readonly profile = signal<SellerProfile>({});
@@ -237,6 +353,7 @@ export class BulkUpload {
       const { rows, report } = await this.bulk.fill(tpl.id, ids);
       this.rows.set(rows);
       this.report.set(report);
+      this.clearMarketErrors();
       this.step.set(4);
     } catch (error) {
       const code = ((error as ApiError).data as { code?: string } | undefined)?.code;
@@ -253,10 +370,14 @@ export class BulkUpload {
   }
 
   edit(rowIndex: number, col: BulkColumn, value: string): void {
+    const key = this.rows()[rowIndex]?.rowKey;
     this.rows.update((rows) => rows.map((r, i) => i !== rowIndex ? r : {
       ...r,
       cells: { ...r.cells, [col.col]: { value, status: value ? 'filled' : (col.required ? 'must_fill' : 'empty') } },
     }));
+    if (key && this.marketErrors().has(key)) {
+      this.touched.update((m) => new Map(m).set(key, new Set(m.get(key)).add(col.col)));
+    }
   }
 
   cellTitle(cell: BulkCell): string {
@@ -281,9 +402,14 @@ export class BulkUpload {
     const tpl = this.template();
     if (!tpl) return;
     const problems = this.priceProblems().length;
+    const rejected = this.marketErrorsLeft();
     if (problems && !confirm(this.t(
       `${problems} row(s) have an MRP that ${this.marketName()} will reject. Download anyway?`,
       `${problems} row(s) का MRP ${this.marketName()} reject करेगा। फिर भी download करें?`,
+    ))) return;
+    if (!problems && rejected && !confirm(this.t(
+      `${rejected} row(s) ${this.marketName()} rejected are not fixed yet. Download anyway?`,
+      `${this.marketName()} की reject की हुई ${rejected} row(s) अभी ठीक नहीं हुईं। फिर भी download करें?`,
     ))) return;
     this.downloading.set(true);
     this.downloadError.set(null);
@@ -316,6 +442,15 @@ export class BulkUpload {
     this.rows.set([]);
     this.report.set(null);
     this.downloaded.set(null);
+    this.clearMarketErrors();
+  }
+
+  private clearMarketErrors(): void {
+    this.marketErrors.set(new Map());
+    this.touched.set(new Map());
+    this.unmatchedErrors.set([]);
+    this.errorsError.set(null);
+    this.errorsInfo.set(null);
   }
 
   // ---- Seller profile ----

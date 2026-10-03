@@ -139,6 +139,28 @@
           </ul>
         </div>
       }
+      @if (marketErrorList().length) {
+        <div id="bulk-market-errors" class="bulk__problems" [class.bulk__problems--done]="marketErrorsLeft() === 0" role="status" data-testid="market-errors">
+          <strong>{{ marketErrorsLeft()
+            ? t(marketName() + ' rejected ' + marketErrorList().length + ' row(s) — ' + marketErrorsLeft() + ' still to fix. Change the red cells below, then download the file again.', marketName() + ' ने ' + marketErrorList().length + ' row(s) reject कीं — ' + marketErrorsLeft() + ' अभी ठीक करनी हैं। नीचे लाल cells बदलें, फिर file दोबारा download करें।')
+            : t('All rejected rows are fixed — download the file again and upload it on ' + marketName() + '.', 'सब rejected rows ठीक हो गईं — file दोबारा download करें और ' + marketName() + ' पर upload करें।') }}</strong>
+          <ul>
+            @for (e of marketErrorList(); track e.row.rowKey) {
+              <li [class.bulk__fixed]="e.fixed" data-testid="market-error">
+                <span class="bulk__err-row">{{ e.fixed ? '✅' : '❌' }} {{ rowLabel(e.row) }}</span>
+                @for (m of e.err.messages; track $index) {
+                  <span class="bulk__err-msg">@if (columnName(m.col); as name) { <b>{{ name }}:</b> }{{ m.text }}</span>
+                }
+              </li>
+            }
+          </ul>
+          @if (unmatchedErrors().length) {
+            <p class="bulk__muted">{{ t(unmatchedErrors().length + ' rejected row(s) in the error file are not in this table — fix them in Excel:', 'Error file की ' + unmatchedErrors().length + ' rejected row(s) इस table में नहीं हैं — उन्हें Excel में ठीक करें:') }}
+              @for (u of unmatchedErrors(); track u.rowNumber) { <span>{{ t('row', 'row') }} {{ u.rowNumber }}{{ u.title ? ' (' + u.title + ')' : '' }}{{ $last ? '' : ', ' }}</span> }
+            </p>
+          }
+        </div>
+      }
       <div class="bulk__legend" aria-hidden="true">
         <span class="lg lg--must">{{ t('You must fill', 'आपको भरना है') }}</span>
         <span class="lg lg--adjusted">{{ t('Changed to fit the list', 'List के हिसाब से बदला') }}</span>
@@ -161,10 +183,15 @@
                   {{ row.title }}
                   @if (row.variantLabel) { <span class="bulk__variant" data-testid="bulk-row-variant">{{ row.variantLabel }}</span> }
                   @if (row.categoryMismatch) { <span class="bulk__warn bulk__warn--inline">{{ t('Other category', 'दूसरी category') }}</span> }
+                  @if (marketErrors().has(row.rowKey)) {
+                    @let fixed = rowFixed(row.rowKey);
+                    <span class="bulk__badge" [class.bulk__badge--ok]="fixed" data-testid="row-rejected">{{ fixed ? t('Fixed', 'ठीक हो गई') : t('Rejected by ' + marketName(), marketName() + ' ने reject की') }}</span>
+                  }
                 </th>
                 @for (col of columns(); track col.col) {
                   @let c = cell(row, col);
-                  <td [class]="'cell cell--' + c.status" [class.cell--problem]="isPriceProblem(i, col)" [title]="isPriceProblem(i, col) ? t('MRP too low for this price', 'इस कीमत के लिए MRP कम है') : cellTitle(c)">
+                  <td [class]="'cell cell--' + c.status" [class.cell--problem]="isPriceProblem(i, col) || isMarketErrorCell(row, col)"
+                    [title]="isMarketErrorCell(row, col) ? marketErrorText(row, col) : isPriceProblem(i, col) ? t('MRP too low for this price', 'इस कीमत के लिए MRP कम है') : cellTitle(c)">
                     @if (col.allowed) {
                       <select [value]="c.value" (change)="edit(i, col, $any($event.target).value)" [attr.aria-label]="col.header + ' — ' + row.title">
                         <option value="">—</option>
@@ -196,6 +223,17 @@
       @if (mustFillLeft() > 0) {
         <p class="bulk__warn">{{ t(mustFillLeft() + ' mandatory cell(s) are still empty — fill them in Excel first, or the marketplace will reject those rows.', mustFillLeft() + ' ज़रूरी cells अभी खाली हैं — पहले Excel में भरें, वरना marketplace उन rows को reject करेगा।') }}</p>
       }
+      <div class="bulk__fix">
+        <p class="bulk__guide-title">{{ t('Did ' + marketName() + ' reject some rows?', 'क्या ' + marketName() + ' ने कुछ rows reject कीं?') }}</p>
+        <p class="bulk__muted">{{ t('On ' + marketName() + ', open this upload’s status and download the error file. Upload it here — we’ll show what to fix in each row and check it again.', marketName() + ' पर इस upload का status खोलें और error file download करें। उसे यहाँ upload करें — हर row में क्या ठीक करना है दिखाएंगे और फिर से check करेंगे।') }}</p>
+        <label class="bulk__drop">
+          <input type="file" accept=".xlsx,.xls,.xlsm,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="onErrorFile($event)" [disabled]="errorsUploading()" data-testid="error-file" />
+          <span class="bulk__drop-icon" aria-hidden="true">⚠️</span>
+          <span class="bulk__drop-text">{{ errorsUploading() ? t('Reading the error file…', 'Error file पढ़ रहे हैं…') : t('Upload the ' + marketName() + ' error file', marketName() + ' की error file upload करें') }}</span>
+        </label>
+        @if (errorsError()) { <p class="bulk__err" role="alert" data-testid="error-file-error">{{ errorsError() }}</p> }
+        @if (errorsInfo()) { <p class="bulk__ok" role="status">{{ errorsInfo() }}</p> }
+      </div>
       <button type="button" class="bulk__link" (click)="startOver()">{{ t('Make another file', 'दूसरी file बनाएं') }}</button>
     </div>
   }
