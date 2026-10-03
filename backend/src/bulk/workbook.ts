@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import * as XLSX from 'xlsx';
-import { FieldKey, headerName, headerNumber, isMandatoryText, isSkippedHeader, matchHeader, normalizeHeader } from './fields.js';
+import { FieldKey, headerName, headerNumber, isMandatoryText, isSkippedHeader, knownAllowedValues, matchHeader, normalizeHeader } from './fields.js';
 import type { SheetFormat } from './format.js';
 
 /**
@@ -351,6 +351,12 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
         if (values.length) allowedByCol.set(col, { values, dependent: false });
       }
     });
+  }
+
+  // System columns whose dropdown didn't survive (old .xls): values the marketplace has told us.
+  for (const h of headerCells) {
+    const known = knownAllowedValues(h.text);
+    if (known && !allowedByCol.get(h.col)?.values?.length) allowedByCol.set(h.col, { values: known, dependent: false });
   }
 
   // Colour-coded templates (Flipkart): the legend says blue = mandatory, grey = filled by Flipkart.

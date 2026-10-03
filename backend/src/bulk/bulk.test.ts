@@ -505,7 +505,7 @@ test('Flipkart .xls: overlapping merges are tolerated, "To be filled by Flipkart
   index['!merges'] = [XLSX.utils.decode_range('A1:A4'), XLSX.utils.decode_range('A2:B3'), XLSX.utils.decode_range('B1:B2')];
   XLSX.utils.book_append_sheet(wb, index, 'Index');
   const header = ['Flipkart Serial Number', 'Catalog QC Status', 'Seller SKU ID', 'MRP (INR)', 'Your selling price (INR)', 'Stock', 'Country Of Origin',
-    'Brand', 'Base Material', 'Type', 'Ideal For', 'Necklace Width', 'Brand Color', 'Main Image URL', 'Supplier Image', 'Description'];
+    'Brand', 'Base Material', 'Type', 'Ideal For', 'Necklace Width', 'Brand Color', 'Main Image URL', 'Supplier Image', 'Description', 'Fullfilment by'];
   const data = XLSX.utils.aoa_to_sheet([
     header,
     header.map(() => 'Single - Text'),
@@ -531,4 +531,5 @@ test('Flipkart .xls: overlapping merges are tolerated, "To be filled by Flipkart
   assert.notEqual(by['Necklace Width'].field, 'neck');
   assert.equal(by['Brand'].field, 'brand');
   assert.ok(t.warnings.includes('XLS_CONVERTED'));
+  assert.deepEqual(by['Fullfilment by'].allowed, ['seller', 'FA', 'SellerSmart'], 'Flipkart rejected a business name here — only its own values');
 });

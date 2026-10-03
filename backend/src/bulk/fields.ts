@@ -112,3 +112,17 @@ export function isMandatoryText(raw: unknown): boolean {
   const text = String(raw ?? '').trim();
   return /\*/.test(text) || /\b(mandatory|required|compulsory)\b/i.test(text);
 }
+
+/**
+ * Allowed values for marketplace system columns whose dropdown is lost when an old .xls is
+ * converted (SheetJS can't read .xls data validations). Only values a marketplace has told us —
+ * e.g. Flipkart's QC error "[fulfilled_by] … Allowed values are: FA,seller,SellerSmart".
+ */
+const KNOWN_ALLOWED: Array<{ pattern: RegExp; values: string[] }> = [
+  { pattern: /^ful+fil+ment by$/, values: ['seller', 'FA', 'SellerSmart'] },
+];
+
+export function knownAllowedValues(raw: unknown): string[] | null {
+  const name = normalizeHeader(headerName(raw));
+  return KNOWN_ALLOWED.find((k) => k.pattern.test(name))?.values ?? null;
+}
