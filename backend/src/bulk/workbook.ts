@@ -320,17 +320,11 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
   }
 
   // Flipkart keeps value lists outside data validations (which old .xls files lose anyway):
-  // hidden "DropDownValuesForColumnN" sheets (N = 0-based column) …
-  for (const sheet of wb.worksheets) {
-    const m = /^DropDownValuesForColumn(\d+)$/i.exec(sheet.name);
-    const col = m ? Number(m[1]) + 1 : 0;
-    if (!m || allowedByCol.has(col)) continue;
-    const values: string[] = [];
-    sheet.eachRow((row) => { const t = cellText(row.getCell(1).value); if (t) values.push(t); });
-    if (values.length) allowedByCol.set(col, { values, dependent: false });
-  }
-  // … and an "Allowed Values" sheet (Index): a row of attribute names with their values below.
+  // an "Allowed Values" sheet (Index): a row of attribute names with their values below …
   const colByName = new Map(headerCells.map((h) => [normalizeHeader(headerName(h.text)), h.col]));
+  const namedLists = new Map<string, number>();
+  /** Same list, whatever the order (the Index sorts some lists differently). */
+  const listKey = (values: string[]) => [...new Set(values)].sort().join('\n');
   for (const sheet of wb.worksheets) {
     if (sheet === ws) continue;
     let hasAllowedValues = false;
@@ -348,9 +342,25 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
           if (!t) break;
           values.push(t);
         }
-        if (values.length) allowedByCol.set(col, { values, dependent: false });
+        if (values.length) {
+          allowedByCol.set(col, { values, dependent: false });
+          namedLists.set(listKey(values), col);
+        }
       }
     });
+  }
+  // … and hidden "DropDownValuesForColumnN" sheets (N = 0-based column). Flipkart files can carry
+  // stale ones from an older layout (Column10 = the Type list, landing on "Listing Status"), so a
+  // list the Index already gives to another column by name is skipped.
+  for (const sheet of wb.worksheets) {
+    const m = /^DropDownValuesForColumn(\d+)$/i.exec(sheet.name);
+    const col = m ? Number(m[1]) + 1 : 0;
+    if (!m || allowedByCol.has(col)) continue;
+    const values: string[] = [];
+    sheet.eachRow((row) => { const t = cellText(row.getCell(1).value); if (t) values.push(t); });
+    const owner = namedLists.get(listKey(values));
+    if (owner !== undefined && owner !== col) continue;
+    if (values.length) allowedByCol.set(col, { values, dependent: false });
   }
 
   // System columns whose dropdown didn't survive (old .xls): values the marketplace has told us.

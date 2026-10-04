@@ -514,7 +514,9 @@ test('Flipkart .xls: overlapping merges are tolerated, "To be filled by Flipkart
   ]);
   XLSX.utils.book_append_sheet(wb, data, 'necklace_chain');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['India'], ['China']]), 'DropDownValuesForColumn6');
-  wb.Workbook = { Sheets: [{}, {}, {}, { Hidden: 1 }] };
+  // Stale copy of the Type list from an older layout (real Flipkart files ship these) → column D.
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Choker'], ['Chain']]), 'DropDownValuesForColumn3');
+  wb.Workbook = { Sheets: [{}, {}, {}, { Hidden: 1 }, { Hidden: 1 }] };
   const xls = Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'biff8' }));
 
   assert.equal(await detectFormat(xls), 'xls');
@@ -527,6 +529,8 @@ test('Flipkart .xls: overlapping merges are tolerated, "To be filled by Flipkart
   assert.deepEqual(by['Ideal For'].allowed, ['Women', 'Men']);
   assert.equal(by['Type'].field, 'attribute');
   assert.deepEqual(by['Country Of Origin'].allowed, ['India', 'China'], 'DropDownValuesForColumn6 → column G (0-based 6)');
+  assert.equal(by['MRP (INR)'].allowed, null, 'a stale DropDownValuesForColumnN holding the Index\'s Type list is ignored');
+  assert.deepEqual(by['Type'].allowed, ['Chain', 'Choker']);
   assert.equal(by['Brand Color'].field, 'color');
   assert.notEqual(by['Necklace Width'].field, 'neck');
   assert.equal(by['Brand'].field, 'brand');
