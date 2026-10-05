@@ -535,7 +535,7 @@ test('Flipkart .xls: overlapping merges are tolerated, "To be filled by Flipkart
   assert.notEqual(by['Necklace Width'].field, 'neck');
   assert.equal(by['Brand'].field, 'brand');
   assert.ok(t.warnings.includes('XLS_CONVERTED'));
-  assert.deepEqual(by['Fullfilment by'].allowed, ['seller', 'FA', 'SellerSmart'], 'Flipkart rejected a business name here — only its own values');
+  assert.deepEqual(by['Fullfilment by'].allowed, ['Seller'], 'Flipkart rejected a business name and lowercase "seller" here — only its own label');
 });
 
 test('marketplace error file: Meesho INVALID rows and Flipkart QC failures come back with their messages and columns', async () => {

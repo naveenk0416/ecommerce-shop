@@ -53,6 +53,7 @@ export interface ParsedTemplate {
 const SKIP_SHEET = /instruction|read ?me|guide|help|how to|example|sample|note|index|valid|master|dropdown|drop down|lookup|reference|attribute list|list of|values?$/i;
 const GENERIC_SHEET = /^(sheet\s*\d*|template|data|listings?|products?|catalog(ue)?s?|upload|bulk.*|main|details?)$/i;
 const MAX_HEADER_SCAN_ROWS = 12;
+const FREE_TEXT_FIELDS: ReadonlySet<FieldKey> = new Set<FieldKey>(['sku', 'title', 'description', 'bullet', 'keywords', 'mrp', 'price', 'stock', 'group_id', 'main_image', 'image', 'model_number', 'ean', 'manufacturer', 'packer', 'importer']);
 
 export function columnLetter(col: number): string {
   let s = '';
@@ -132,6 +133,74 @@ function listValidations(sheetXml: string): RawValidation[] {
     const sqref = /<xm:sqref>([\s\S]*?)<\/xm:sqref>/.exec(m[2])?.[1] ?? '';
     const formula = /<x14:formula1>[\s\S]*?<xm:f>([\s\S]*?)<\/xm:f>/.exec(m[2])?.[1] ?? '';
     if (sqref && formula) out.push({ sqref: sqref.split(/\s+/), formula: decodeXml(formula) });
+  }
+  return out;
+}
+
+interface XlsListValidation { c1: number; c2: number; lastRow: number; values: string[] }
+
+/**
+ * Typed-in dropdown lists ("Seller", "Active,Inactive") from an old .xls — SheetJS drops data
+ * validations, so the BIFF8 DV records of the sheet are read directly. Lists that point at
+ * cells/names are skipped (the DropDownValuesForColumnN sheets cover those). 1-based columns/rows.
+ */
+function xlsListValidations(original: Buffer, sheetName: string): XlsListValidation[] {
+  let stream: Buffer;
+  try {
+    const cfb = XLSX.CFB.read(original, { type: 'buffer' });
+    const entry = XLSX.CFB.find(cfb, 'Workbook') ?? XLSX.CFB.find(cfb, 'Book');
+    if (!entry?.content) return [];
+    stream = Buffer.from(entry.content as Uint8Array);
+  } catch {
+    return [];
+  }
+  const records = function* (from: number) {
+    for (let off = from; off + 4 <= stream.length; ) {
+      const type = stream.readUInt16LE(off);
+      const len = stream.readUInt16LE(off + 2);
+      yield { type, data: stream.subarray(off + 4, off + 4 + len) };
+      off += 4 + len;
+    }
+  };
+  // BOUNDSHEET (0x85): where each sheet's substream starts, by name.
+  let start = -1;
+  for (const { type, data } of records(0)) {
+    if (type === 0x000a) break;
+    if (type !== 0x0085 || data.length < 8) continue;
+    const cch = data[6];
+    const name = data[7] & 1 ? data.subarray(8, 8 + 2 * cch).toString('utf16le') : data.subarray(8, 8 + cch).toString('latin1');
+    if (name === sheetName) start = data.readUInt32LE(0);
+  }
+  if (start < 0) return [];
+
+  const out: XlsListValidation[] = [];
+  let depth = 0;
+  try {
+    for (const { type, data: d } of records(start)) {
+      if (type === 0x0809) depth += 1;
+      if (type === 0x000a && --depth === 0) break;
+      if (type !== 0x01be || depth !== 1 || (d.readUInt32LE(0) & 0xf) !== 3) continue;
+      let p = 4;
+      for (let i = 0; i < 4; i++) {
+        // Prompt/error titles and texts (XLUnicodeString).
+        const cch = d.readUInt16LE(p);
+        p += 3 + (d[p + 2] & 1 ? 2 * cch : cch);
+      }
+      const f1 = d.subarray(p + 4, p + 4 + d.readUInt16LE(p));
+      p += 4 + f1.length;
+      p += 4 + d.readUInt16LE(p);
+      if (f1[0] !== 0x17) continue; // tStr: an explicit list, values separated by NUL
+      const n = f1[1];
+      const text = f1[2] & 1 ? f1.subarray(3, 3 + 2 * n).toString('utf16le') : f1.subarray(3, 3 + n).toString('latin1');
+      const values = text.split('\0').map((v) => v.trim()).filter(Boolean);
+      const refs = d.readUInt16LE(p);
+      p += 2;
+      for (let i = 0; i < refs; i++, p += 8) {
+        out.push({ lastRow: d.readUInt16LE(p + 2) + 1, c1: d.readUInt16LE(p + 4) + 1, c2: d.readUInt16LE(p + 6) + 1, values });
+      }
+    }
+  } catch {
+    // Truncated/odd record — keep what was read.
   }
   return out;
 }
@@ -316,6 +385,15 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
       if (endRow < dataStartRow) continue;
       const [c1, c2] = [columnNumber(m[1]), columnNumber(m[3] ?? m[1])];
       for (let c = c1; c <= c2; c++) if (!allowedByCol.has(c)) allowedByCol.set(c, resolved);
+    }
+  }
+  // .xls: the conversion lost the validations — read the typed-in lists from the original file.
+  // Flipkart also ships stray ones ("Individual FSN" on Seller SKU ID) — never on free-text columns.
+  if (inputFormat === 'xls' && original) {
+    const freeText = new Set(headerCells.filter((h) => FREE_TEXT_FIELDS.has(matchHeader(h.text)?.key as FieldKey)).map((h) => h.col));
+    for (const v of xlsListValidations(original, ws.name)) {
+      if (v.lastRow < dataStartRow || !v.values.length) continue;
+      for (let c = v.c1; c <= v.c2; c++) if (!allowedByCol.has(c) && !freeText.has(c)) allowedByCol.set(c, { values: v.values, dependent: false });
     }
   }
 
