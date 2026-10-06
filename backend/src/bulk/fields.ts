@@ -127,3 +127,24 @@ export function knownAllowedValues(raw: unknown): string[] | null {
   const name = normalizeHeader(headerName(raw));
   return KNOWN_ALLOWED.find((k) => k.pattern.test(name))?.values ?? null;
 }
+
+/**
+ * Columns Flipkart's QC rejects when empty though the template doesn't mark them: "Please enter
+ * package attributes- package_length, package_breadth, package_height, package_weight" and
+ * "Procurement SLA : Mandatory attribute not given".
+ */
+const FLIPKART_REQUIRED = /^((length|breadth|height) cm|weight kg|procurement sla( day)?)$/;
+
+export function isFlipkartRequired(raw: unknown): boolean {
+  return FLIPKART_REQUIRED.test(normalizeHeader(headerName(raw)));
+}
+
+/** Flipkart's sample row under the header ("dummy_1") — written over, never sent back. */
+export function isSampleSku(raw: unknown): boolean {
+  return /^dummy[_ -]?\d*$/i.test(String(raw ?? '').trim());
+}
+
+/** Flipkart's type row: "Single - Positive_integer" / "Number" / "Non_negative_integer" / "Decimal". */
+export function isNumericTypeText(raw: unknown): boolean {
+  return /^single\s*-\s*(positive_integer|non_negative_integer|integer|number|decimal)\b/i.test(String(raw ?? '').trim());
+}

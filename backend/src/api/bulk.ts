@@ -128,6 +128,9 @@ router.post(
       res.status(400).json({ error: message, code: 'UNREADABLE' });
       return;
     }
+    // Flipkart takes each downloaded template once: a template we already filled may have been
+    // uploaded there, and a file made from it again would be refused ("Feed is already present").
+    if (parsed.feedToken && await BulkFileLog.exists({ uid, feedToken: parsed.feedToken })) parsed.warnings.push('FEED_USED');
     const fileName = cleanText(req.query['name'], 150);
     const doc = await BulkTemplate.create({
       uid, marketplace, fileName, inputFormat: format, data: working, parsed,
@@ -235,7 +238,7 @@ router.post('/templates/:id/download', authMiddleware, async (req, res) => {
       if (!col) continue;
       const text = String(raw ?? '').slice(0, 5000).trim();
       if (!text) continue;
-      const numeric = col.field && NUMERIC_FIELDS.has(col.field) && /^\d+(\.\d+)?$/.test(text);
+      const numeric = (col.numeric || (col.field && NUMERIC_FIELDS.has(col.field))) && /^\d+(\.\d+)?$/.test(text);
       writes.push({ row: rowNumber, col: col.col, value: numeric ? Number(text) : text });
     }
     filledRequired += required.filter((c) => String(row.cells?.[c.col] ?? '').trim()).length;
@@ -243,7 +246,7 @@ router.post('/templates/:id/download', authMiddleware, async (req, res) => {
 
   let file: Buffer;
   try {
-    file = await writeCells(doc.data, parsed.sheetPath, writes);
+    file = await writeCells(doc.data, parsed.sheetPath, writes, parsed.sampleRows ?? []);
   } catch (err: any) {
     console.error('[bulk] writing failed', doc.marketplace, err?.message);
     await BulkFileLog.create({ uid: uidOf(req), marketplace: doc.marketplace, category: parsed.category ?? undefined, rows: rows.length, errors: ['WRITE_FAILED'], format: parsed.outputFormat });
@@ -254,6 +257,7 @@ router.post('/templates/:id/download', authMiddleware, async (req, res) => {
   await BulkFileLog.create({
     uid: uidOf(req), marketplace: doc.marketplace, category: parsed.category ?? undefined, rows: rows.length, filledPercent,
     errors: filledPercent < 100 ? ['MANDATORY_EMPTY'] : undefined, format: parsed.outputFormat,
+    feedToken: parsed.feedToken ?? undefined,
   });
   const base = (doc.fileName ?? `${doc.marketplace}-template`).replace(/\.(xlsx|xlsm|xls)$/i, '').replace(/[^A-Za-z0-9 _.-]/g, '_').slice(0, 80);
   res.setHeader('Content-Type', mimeFor(parsed.outputFormat));

@@ -27,7 +27,7 @@ export interface BulkTemplateInfo {
   headerRow: number;
   firstRow: number;
   columns: BulkColumn[];
-  /** 'XLS_CONVERTED' | 'DEPENDENT_LISTS' */
+  /** 'XLS_CONVERTED' | 'DEPENDENT_LISTS' | 'FEED_USED' */
   warnings: string[];
   maxRows: number;
 }

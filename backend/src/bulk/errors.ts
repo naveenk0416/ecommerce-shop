@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { headerName, normalizeHeader } from './fields.js';
+import { headerName, isSampleSku, normalizeHeader } from './fields.js';
 import { cellText, type ParsedTemplate } from './workbook.js';
 
 /**
@@ -118,6 +118,8 @@ export async function readErrorReport(working: Buffer, parsed: ParsedTemplate): 
     const raw = found.message.map((c) => cellText(row.getCell(c).value)).filter(Boolean);
     const failed = statuses.some((s) => !OK_STATUS.test(s)) || (raw.length > 0 && !statuses.some((s) => OK_STATUS.test(s)));
     if (!failed || [...statuses, ...raw].some((t) => INSTRUCTION_TEXT.test(t))) continue;
+    // Flipkart's own sample row ("dummy_1") fails QC every time — not one of the seller's.
+    if (skuCol && isSampleSku(cellText(row.getCell(skuCol).value))) continue;
     out.push({
       rowNumber: r,
       index: r - parsed.firstEmptyRow,

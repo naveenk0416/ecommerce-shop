@@ -2,7 +2,10 @@ import crypto from 'node:crypto';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import * as XLSX from 'xlsx';
-import { FieldKey, headerName, headerNumber, isMandatoryText, isSkippedHeader, knownAllowedValues, matchHeader, normalizeHeader } from './fields.js';
+import {
+  FieldKey, headerName, headerNumber, isFlipkartRequired, isMandatoryText, isNumericTypeText, isSampleSku, isSkippedHeader,
+  knownAllowedValues, matchHeader, normalizeHeader,
+} from './fields.js';
 import type { SheetFormat } from './format.js';
 
 /**
@@ -30,6 +33,8 @@ export interface TemplateColumn {
   allowed: string[] | null;
   /** The dropdown depends on another cell (INDIRECT/OFFSET) — values can't be checked here. */
   dependentList: boolean;
+  /** The template validates it as a number (Flipkart "Single - Decimal") — written as one. */
+  numeric?: boolean;
 }
 
 export interface ParsedTemplate {
@@ -43,6 +48,13 @@ export interface ParsedTemplate {
   dataStartRow: number;
   /** First row under the header with nothing in any template column — writing starts here. */
   firstEmptyRow: number;
+  /** The marketplace's sample rows ("dummy_1") — cleared on download so they aren't submitted. */
+  sampleRows?: number[];
+  /**
+   * One-time ID Flipkart puts in each download (hidden "template_version" sheet). Flipkart takes a
+   * file with a given ID once ("Feed is already present in our system").
+   */
+  feedToken?: string | null;
   category: string | null;
   columns: TemplateColumn[];
   /** Same category template → same hash (independent of when it was downloaded). */
@@ -362,12 +374,14 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
   // "Mandatory" / "* Compulsory Field" / "Do not fill these columns" markers around the header.
   const markerRequired = new Set<number>();
   const doNotFill = new Set<number>();
+  const numericCols = new Set<number>();
   // Up to 4 rows under the header: Flipkart has types, an example and descriptions before row 5.
   for (let r = Math.max(1, headerRow - 2); r <= Math.max(dataStartRow - 1, headerRow + 4); r++) {
     if (r === headerRow) continue;
     for (const c of cols) {
       const marker = cellText(ws.getRow(r).getCell(c).value);
       if (/^\*?\s*(mandatory|required|compulsory)\b/i.test(marker)) markerRequired.add(c);
+      if (r > headerRow && isNumericTypeText(marker)) numericCols.add(c);
       // Meesho "Do not fill these 2 columns."; Flipkart "To be filled by Flipkart" / "To be filled later".
       if (/\bdo not (fill|edit|change)\b|\bto be filled (by flipkart|by meesho|by marketplace|later)\b/i.test(marker)) doNotFill.add(c);
     }
@@ -472,6 +486,7 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
 
   // Label/system columns ("Fields + Description", "ERROR STATUS", "Do not fill…") are left alone.
   const fillable = headerCells.filter((h) => !isSkippedHeader(h.text) && !doNotFill.has(h.col));
+  const flipkart = headerCells.some((h) => /^flipkart (serial number|product link)$/.test(normalizeHeader(headerName(h.text))));
   const columns: TemplateColumn[] = fillable.map((h) => {
     const rule = matchHeader(h.text);
     const list = allowedByCol.get(h.col);
@@ -484,12 +499,19 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
       // Unknown dropdown columns: the AI may pick a value the product text clearly states.
       field: rule?.key ?? (allowed?.length ? 'attribute' : null),
       number: headerNumber(h.text),
-      required: isMandatoryText(name) || h.red || markerRequired.has(h.col) || (colourLegend.blueRequired && isBlue(h.fill)),
+      required: isMandatoryText(name) || h.red || markerRequired.has(h.col) || (colourLegend.blueRequired && isBlue(h.fill))
+        || (flipkart && isFlipkartRequired(name)),
       neverInvent: !!rule?.neverInvent,
       allowed: allowed && allowed.length ? allowed : null,
       dependentList: !!list?.dependent,
+      numeric: numericCols.has(h.col),
     };
   });
+
+  // Flipkart's "dummy_1" sample rows right under the header are written over (and cleared).
+  const skuCol = columns.find((c) => c.field === 'sku')?.col;
+  const sampleRows: number[] = [];
+  for (let r = dataStartRow; skuCol && r <= dataStartRow + 20; r++) if (isSampleSku(cellText(ws.getRow(r).getCell(skuCol).value))) sampleRows.push(r);
 
   // First fully empty row under the header — existing rows the seller already filled are kept.
   let firstEmptyRow = dataStartRow;
@@ -499,6 +521,8 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
     if (!any) break;
     firstEmptyRow = r + 1;
   }
+  // Sample rows after the seller's own rows are written over; earlier ones are only cleared.
+  while (sampleRows.includes(firstEmptyRow - 1)) firstEmptyRow -= 1;
 
   // Category: a non-generic sheet name, or a "Category: …" cell above the header.
   let category: string | null = GENERIC_SHEET.test(ws.name.trim()) ? null : ws.name.trim();
@@ -513,6 +537,11 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
       }
     }
   }
+
+  let feedToken: string | null = null;
+  wb.worksheets.find((s) => /^template_version$/i.test(s.name))?.eachRow((row) => {
+    row.eachCell((cell) => { feedToken ??= cellText(cell.value).slice(0, 64) || null; });
+  });
 
   if (inputFormat === 'xls') warnings.push('XLS_CONVERTED');
   if (columns.some((c) => c.dependentList)) warnings.push('DEPENDENT_LISTS');
@@ -529,6 +558,8 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
     headerRow,
     dataStartRow,
     firstEmptyRow,
+    sampleRows,
+    feedToken,
     category,
     columns,
     hash,
@@ -549,9 +580,10 @@ interface RowPart { r: number; attrs: string; cells: Array<{ col: number; xml: s
 /**
  * Writes values into the data sheet's XML and returns the new package. Only that one XML file
  * changes; cells keep their existing style (or take the column's default style), strings are
- * written inline so the shared-string table is untouched.
+ * written inline so the shared-string table is untouched. `clearRows` (the marketplace's sample
+ * rows) are emptied first, keeping their cell styles.
  */
-export async function writeCells(working: Buffer, sheetPath: string, writes: CellWrite[]): Promise<Buffer> {
+export async function writeCells(working: Buffer, sheetPath: string, writes: CellWrite[], clearRows: number[] = []): Promise<Buffer> {
   const zip = await JSZip.loadAsync(working);
   const file = zip.file(sheetPath);
   if (!file) throw new Error('The template sheet is missing.');
@@ -586,6 +618,9 @@ export async function writeCells(working: Buffer, sheetPath: string, writes: Cel
       cells.push({ col, xml: ref ? c[0] : c[0].replace('<c', `<c r="${columnLetter(col)}${r}"`), style: /\bs="(\d+)"/.exec(c[1])?.[1] });
     }
     rows.set(r, { r, attrs: attrs.replace(/\s*\br="\d+"/, ''), cells });
+  }
+  for (const r of clearRows) {
+    for (const c of rows.get(r)?.cells ?? []) c.xml = `<c r="${columnLetter(c.col)}${r}"${c.style ? ` s="${c.style}"` : ''}/>`;
   }
 
   let maxRow = 0;

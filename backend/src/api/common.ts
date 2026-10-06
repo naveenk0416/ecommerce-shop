@@ -388,7 +388,10 @@ const bulkFileLogSchema = new mongoose.Schema({
   filledPercent: { type: Number },
   errors: { type: [String], default: undefined },
   format: { type: String },
+  /** Flipkart's one-time file ID the download was made from (warns when the same template comes back). */
+  feedToken: { type: String },
 }, { timestamps: { createdAt: true, updatedAt: false } });
+bulkFileLogSchema.index({ uid: 1, feedToken: 1 }, { sparse: true });
 
 export const BulkFileLog = (mongoose.models as any).BulkFileLog || mongoose.model('BulkFileLog', bulkFileLogSchema);
 

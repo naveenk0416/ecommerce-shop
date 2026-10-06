@@ -538,6 +538,52 @@ test('Flipkart .xls: overlapping merges are tolerated, "To be filled by Flipkart
   assert.deepEqual(by['Fullfilment by'].allowed, ['Seller'], 'Flipkart rejected a business name and lowercase "seller" here — only its own label');
 });
 
+test('Flipkart: numbers typed as numbers, package size + SLA required, "dummy_1" sample row written over, reused template warned', async () => {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('jewellery_set');
+  const cols = [
+    ['Flipkart Serial Number', ' ', 'To be filled by Flipkart'],
+    ['Seller SKU ID', 'Text - limited to 64 characters (including spaces)', 'Seller SKU ID is the identification number'],
+    ['MRP (INR)', 'Single - Positive_integer', 'Maximum retail price of the product'],
+    ['Procurement SLA (DAY)', 'Single - Number', 'Time taken to keep the product ready for dispatch'],
+    ['Length (CM)', 'Single - Decimal', 'Length of the package in cm'],
+    ['Weight (KG)', 'Single - Decimal', 'Weight of the final package in kg'],
+    ['Base Material', 'MULTI - TEXT', 'Base material of the product'],
+  ];
+  cols.forEach(([h, type, desc], i) => {
+    ws.getCell(1, i + 1).value = h;
+    ws.getCell(2, i + 1).value = type;
+    if (i > 1) ws.getCell(3, i + 1).value = 'Example';
+    ws.getCell(4, i + 1).value = desc;
+  });
+  ws.getCell(5, 2).value = 'dummy_1';
+  ws.getCell(5, 7).value = 'Alloy';
+  wb.addWorksheet('template_version', { state: 'hidden' }).getCell('CW1').value = 'TEMPTEST0001';
+  const file = Buffer.from(await wb.xlsx.writeBuffer());
+
+  const { token } = await seller();
+  const t = (await upload(token, file, 'flipkart')).data;
+  assert.equal(t.firstRow, 5, 'the sample row is written over');
+  assert.ok(!t.warnings.includes('FEED_USED'));
+  const by = Object.fromEntries(t.columns.map((c: any) => [c.header, c]));
+  for (const h of ['Procurement SLA (DAY)', 'Length (CM)', 'Weight (KG)']) assert.equal(by[h].required, true, `${h} is required on Flipkart`);
+  assert.equal(by['Base Material'].required, false);
+
+  const cells = { [by['Seller SKU ID'].col]: 'SKU-1', [by['MRP (INR)'].col]: '999', [by['Procurement SLA (DAY)'].col]: '2', [by['Length (CM)'].col]: '10.5' };
+  const out = await api('POST', `/bulk/templates/${t.id}/download`, { rows: [{ cells }] }, token);
+  assert.equal(out.status, 200);
+  const filled = new ExcelJS.Workbook();
+  await filled.xlsx.load(out.data);
+  const row = filled.getWorksheet('jewellery_set')!.getRow(5);
+  assert.equal(row.getCell(by['Seller SKU ID'].col).value, 'SKU-1');
+  assert.equal(row.getCell(by['Procurement SLA (DAY)'].col).value, 2, 'typed in the table as text, written as a number');
+  assert.equal(row.getCell(by['Length (CM)'].col).value, 10.5);
+  assert.equal(row.getCell(by['Base Material'].col).value, null, 'the sample row\'s values are cleared');
+
+  // Same template again: Flipkart would refuse a second file from it.
+  assert.ok((await upload(token, file, 'flipkart')).data.warnings.includes('FEED_USED'));
+});
+
 test('marketplace error file: Meesho INVALID rows and Flipkart QC failures come back with their messages and columns', async () => {
   const { token } = await seller();
   const wb = new ExcelJS.Workbook();

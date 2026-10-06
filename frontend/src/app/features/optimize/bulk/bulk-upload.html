@@ -58,6 +58,9 @@
           @if (tpl.warnings.includes('XLS_CONVERTED')) {
             <p class="bulk__warn">{{ t('This is an old .xls file. Your filled file will be .xlsx (same columns) — the dropdown lists inside .xls files can’t be kept.', 'यह पुरानी .xls file है। भरी हुई file .xlsx होगी (वही columns) — .xls की dropdown lists नहीं रखी जा सकतीं।') }}</p>
           }
+          @if (tpl.warnings.includes('FEED_USED')) {
+            <p class="bulk__err" role="alert" data-testid="feed-used">{{ t('You already made a file from this template. Flipkart accepts each template only once — if you uploaded that file, Flipkart will refuse this one ("Feed is already present"). Download a new template from Flipkart, or correct Flipkart’s error file and upload that.', 'इस template से आप पहले ही file बना चुके हैं। Flipkart हर template एक ही बार लेता है — अगर वह file upload हो चुकी है, तो Flipkart यह file नहीं लेगा ("Feed is already present")। Flipkart से नया template download करें, या Flipkart की error file ठीक करके वही upload करें।') }}</p>
+          }
           @if (tpl.warnings.includes('DEPENDENT_LISTS')) {
             <p class="bulk__warn">{{ t('Some dropdowns depend on other columns — check those in Excel before uploading.', 'कुछ dropdowns दूसरे columns पर निर्भर हैं — upload से पहले Excel में check करें।') }}</p>
           }
@@ -144,6 +147,9 @@
           <strong>{{ marketErrorsLeft()
             ? t(marketName() + ' rejected ' + marketErrorList().length + ' row(s) — ' + marketErrorsLeft() + ' still to fix. Change the red cells below, then download the file again.', marketName() + ' ने ' + marketErrorList().length + ' row(s) reject कीं — ' + marketErrorsLeft() + ' अभी ठीक करनी हैं। नीचे लाल cells बदलें, फिर file दोबारा download करें।')
             : t('All rejected rows are fixed — download the file again and upload it on ' + marketName() + '.', 'सब rejected rows ठीक हो गईं — file दोबारा download करें और ' + marketName() + ' पर upload करें।') }}</strong>
+          @if (marketplace() === 'flipkart') {
+            <p class="bulk__warn" data-testid="flipkart-feed-note">{{ t('Flipkart accepts each file only once, so a file downloaded again from here is refused ("Feed is already present"). Make these changes in Flipkart’s error file and upload that file — or download a new template from Flipkart, upload it here and fill it again.', 'Flipkart हर file एक ही बार लेता है, इसलिए यहाँ से दोबारा download की गई file नहीं लेगा ("Feed is already present")। ये बदलाव Flipkart की error file में करें और वही upload करें — या Flipkart से नया template download करके यहाँ upload करें और फिर से भरें।') }}</p>
+          }
           <ul>
             @for (e of marketErrorList(); track e.row.rowKey) {
               <li [class.bulk__fixed]="e.fixed" data-testid="market-error">
