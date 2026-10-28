@@ -12,6 +12,7 @@ import { WalletService } from '../../../services/wallet';
 import { ApiError } from '../../../services/api';
 import { resizeImage } from '../../../utils/image';
 import { hasRealVariants, totalStock, Variant, variantLabel } from '../../../config/size-presets';
+import { NextCoinsNote } from '../wallet/next-coins-note';
 import { VariantEditor } from '../variants/variant-editor';
 import { CreateAmazonListingDialog } from '../inventory/create-amazon-listing-dialog';
 
@@ -35,7 +36,7 @@ type Step = 'pick' | 'group' | 'details' | 'confirm' | 'upload' | 'progress' | '
   selector: 'app-batch-page',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, RouterLink, VariantEditor],
+  imports: [MatIconModule, RouterLink, VariantEditor, NextCoinsNote],
   templateUrl: './batch-page.html',
   styleUrl: './batch-page.scss',
 })

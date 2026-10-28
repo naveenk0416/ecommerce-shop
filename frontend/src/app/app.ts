@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Title, Meta } from '@angular/platform-browser';
-import { Router, NavigationEnd, RouterOutlet, RouterLink } from '@angular/router';
+import { Router, NavigationEnd, NavigationCancel, NavigationError, RouterOutlet, RouterLink } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { IonApp, IonHeader, IonToolbar, IonContent,
   IonButton, IonIcon, IonCard, IonCardHeader, IonCardTitle,
@@ -33,7 +33,7 @@ import { AuthCard } from './auth/auth-card';
 import { loadRazorpay } from './utils/razorpay';
 import { AnalyticsService } from './services/analytics';
 import { INDIAN_MOBILE_RE, normalizeIndianMobile } from './config/signup-options';
-import { LanguageService } from './services/language';
+import { LanguageService, SITE_LANGUAGES } from './services/language';
 import { ConsentService } from './services/consent';
 import { FloatingUiService } from './services/floating-ui';
 import { CookieBanner } from './ui/cookie-banner/cookie-banner';
@@ -69,6 +69,7 @@ export class App {
   private router = inject(Router);
   private analytics = inject(AnalyticsService);
   readonly i18n = inject(LanguageService);
+  readonly languages = SITE_LANGUAGES;
   readonly consent = inject(ConsentService);
   readonly floating = inject(FloatingUiService);
   private wallet = inject(WalletService);
@@ -88,6 +89,9 @@ export class App {
   /** 'auth' = /login, /signup and the email-link screens (/forgot-password, /reset-password, /verify-email). */
   mainView = signal<'home' | 'listings' | 'products' | 'settings' | 'admin' | 'gst' | 'workspace' | 'page' | 'auth'>('home');
   currentPath = signal<string>('');
+  /** False until the router has finished a navigation into /optimize or /workspace — until then
+   * (session check + lazy code download) a skeleton is shown instead of an empty page. */
+  workspaceRendered = signal(false);
   myListings = signal<Listing[]>([]);
   copiedField = signal<string | null>(null);
   editingField = signal<string | null>(null);
@@ -399,9 +403,19 @@ export class App {
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: NavigationEnd) => {
       this.syncViewWithUrl(event.urlAfterRedirects);
+      this.workspaceRendered.set(event.urlAfterRedirects.startsWith('/optimize') || event.urlAfterRedirects.startsWith('/workspace/'));
     });
+    // A navigation that is cancelled (e.g. authGuard sending a signed-out visitor to /login) must
+    // not leave the skeleton up.
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationCancel || event instanceof NavigationError)
+    ).subscribe(() => this.workspaceRendered.set(true));
 
     if (isPlatformBrowser(this.platformId)) {
+      // Hard refresh on a dashboard page: fetch its code while the session is still being checked.
+      const optimizePath = /^\/optimize(?:\/([^/?#]*))?/.exec(window.location.pathname);
+      if (optimizePath) void import('./features/optimize/optimize.routes').then((m) => m.prefetchOptimizeRoute(optimizePath[1] ?? ''));
+
       this.analytics.init();
 
       // URL Sync Logic — includes /login, /signup and the email-link pages (reset/verify tokens).
@@ -1092,6 +1106,7 @@ export class App {
       await this.auth.verifyEmail(token, this.rememberMe());
       this.emailVerificationState.set('success');
       this.analytics.track('email_verified');
+      this.analytics.trackRegistrationVerified({ state: this.auth.profile()?.state, city: this.auth.profile()?.city });
       void this.wallet.load();
     } catch (error) {
       this.emailVerificationState.set('error');

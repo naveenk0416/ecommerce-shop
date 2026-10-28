@@ -94,12 +94,50 @@ export class AnalyticsService {
     this.pushDataLayer({ event: 'lead', lead_source: source });
   }
 
-  /** Called once the backend has accepted a new registration. */
+  /**
+   * Called once the backend has accepted a new registration: GA4 sign_up. Meta's
+   * CompleteRegistration waits for a verified account — Google sign-ups are verified already, email
+   * sign-ups fire it from trackRegistrationVerified() when the link is opened.
+   */
   trackSignUp(method: 'email' | 'google' = 'email'): void {
-    this.fbq('track', 'CompleteRegistration');
     const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
     gtag?.('event', 'sign_up', { method, ...this.utmParams() });
     this.pushDataLayer({ event: 'sign_up', method, ...this.utmParams() });
+    if (method === 'google') this.trackRegistrationVerified();
+  }
+
+  /** Meta CompleteRegistration for a verified account, once per browser, with campaign and region. */
+  trackRegistrationVerified(region: { state?: string | null; city?: string | null } = {}): void {
+    if (!this.once('sa_px_complete_registration')) return;
+    const params = { ...this.utmParams(), ...this.regionParams(region) };
+    this.fbq('track', 'CompleteRegistration', params);
+    this.pushDataLayer({ event: 'complete_registration', ...params });
+  }
+
+  /** Custom "FirstListingGenerated" — the seller's first AI listing, once per account on this browser. */
+  trackFirstListing(uid: string, region: { state?: string | null; city?: string | null } = {}): void {
+    if (!this.once(`sa_px_first_listing_${uid}`)) return;
+    const params = { ...this.utmParams(), ...this.regionParams(region) };
+    this.fbq('trackCustom', 'FirstListingGenerated', params);
+    const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
+    gtag?.('event', 'first_listing_generated', params);
+    this.pushDataLayer({ event: 'first_listing_generated', ...params });
+  }
+
+  private regionParams(region: { state?: string | null; city?: string | null }): Record<string, string> {
+    return { ...(region.state ? { state: region.state } : {}), ...(region.city ? { city: region.city } : {}) };
+  }
+
+  /** True the first time a key is seen on this browser (storage blocked: always true). */
+  private once(key: string): boolean {
+    if (!this.isBrowser) return false;
+    try {
+      if (window.localStorage.getItem(key)) return false;
+      window.localStorage.setItem(key, '1');
+    } catch {
+      // Storage blocked — fire anyway.
+    }
+    return true;
   }
 
   private sentThisPageLoad = new Set<FunnelStep>();

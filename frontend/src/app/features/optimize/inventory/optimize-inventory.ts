@@ -23,7 +23,19 @@ import { WalletService } from '../../../services/wallet';
 import { FeatureService, NotifyFeature } from '../../../services/features';
 import { LanguageService } from '../../../services/language';
 import { CHANNEL_LABELS, ComingSoonChannel } from '../coming-soon/coming-soon-publish';
-import { hasRealVariants, variantLabel } from '../../../config/size-presets';
+import { hasRealVariants, totalStock, variantLabel } from '../../../config/size-presets';
+import { deleteWithUndo } from '../../../utils/undo-delete';
+
+const HIDE_INACTIVE_KEY = 'sa_inventory_hide_inactive';
+
+/** On unless the seller turned it off on this browser. */
+function readHideInactive(): boolean {
+  try {
+    return window.localStorage.getItem(HIDE_INACTIVE_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
 
 /** One low-stock line on the dashboard: a product, or one size/colour of it. */
 export interface LowStockAlert {
@@ -88,29 +100,72 @@ export class OptimizeInventory {
   /** One row per product. The summary cards use this same list, so cards and table always agree. */
   uniqueListings = computed(() => Array.from(new Map(this.listings().map((item) => [item.id, item])).values()));
 
+  /** "Hide inactive": archived products and old imports with 0 units and no price. Remembered per browser. */
+  readonly hideInactive = signal(readHideInactive());
+  /** Products the seller actually stocks — what the cards and alerts count. */
+  activeListings = computed(() => this.uniqueListings().filter((l) => !this.isInactive(l)));
+  inactiveCount = computed(() => this.uniqueListings().length - this.activeListings().length);
+  private visibleListings = computed(() => (this.hideInactive() ? this.activeListings() : this.uniqueListings()));
+
   filteredListings = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
-    const unique = this.uniqueListings();
+    const unique = this.visibleListings();
     if (!query) return unique;
     return unique.filter(
       (l) =>
         l.name.toLowerCase().includes(query) ||
         (l.category || '').toLowerCase().includes(query) ||
-        (l.hsnCode || '').toLowerCase().includes(query),
+        (l.hsnCode || '').toLowerCase().includes(query) ||
+        (l.sku || '').toLowerCase().includes(query),
     );
   });
 
   totalValue = computed(() => this.uniqueListings().reduce((sum, l) => sum + this.priceOf(l) * Number(l.quantity ?? 0), 0));
-  totalProfit = computed(() => this.uniqueListings().reduce((sum, l) => sum + this.getProfit(l), 0));
+  /** Only products with a cost price: an imported product without one has no known profit. */
+  totalProfit = computed(() => this.activeListings().reduce((sum, l) => sum + (this.hasCost(l) ? this.getProfit(l) : 0), 0));
+  missingCostCount = computed(() => this.activeListings().filter((l) => !this.hasCost(l)).length);
   /** Low stock is per size for products with sizes ("Pink / M — 2 left"). */
-  lowStockAlerts = computed<LowStockAlert[]>(() => this.uniqueListings().flatMap((l): LowStockAlert[] => {
+  lowStockAlerts = computed<LowStockAlert[]>(() => this.visibleListings().flatMap((l): LowStockAlert[] => {
     if (hasRealVariants(l.variants)) {
       return this.lowVariants(l).map((v) => ({ listingId: l.id ?? '', name: l.name, variant: v.label, stock: v.stock }));
     }
     return isLowStock(l) ? [{ listingId: l.id ?? '', name: l.name, variant: null, stock: Number(l.quantity ?? 0) }] : [];
   }).sort((a, b) => a.stock - b.stock));
-  lowStockCount = computed(() => this.lowStockAlerts().length);
+  /** "Running low": 1 unit up to the alert level. */
+  runningLowAlerts = computed(() => this.lowStockAlerts().filter((a) => a.stock > 0));
+  /** "0 units / never stocked" — listed separately so they don't drown the real alerts. */
+  zeroStockAlerts = computed(() => this.lowStockAlerts().filter((a) => a.stock <= 0));
+  lowStockCount = computed(() => this.runningLowAlerts().length);
   readonly showAllAlerts = signal(false);
+  readonly showZeroStock = signal(false);
+
+  /** Archived, or never stocked: 0 units and no selling price (typically an old marketplace import). */
+  isInactive(listing: Listing): boolean {
+    return !!listing.archived || this.isNeverStocked(listing);
+  }
+
+  isNeverStocked(listing: Listing): boolean {
+    const stock = hasRealVariants(listing.variants) ? totalStock(listing.variants!) : Number(listing.quantity ?? 0);
+    return stock <= 0 && this.priceOf(listing) <= 0;
+  }
+
+  hasCost(listing: Listing): boolean {
+    return Number(listing.costPrice) > 0;
+  }
+
+  /** Amazon / Flipkart for synced products, "Manual" for ones added here or saved from a listing. */
+  platformOf(listing: Listing): string {
+    return listing.source === 'amazon' ? 'Amazon' : listing.source === 'flipkart' ? 'Flipkart' : this.i18n.t('Manual', 'Manual');
+  }
+
+  setHideInactive(hide: boolean): void {
+    this.hideInactive.set(hide);
+    try {
+      window.localStorage.setItem(HIDE_INACTIVE_KEY, hide ? '1' : '0');
+    } catch {
+      // Storage blocked — the choice lasts for this visit.
+    }
+  }
 
   hasSizes(listing: Listing): boolean {
     return hasRealVariants(listing.variants);
@@ -361,17 +416,52 @@ export class OptimizeInventory {
       });
   }
 
-  deleteListing(listing: Listing): void {
+  /** Archive hides an old import from the table, cards and alerts without deleting it. */
+  setArchived(listing: Listing, archived: boolean): void {
     if (!listing.id) return;
-    if (!confirm(`Remove "${listing.name}" from your inventory? This can't be undone.`)) return;
+    this.upsertLocal({ ...listing, archived });
     this.listingService
-      .deleteListing(listing.id)
-      .then(() => {
-        this.deletedLocal.set(listing.id!, Date.now() + 8000);
-        this.recentLocal.delete(listing.id!);
-        this.listings.update((list) => list.filter((l) => l.id !== listing.id));
-        this.snackBar.open('Listing removed from inventory.', 'Dismiss', { duration: 3000 });
+      .updateListing(listing.id, { archived })
+      .then((saved) => {
+        this.upsertLocal(saved);
+        const ref = this.snackBar.open(
+          archived ? this.i18n.t('Product archived — hidden from Inventory.', 'Product archive हो गया — Inventory में नहीं दिखेगा।') : this.i18n.t('Product restored.', 'Product वापस आ गया।'),
+          archived ? this.i18n.t('Undo', 'वापस लें') : 'OK',
+          { duration: 5000 },
+        );
+        if (archived) ref.onAction().subscribe(() => this.setArchived(saved, false));
       })
-      .catch(() => this.snackBar.open('Failed to delete listing.', 'Dismiss', { duration: 4000 }));
+      .catch((error) => {
+        this.upsertLocal(listing);
+        this.snackBar.open((error instanceof Error && error.message) || 'Could not update this product. Please try again.', 'Dismiss', { duration: 4000 });
+      });
+  }
+
+  /** Asks first; the row disappears at once and the delete is only sent if Undo isn't pressed within 5 seconds. */
+  async deleteListing(listing: Listing): Promise<void> {
+    if (!listing.id) return;
+    const id = listing.id;
+    const ok = await this.confirm({
+      title: this.i18n.t('Delete this product?', 'यह product delete करें?'),
+      intro: this.i18n.t('It is removed from your SellAssist inventory. Nothing changes on Amazon or Flipkart.', 'यह आपकी SellAssist inventory से हट जाएगा। Amazon या Flipkart पर कुछ नहीं बदलेगा।'),
+      items: [{ heading: listing.name, lines: [`SKU: ${listing.sku || '—'}`, `Stock: ${Number(listing.quantity ?? 0)} units`] }],
+      confirmLabel: this.i18n.t('Delete', 'Delete करें'),
+      warning: this.i18n.t('Want to keep it for later? Use Archive instead.', 'बाद के लिए रखना है? Archive करें।'),
+    });
+    if (!ok) return;
+    // Polls during the Undo window must not bring the row back.
+    this.deletedLocal.set(id, Date.now() + 60_000);
+    this.recentLocal.delete(id);
+    this.listings.update((list) => list.filter((l) => l.id !== id));
+    deleteWithUndo(this.snackBar, {
+      message: this.i18n.t('Product deleted.', 'Product delete हो गया।'),
+      undoLabel: this.i18n.t('Undo', 'वापस लें'),
+      commit: () => this.listingService.deleteListing(id).then(() => this.deletedLocal.set(id, Date.now() + 8000)),
+      restore: () => {
+        this.deletedLocal.delete(id);
+        this.listings.update((list) => (list.some((l) => l.id === id) ? list : [listing, ...list]));
+      },
+      onError: () => this.snackBar.open('Failed to delete the product.', 'Dismiss', { duration: 4000 }),
+    });
   }
 }

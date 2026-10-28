@@ -256,6 +256,55 @@
   padding: 0 32px 32px;
 }
 
+.optimize-content--no-header {
+  padding-top: 24px;
+}
+
+// Placeholder while a saved listing opens (the tab itself stays hidden until it has the data).
+.optimize-content__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  span {
+    display: block;
+    height: 120px;
+    border-radius: 16px;
+    background: #e2e8f0;
+    animation: optimize-pulse 1.4s ease-in-out infinite;
+  }
+
+  span:first-child {
+    height: 220px;
+  }
+}
+
+.optimize-header__title-skeleton {
+  display: block;
+  width: min(360px, 60vw);
+  height: 30px;
+  margin-top: 6px;
+  border-radius: 10px;
+  background: #e2e8f0;
+  animation: optimize-pulse 1.4s ease-in-out infinite;
+}
+
+.optimize-header--plain {
+  padding-bottom: 16px;
+}
+
+@keyframes optimize-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .optimize-content__skeleton span,
+  .optimize-header__title-skeleton {
+    animation: none;
+  }
+}
+
 .optimize-notice {
   margin: 0 32px 16px;
   padding: 10px 14px;

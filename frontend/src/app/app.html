@@ -53,14 +53,13 @@
             </div>
           } @else {
             <div class="flex items-center gap-2 md:gap-3">
-              <!-- English / हिंदी (moved here from the landing hero) -->
+              <!-- English / हिंदी / తెలుగు / ಕನ್ನಡ (moved here from the landing hero) -->
               <div class="header-lang" role="group" [attr.aria-label]="i18n.t('Language', 'भाषा')" data-testid="header-lang">
-                <button type="button" [class.header-lang__on]="i18n.lang() === 'en'" [attr.aria-pressed]="i18n.lang() === 'en'" (click)="i18n.lang.set('en')" aria-label="English">
-                  <span class="header-lang__long">English</span><span class="header-lang__short" aria-hidden="true">EN</span>
-                </button>
-                <button type="button" lang="hi" [class.header-lang__on]="i18n.lang() === 'hi'" [attr.aria-pressed]="i18n.lang() === 'hi'" (click)="i18n.lang.set('hi')" aria-label="हिंदी">
-                  <span class="header-lang__long">हिंदी</span><span class="header-lang__short" aria-hidden="true">हिं</span>
-                </button>
+                @for (language of languages; track language.code) {
+                  <button type="button" [attr.lang]="language.code" [class.header-lang__on]="i18n.lang() === language.code" [attr.aria-pressed]="i18n.lang() === language.code" (click)="i18n.lang.set(language.code)" [attr.aria-label]="language.label" [attr.data-testid]="'lang-' + language.code">
+                    <span class="header-lang__long">{{ language.label }}</span><span class="header-lang__short" aria-hidden="true">{{ language.short }}</span>
+                  </button>
+                }
               </div>
               <button (click)="openSignIn()" class="btn-ghost px-6 whitespace-nowrap hidden md:inline-flex">
                 {{ i18n.t('Sign In', 'Login') }}
@@ -138,6 +137,48 @@
         }
         @if (mainView() === 'page') {
           <!-- Public pages (privacy, terms, refund policy, contact, 404) — don't wait on auth. -->
+          <router-outlet></router-outlet>
+        } @else if (mainView() === 'workspace' && !resumingAmazonLogin()) {
+          @if (!auth.isAuthReady() || !workspaceRendered()) {
+            <!-- Hard refresh / direct link to a dashboard page: shown at once while the session is
+                 checked and the page's code downloads, instead of a blank screen above the footer.
+                 The single <router-outlet> below stays in place (authGuard holds it empty until then). -->
+            <div class="ws-skeleton" role="status" aria-live="polite" data-testid="workspace-skeleton">
+              <span class="sr-only">Loading your dashboard…</span>
+              <aside class="ws-skeleton__sidebar" aria-hidden="true">
+                @for (row of [1, 2, 3, 4, 5, 6, 7, 8]; track row) { <span class="ws-skeleton__bar"></span> }
+              </aside>
+              <div class="ws-skeleton__main" aria-hidden="true">
+                <span class="ws-skeleton__bar ws-skeleton__bar--title"></span>
+                <div class="ws-skeleton__cards">
+                  @for (card of [1, 2, 3, 4]; track card) { <span class="ws-skeleton__card"></span> }
+                </div>
+                <span class="ws-skeleton__panel"></span>
+              </div>
+            </div>
+          }
+          @if (showPhonePrompt()) {
+            <!-- One-time prompt for accounts created before the mobile number was required. -->
+            <section class="phone-prompt" aria-labelledby="phone-prompt-title">
+              <div class="phone-prompt__body">
+                <h3 id="phone-prompt-title" class="text-sm font-black text-slate-900">Add your mobile number</h3>
+                <p class="text-xs text-slate-500 font-medium mt-1">For WhatsApp support &amp; stock alerts. No spam.</p>
+                <div class="flex flex-wrap items-center gap-2 mt-3">
+                  <span class="shrink-0 bg-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-slate-600">+91</span>
+                  <input type="tel" inputmode="numeric" autocomplete="tel-national" [value]="phonePromptValue()" (input)="phonePromptValue.set($any($event.target).value)" (keyup.enter)="savePhonePrompt()" placeholder="10-digit mobile number" aria-label="Mobile number" class="phone-prompt__input" />
+                  <button (click)="savePhonePrompt()" [disabled]="phonePromptSaving()" class="btn-orange-premium whitespace-nowrap">{{ phonePromptSaving() ? 'Saving…' : 'Save' }}</button>
+                  <button (click)="dismissPhonePrompt()" class="text-xs font-bold text-slate-400 hover:text-slate-600 px-2">Not now</button>
+                </div>
+                <label class="flex items-start gap-2 text-xs font-bold text-slate-500 cursor-pointer mt-3">
+                  <input type="checkbox" [checked]="phonePromptOptIn()" (change)="phonePromptOptIn.set($any($event.target).checked)" class="remember-me-checkbox mt-0.5" />
+                  Send me updates and stock alerts on WhatsApp
+                </label>
+                @if (phonePromptError()) {
+                  <p class="field-error">{{ phonePromptError() }}</p>
+                }
+              </div>
+            </section>
+          }
           <router-outlet></router-outlet>
         } @else if (!auth.isAuthReady() || resumingAmazonLogin()) {
           <div class="flex flex-col items-center justify-center py-20">
@@ -356,30 +397,6 @@
           </section>
         } @else if (mainView() === 'gst') {
           <app-gst-calculator></app-gst-calculator>
-        } @else if (mainView() === 'workspace') {
-          @if (showPhonePrompt()) {
-            <!-- One-time prompt for accounts created before the mobile number was required. -->
-            <section class="phone-prompt" aria-labelledby="phone-prompt-title">
-              <div class="phone-prompt__body">
-                <h3 id="phone-prompt-title" class="text-sm font-black text-slate-900">Add your mobile number</h3>
-                <p class="text-xs text-slate-500 font-medium mt-1">For WhatsApp support &amp; stock alerts. No spam.</p>
-                <div class="flex flex-wrap items-center gap-2 mt-3">
-                  <span class="shrink-0 bg-slate-100 rounded-xl px-3 py-2 text-sm font-bold text-slate-600">+91</span>
-                  <input type="tel" inputmode="numeric" autocomplete="tel-national" [value]="phonePromptValue()" (input)="phonePromptValue.set($any($event.target).value)" (keyup.enter)="savePhonePrompt()" placeholder="10-digit mobile number" aria-label="Mobile number" class="phone-prompt__input" />
-                  <button (click)="savePhonePrompt()" [disabled]="phonePromptSaving()" class="btn-orange-premium whitespace-nowrap">{{ phonePromptSaving() ? 'Saving…' : 'Save' }}</button>
-                  <button (click)="dismissPhonePrompt()" class="text-xs font-bold text-slate-400 hover:text-slate-600 px-2">Not now</button>
-                </div>
-                <label class="flex items-start gap-2 text-xs font-bold text-slate-500 cursor-pointer mt-3">
-                  <input type="checkbox" [checked]="phonePromptOptIn()" (change)="phonePromptOptIn.set($any($event.target).checked)" class="remember-me-checkbox mt-0.5" />
-                  Send me updates and stock alerts on WhatsApp
-                </label>
-                @if (phonePromptError()) {
-                  <p class="field-error">{{ phonePromptError() }}</p>
-                }
-              </div>
-            </section>
-          }
-          <router-outlet></router-outlet>
         } @else if (!auth.user()) {
           <!-- Short one-screen sign-up / login (English + Hindi) -->
           <app-auth-card [mode]="isRegistering() ? 'signup' : 'login'" />

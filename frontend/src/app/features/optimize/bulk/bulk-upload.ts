@@ -142,6 +142,19 @@ export class BulkUpload {
   });
 
   /** Price / MRP the marketplace will reject (checked again after every edit). */
+  /**
+   * Flipkart shipping columns its QC rejects when blank (Procurement type/SLA, Shipping provider,
+   * Length/Breadth/Height/Weight) that are still empty in at least one row.
+   */
+  readonly blankShippingColumns = computed(() => {
+    if (this.marketplace() !== 'flipkart') return [];
+    const rows = this.rows();
+    return this.columns()
+      .filter((c) => /^(procurement (type|sla)|shipping provider|(length|breadth|height|weight))\b/i.test(c.header.trim()))
+      .filter((c) => rows.some((r) => !String(r.cells[c.col]?.value ?? '').trim()))
+      .map((c) => c.header);
+  });
+
   readonly priceProblems = computed(() => priceProblems(this.rows(), this.columns(), this.marketplace()));
   readonly mrpCol = computed(() => this.columns().find((c) => c.field === 'mrp')?.col ?? null);
 
@@ -410,6 +423,11 @@ export class BulkUpload {
     if (!problems && rejected && !confirm(this.t(
       `${rejected} row(s) ${this.marketName()} rejected are not fixed yet. Download anyway?`,
       `${this.marketName()} की reject की हुई ${rejected} row(s) अभी ठीक नहीं हुईं। फिर भी download करें?`,
+    ))) return;
+    const blankShipping = this.blankShippingColumns();
+    if (blankShipping.length && !confirm(this.t(
+      `Flipkart rejects rows with these empty: ${blankShipping.join(', ')}. Fill them in the file before uploading. Download anyway?`,
+      `ये खाली होने पर Flipkart rows reject करता है: ${blankShipping.join(', ')}। Upload से पहले file में भरें। फिर भी download करें?`,
     ))) return;
     this.downloading.set(true);
     this.downloadError.set(null);

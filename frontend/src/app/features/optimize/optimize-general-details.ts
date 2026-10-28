@@ -18,6 +18,7 @@ import { WalletService } from '../../services/wallet';
 import { LanguageService } from '../../services/language';
 import { RouterLink } from '@angular/router';
 import { VariantEditor } from './variants/variant-editor';
+import { NextCoinsNote } from './wallet/next-coins-note';
 import { hasRealVariants } from '../../config/size-presets';
 
 /** General-tab keys this form reads/writes in the session (AI content + seller-entered values). */
@@ -28,7 +29,7 @@ type GeneralKey = 'productTitle' | 'category' | 'sku' | 'brand' | 'hsnCode' | 'd
   selector: 'app-optimize-general-details',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, UiCard, VariantEditor, RouterLink],
+  imports: [FormsModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, UiCard, VariantEditor, RouterLink, NextCoinsNote],
   templateUrl: './optimize-general-details.html',
   styleUrl: './optimize-general-details.scss',
 })

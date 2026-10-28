@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, Injector, computed, inject, runInInjectionContext } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, Injector, computed, effect, inject, runInInjectionContext, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
@@ -15,6 +17,11 @@ import { WalletNudges } from './wallet/wallet-nudges';
 import { AccountNudges } from './onboarding/account-nudges';
 import { FeatureService } from '../../services/features';
 import { BatchService } from '../../services/batch';
+
+/** Marketplace / output tabs: they show the open product's content. */
+const MARKETPLACE_TABS: ReadonlySet<string> = new Set(['amazon', 'flipkart', 'meesho', 'instagram', 'insights', 'readiness', 'publish', 'export']);
+/** Pages where the product-editor header makes sense. */
+const EDITOR_TABS: ReadonlySet<string> = new Set(['general', ...MARKETPLACE_TABS]);
 
 @Component({
   selector: 'app-optimize-layout',
@@ -43,6 +50,36 @@ export class OptimizeLayout {
   publishLabel = computed(() => {
     const n = this.readyCount();
     return this.i18n.t(`Publish to ${n} channel${n === 1 ? '' : 's'}`, `${n} channel पर publish करें`);
+  });
+
+  /** The child page: 'general', 'inventory', 'amazon' … from /optimize/<page>. */
+  private readonly url = toSignal(
+    this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd), map((e) => e.urlAfterRedirects)),
+    // While the first navigation into /optimize is still running, router.url is the old URL.
+    { initialValue: this.router.currentNavigation()?.finalUrl?.toString() ?? this.router.url },
+  );
+  readonly currentTab = computed(() => /^\/optimize\/([^/?#]+)/.exec(this.url())?.[1] ?? 'general');
+
+  /** "Untitled Product · Draft · Publish to N channels" only where a product is being edited. */
+  readonly showEditorHeader = computed(() =>
+    EDITOR_TABS.has(this.currentTab()) && (this.session.imagePreview() !== null || !!this.session.draftId() || this.session.loadingDraft()));
+
+  /** Plain page title for every other page; null when the page already shows its own heading. */
+  readonly plainTitle = computed(() => {
+    const titles: Record<string, [string, string]> = {
+      general: ['General Details', 'General Details'],
+      inventory: ['Inventory', 'Inventory'],
+      amazon: ['Amazon listing', 'Amazon listing'],
+      flipkart: ['Flipkart listing', 'Flipkart listing'],
+      meesho: ['Meesho listing', 'Meesho listing'],
+      instagram: ['Instagram content', 'Instagram content'],
+      insights: ['AI Insights', 'AI Insights'],
+      readiness: ['Marketplace Readiness', 'Marketplace Readiness'],
+      publish: ['Publish Center', 'Publish Center'],
+      export: ['Export Center', 'Export Center'],
+    };
+    const title = titles[this.currentTab()];
+    return title ? this.i18n.t(title[0], title[1]) : null;
   });
 
   productTitle = computed(() => {
@@ -82,15 +119,28 @@ export class OptimizeLayout {
   constructor() {
     // ?id=<draft> is the source of truth: refresh, back/forward and "Open" from My Listings all
     // land here. No id means a fresh, unsaved product.
-    const sub = inject(ActivatedRoute).queryParamMap.subscribe((params) => {
-      const id = params.get('id');
-      if (id) {
-        void this.session.loadDraft(id);
-      } else if (this.session.draftId()) {
-        this.session.reset();
-      }
+    // Marketplace tabs opened without an id (sidebar from Inventory, a bookmark) reopen the listing
+    // the seller last had open instead of showing an empty tab. Runs on every navigation, since
+    // moving between two pages without ?id doesn't change the query params.
+    effect(() => {
+      const url = this.url();
+      const tab = this.currentTab();
+      untracked(() => {
+        const tree = this.router.parseUrl(url);
+        const id = tree.queryParamMap.get('id');
+        if (id) {
+          void this.session.loadDraft(id);
+          return;
+        }
+        const lastId = MARKETPLACE_TABS.has(tab) ? this.session.lastOpenedId() : null;
+        if (lastId) {
+          tree.queryParams = { ...tree.queryParams, id: lastId };
+          void this.router.navigateByUrl(tree, { replaceUrl: true });
+        } else if (this.session.draftId()) {
+          this.session.reset();
+        }
+      });
     });
-    inject(DestroyRef).onDestroy(() => sub.unsubscribe());
     void this.features.load();
     if (this.auth.user()) void this.batch.refresh().then((b) => b && ['queued', 'running', 'paused'].includes(b.status) && this.batch.watch());
   }

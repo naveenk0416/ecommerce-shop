@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import * as XLSX from 'xlsx';
 import {
   FieldKey, headerName, headerNumber, isFlipkartRequired, isMandatoryText, isNumericTypeText, isSampleSku, isSkippedHeader,
-  knownAllowedValues, matchHeader, normalizeHeader,
+  knownAllowedValues, listFitsSystemColumn, matchHeader, normalizeHeader,
 } from './fields.js';
 import type { SheetFormat } from './format.js';
 
@@ -490,7 +490,9 @@ export async function parseTemplate(working: Buffer, inputFormat: SheetFormat, o
   const columns: TemplateColumn[] = fillable.map((h) => {
     const rule = matchHeader(h.text);
     const list = allowedByCol.get(h.col);
-    const allowed = list?.values ? Array.from(new Set(list.values)).slice(0, 2000) : null;
+    let allowed = list?.values ? Array.from(new Set(list.values)).slice(0, 2000) : null;
+    // A stale hidden list on a system column ("Listing Status" offering product types): use the known values.
+    if (allowed?.length && !listFitsSystemColumn(rule?.key, allowed)) allowed = knownAllowedValues(h.text);
     const name = headerName(h.text) || h.text;
     return {
       col: h.col,

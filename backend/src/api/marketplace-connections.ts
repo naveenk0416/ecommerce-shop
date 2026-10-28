@@ -14,6 +14,15 @@ import { fetchMerchantListingsReport, fetchCatalogItemImage, updateAmazonListing
 import { buildFamily, pickVariationTheme } from '../utils/amazon-variations.js';
 import { hasRealVariants, totalStock, variantLabel, type Variant } from '../utils/variants.js';
 import { fetchAllFlipkartListings, fetchFlipkartInventoryBySku, updateFlipkartListingPriceAndInventory } from '../utils/flipkart-listings-api.js';
+import { cleanBrand } from '../bulk/fields.js';
+
+/** "pure essentials steel bottle" → "Pure Essentials steel bottle" when the saved brand is "Pure Essentials". */
+export function withSavedBrand(name: string, brand: string): string {
+  if (!brand || !name.toLowerCase().startsWith(brand.toLowerCase())) return name;
+  const rest = name.slice(brand.length);
+  // Only a whole-word match: "Pure Essentialsx" isn't the brand.
+  return rest === '' || /^[\s\-–|,:]/.test(rest) ? brand + rest : name;
+}
 
 const router = express.Router();
 // Amazon redirects the seller's browser directly to these two paths, so they must exactly match
@@ -409,6 +418,9 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
     const items = await fetchAllFlipkartListings(uid);
     const skus = items.map((item) => item.sku).filter(Boolean);
     const inventoryDetails = await fetchFlipkartInventoryBySku(uid, skus);
+    // Flipkart often returns names in lowercase ("pure essentials …"); the seller's saved brand keeps
+    // its exact spelling, which their brand approval and bulk files depend on.
+    const savedBrand = cleanBrand(authUser.sellerProfile?.brand);
 
     let imported = 0;
     let updated = 0;
@@ -432,6 +444,7 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
       }
 
       const alreadyExists = await Listing.exists({ uid, sku });
+      const name = withSavedBrand(cleanBrand(item.product_name) || sku, savedBrand);
       await Listing.findOneAndUpdate(
         { uid, sku },
         {
@@ -441,7 +454,8 @@ router.post('/flipkart/sync-inventory', authMiddleware, async (req, res) => {
             flipkartProductId: item.productId || undefined,
             flipkartLocationId: detail?.locationId || undefined,
             source: 'flipkart',
-            name: item.product_name || sku,
+            name,
+            ...(savedBrand && name.startsWith(savedBrand) ? { brand: savedBrand } : {}),
             quantity: detail?.quantity ?? 0,
             sellingPrice: price,
             mrp: item.product_description?.mrp || price,

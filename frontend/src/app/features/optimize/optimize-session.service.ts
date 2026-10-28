@@ -4,6 +4,8 @@ import { AiFieldExtraction, formatGeminiError, GeminiService, isOutOfCoinsError 
 import { AssistsLeft, isBlockedAiField, WalletService, WalletSummary } from '../../services/wallet';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { LanguageService } from '../../services/language';
+import { AuthService } from '../../services/auth';
+import { AnalyticsService } from '../../services/analytics';
 import { ApiError } from '../../services/api';
 import { DraftResults, ListingService } from '../../services/listing';
 import { normalizeHashtags } from '../../utils/hashtags';
@@ -51,6 +53,8 @@ export class OptimizeSessionService {
   private readonly wallet = inject(WalletService);
   private readonly i18n = inject(LanguageService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly auth = inject(AuthService);
+  private readonly analytics = inject(AnalyticsService);
 
   /** Data URL for a fresh upload, or the draft's image URL once loaded from the backend. */
   imagePreview = signal<string | null>(null);
@@ -169,6 +173,8 @@ export class OptimizeSessionService {
     if (this.isGenerating()) return;
     this.generationError.set(null);
     this.startProgress();
+    // Before this call the seller had never generated a listing → "FirstListingGenerated" on success.
+    const firstListing = this.auth.profile()?.hasFirstListing === false;
     const t0 = performance.now();
     let tImage = t0;
     let tAi = t0;
@@ -183,9 +189,14 @@ export class OptimizeSessionService {
         // Regenerating must not wipe what the seller typed (prices, stock).
         const previousGeneral = this.cache().general ?? {};
         const sellerValues = Object.fromEntries(SELLER_FIELD_KEYS.filter((k) => previousGeneral[k]).map((k) => [k, previousGeneral[k]]));
-        this.cache.set({ ...next, general: { ...(next.general ?? {}), ...sellerValues } });
+        this.cache.set(this.withDefaultBrand({ ...next, general: { ...(next.general ?? {}), ...sellerValues } }));
         // The listing is on screen now; the draft is saved in the background.
         this.stopProgress();
+        const profile = this.auth.profile();
+        if (firstListing && profile) {
+          this.analytics.trackFirstListing(profile.uid, { state: profile.state, city: profile.city });
+          this.auth.profile.set({ ...profile, hasFirstListing: true });
+        }
         const tSave = performance.now();
         void this.saveNow().then(() => {
           console.info(`[timing] listing: image ${Math.round(tImage - t0)}ms · AI request ${Math.round(tAi - tImage)}ms · shown after ${Math.round(tSave - t0)}ms · draft save ${Math.round(performance.now() - tSave)}ms`);
@@ -241,8 +252,12 @@ export class OptimizeSessionService {
       this.sizePreset.set(draft.sizePreset ?? null);
       this.generationError.set(null);
       this.saveState.set('saved');
+      this.rememberOpened(draft.id);
       void this.loadFixAssists();
     } catch (error) {
+      // A remembered listing that was deleted since: forget it, so tabs show the picker instead.
+      const status = (error as ApiError).status;
+      if ((status === 404 || status === 403) && this.lastOpenedId() === id) this.rememberOpened(null);
       this.loadError.set((error instanceof Error && error.message) || 'Could not open this listing.');
     } finally {
       this.loadingDraft.set(false);
@@ -355,6 +370,44 @@ export class OptimizeSessionService {
     return isBlockedAiField(key, label, this.wallet.wallet()?.blockedFieldPatterns ?? []);
   }
 
+  /**
+   * The brand saved in Profile replaces whatever the AI read off the photo, in every tab — written
+   * exactly as saved (Flipkart rejects "pure essentials" for an approved "Pure Essentials").
+   */
+  private withDefaultBrand(results: Partial<Record<OptimizeTabKey, TabResult>>): Partial<Record<OptimizeTabKey, TabResult>> {
+    const brand = (this.auth.profile()?.defaultBrand ?? '').replace(/\s+/g, ' ').trim();
+    if (!brand) return results;
+    const field = { values: [brand], confidence: 100, reason: 'Your brand from Profile.' } as AiFieldExtraction;
+    const out: Partial<Record<OptimizeTabKey, TabResult>> = {};
+    for (const [tab, fields] of Object.entries(results) as [OptimizeTabKey, TabResult][]) {
+      out[tab] = fields['brand'] || tab === 'general' ? { ...fields, brand: field } : fields;
+    }
+    return out;
+  }
+
+  /** The listing this seller last opened or created (per browser), so the marketplace tabs can
+   * reopen it after a refresh or when reached from another page without ?id=. */
+  lastOpenedId(): string | null {
+    const uid = this.auth.user()?.uid;
+    if (!uid) return null;
+    try {
+      return window.localStorage.getItem(`sa_last_listing_${uid}`);
+    } catch {
+      return null;
+    }
+  }
+
+  private rememberOpened(id: string | null): void {
+    const uid = this.auth.user()?.uid;
+    if (!uid) return;
+    try {
+      if (id) window.localStorage.setItem(`sa_last_listing_${uid}`, id);
+      else window.localStorage.removeItem(`sa_last_listing_${uid}`);
+    } catch {
+      // Storage blocked — the tabs fall back to the listing picker.
+    }
+  }
+
   private clearDraft(): void {
     this.fixAssists.set(null);
     this.fixLimit.set(null);
@@ -387,6 +440,7 @@ export class OptimizeSessionService {
       const draft = await this.listingService.createDraft({ results: this.cache() as DraftResults, image });
       this.draftId.set(draft.id);
       this.draftStatus.set(draft.status);
+      this.rememberOpened(draft.id);
       void this.loadFixAssists();
       if (draft.imageUrl) this.galleryImages.update((imgs) => (imgs.length ? imgs : [draft.imageUrl!]));
       this.putDraftIdInUrl(draft.id);

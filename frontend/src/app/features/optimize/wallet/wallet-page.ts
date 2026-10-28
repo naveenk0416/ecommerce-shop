@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, effect, inject, untracked } from '@
 import { AuthService } from '../../../services/auth';
 import { MatIconModule } from '@angular/material/icon';
 import { UiCard } from '../../listing-workspace/ui/card/card';
-import { LanguageService } from '../../../services/language';
+import { LanguageService, SITE_LANGUAGES } from '../../../services/language';
 import { WalletService } from '../../../services/wallet';
 import { CoinPacks, EarnCoinsCard } from './wallet-ui';
 
@@ -14,8 +14,8 @@ export function timeSavedText(i18n: LanguageService, hours: number, lastMonth = 
   // Hindi agrees in number: 'आपका 1 घंटा बचाया' / 'आपके 3 घंटे बचाए'.
   const hi = hours === 1 ? `आपका लगभग ${h} घंटा बचाया` : `आपके लगभग ${h} घंटे बचाए`;
   return lastMonth
-    ? i18n.t(`Last month SellAssist saved you about ${h} ${en}`, `पिछले महीने SellAssist ने ${hi}`)
-    : i18n.t(`SellAssist saved you about ${h} ${en} this month`, `इस महीने SellAssist ने ${hi}`);
+    ? i18n.t(`Last month SellAssist saved you about ${h} ${en}`, `पिछले महीने SellAssist ने ${hi}`, `గత నెల SellAssist మీకు సుమారు ${h} గంటలు ఆదా చేసింది`, `ಕಳೆದ ತಿಂಗಳು SellAssist ನಿಮಗೆ ಸುಮಾರು ${h} ಗಂಟೆ ಉಳಿಸಿದೆ`)
+    : i18n.t(`SellAssist saved you about ${h} ${en} this month`, `इस महीने SellAssist ने ${hi}`, `ఈ నెల SellAssist మీకు సుమారు ${h} గంటలు ఆదా చేసింది`, `ಈ ತಿಂಗಳು SellAssist ನಿಮಗೆ ಸುಮಾರು ${h} ಗಂಟೆ ಉಳಿಸಿದೆ`);
 }
 
 /** Coins page: balance, free top-up date, time saved, ways to earn, packs, and history. */
@@ -29,8 +29,9 @@ export function timeSavedText(i18n: LanguageService, hours: number, lastMonth = 
       <div class="wallet__head">
         <h2 class="wallet__title">{{ i18n.t('Coins', 'Coins') }}</h2>
         <div class="lang" role="group" aria-label="Language / भाषा">
-          <button type="button" [class.lang__on]="i18n.lang() === 'en'" [attr.aria-pressed]="i18n.lang() === 'en'" (click)="i18n.lang.set('en')">English</button>
-          <button type="button" [class.lang__on]="i18n.lang() === 'hi'" [attr.aria-pressed]="i18n.lang() === 'hi'" (click)="i18n.lang.set('hi')" lang="hi">हिंदी</button>
+          @for (language of languages; track language.code) {
+            <button type="button" [attr.lang]="language.code" [class.lang__on]="i18n.lang() === language.code" [attr.aria-pressed]="i18n.lang() === language.code" (click)="i18n.lang.set(language.code)">{{ language.label }}</button>
+          }
         </div>
       </div>
 
@@ -43,14 +44,14 @@ export function timeSavedText(i18n: LanguageService, hours: number, lastMonth = 
               <span class="balance__split">{{ i18n.t('Free', 'Free') }} {{ w.balance.free }} · {{ i18n.t('Bought', 'खरीदे') }} {{ w.balance.paid }}</span>
             </div>
             <ul class="balance__facts">
-              <li><mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ i18n.t('1 AI listing = ' + w.listingCost + ' coin', '1 AI listing = ' + w.listingCost + ' coin') }}</li>
+              <li><mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ i18n.t('1 AI listing = ' + w.listingCost + ' coin', '1 AI listing = ' + w.listingCost + ' coin', '1 AI listing = ' + w.listingCost + ' coin', '1 AI listing = ' + w.listingCost + ' coin') }}</li>
               <li class="topup" data-testid="next-topup">
                 <mat-icon aria-hidden="true">event</mat-icon>
                 <span>
                   {{ nextTopUpText(w.monthlyTopUpTo, (w.nextTopUpAt | date: 'd MMM' : '+0530') ?? '') }}
                   <small class="topup__note">
                     <mat-icon aria-hidden="true" inline="true">info</mat-icon>
-                    {{ i18n.t('Only if your free coins are below ' + w.monthlyTopUpTo + '.', 'सिर्फ़ तब, जब आपके free coins ' + w.monthlyTopUpTo + ' से कम हों।') }}
+                    {{ i18n.t('Only if your free coins are below ' + w.monthlyTopUpTo + '.', 'सिर्फ़ तब, जब आपके free coins ' + w.monthlyTopUpTo + ' से कम हों।', 'మీ free coins ' + w.monthlyTopUpTo + ' కంటే తక్కువ ఉంటేనే.', 'ನಿಮ್ಮ free coins ' + w.monthlyTopUpTo + ' ಕ್ಕಿಂತ ಕಡಿಮೆ ಇದ್ದರೆ ಮಾತ್ರ.') }}
                   </small>
                 </span>
               </li>
@@ -162,6 +163,7 @@ export function timeSavedText(i18n: LanguageService, hours: number, lastMonth = 
 })
 export class WalletPage {
   readonly i18n = inject(LanguageService);
+  readonly languages = SITE_LANGUAGES;
   readonly walletService = inject(WalletService);
 
   private readonly auth = inject(AuthService);
@@ -179,12 +181,12 @@ export class WalletPage {
 
   /** "Next free top-up: up to 3 coins on 1 Oct" */
   nextTopUpText(target: number, date: string): string {
-    return this.i18n.t(`Next free top-up: up to ${target} coins on ${date}`, `अगला free top-up: ${date} को ${target} coins तक`);
+    return this.i18n.t(`Next free top-up: up to ${target} coins on ${date}`, `अगला free top-up: ${date} को ${target} coins तक`, `తదుపరి free top-up: ${date} న ${target} coins వరకు`, `ಮುಂದಿನ free top-up: ${date} ರಂದು ${target} coins ವರೆಗೆ`);
   }
 
   /** History line for a top-up that actually happened: "Topped up to 3 free coins on 1 Oct". */
   topUpDoneText(target: number, date: string): string {
-    return this.i18n.t(`Topped up to ${target} free coins on ${date}`, `${date} को ${target} free coins तक top-up हुआ`);
+    return this.i18n.t(`Topped up to ${target} free coins on ${date}`, `${date} को ${target} free coins तक top-up हुआ`, `${date} న ${target} free coins వరకు top-up అయింది`, `${date} ರಂದು ${target} free coins ವರೆಗೆ top-up ಆಯಿತು`);
   }
 
   timeSaved(hours: number): string {

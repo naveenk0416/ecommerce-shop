@@ -125,6 +125,12 @@ const userSchema = new mongoose.Schema({
   verificationReminderSentAt: { type: Date },
   firstListingAt: { type: Date },
 
+  // ---- Profile page (2026-10) ----
+  /** Shop / business name (displayName is the person's name). */
+  businessName: { type: String },
+  /** UI language chosen in Profile: en, hi, te, kn. */
+  preferredLanguage: { type: String, enum: ['en', 'hi', 'te', 'kn'] },
+
   // ---- Bulk template fill: saved once, reused in every Meesho/Flipkart file ----
   sellerProfile: {
     brand: { type: String },

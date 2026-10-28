@@ -8,6 +8,7 @@ import { detectFormat, MAX_TEMPLATE_BYTES, mimeFor } from '../bulk/format.js';
 import { parseTemplate, workingBytes, writeCells, type CellWrite, type ParsedTemplate } from '../bulk/workbook.js';
 import { fillRows, type ListingSource, type Marketplace, type SellerProfile } from '../bulk/fill.js';
 import { readErrorReport } from '../bulk/errors.js';
+import { cleanBrand, cleanCellText } from '../bulk/fields.js';
 import { hasRealVariants, styleId } from '../utils/variants.js';
 
 /**
@@ -48,7 +49,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
     return;
   }
   const profile: SellerProfile = {
-    brand: cleanText(b.brand, 100),
+    brand: cleanBrand(cleanText(b.brand, 100)) || undefined,
     manufacturerName: cleanText(b.manufacturerName, 150),
     manufacturerAddress: cleanText(b.manufacturerAddress, 400),
     packerName: cleanText(b.packerName, 150),
@@ -196,8 +197,10 @@ router.post('/templates/:id/fill', authMiddleware, async (req, res) => {
   const sources: ListingSource[] = ids.filter((id) => byId.has(id)).map((id) => {
     const d = byId.get(id);
     const inv = invByDraft.get(id);
+    // Marketplaces fetch these once, from their own servers: a plain public .jpg URL with no query
+    // string (some importers reject "?v=…" or treat it as part of the file name).
     const image = typeof d.image === 'string' && d.image
-      ? (/^https:\/\//.test(d.image) ? d.image : `${publicApiUrl()}/api/drafts/${id}/image.jpg?v=${new Date(d.updatedAt).getTime()}`)
+      ? (/^https:\/\//.test(d.image) ? d.image : `${publicApiUrl()}/api/drafts/${id}/image.jpg`)
       : null;
     // Sizes: the inventory item's (current stock) if it has them, else the listing's own.
     const variants = hasRealVariants(inv?.variants) ? inv.variants : hasRealVariants(d.variants) ? d.variants : null;
@@ -236,7 +239,9 @@ router.post('/templates/:id/download', authMiddleware, async (req, res) => {
     for (const [key, raw] of Object.entries(row.cells ?? {})) {
       const col = byCol.get(Number(key));
       if (!col) continue;
-      const text = String(raw ?? '').slice(0, 5000).trim();
+      // Values edited in the browser may carry pasted zero-width / non-breaking spaces.
+      const cleaned = cleanCellText(String(raw ?? '').slice(0, 5000));
+      const text = col.field === 'brand' ? cleanBrand(cleaned) : cleaned;
       if (!text) continue;
       const numeric = (col.numeric || (col.field && NUMERIC_FIELDS.has(col.field))) && /^\d+(\.\d+)?$/.test(text);
       writes.push({ row: rowNumber, col: col.col, value: numeric ? Number(text) : text });

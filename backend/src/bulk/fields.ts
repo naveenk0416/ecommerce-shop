@@ -12,7 +12,14 @@ export type FieldKey =
   // A dropdown column we don't know by name — the AI may pick a value only if the product text states it.
   | 'attribute'
   // Never filled by us (we don't have them) — always listed under "You must fill" when mandatory.
-  | 'weight' | 'dimension' | 'size_chart' | 'model_number' | 'ean' | 'group_id' | 'return_price';
+  | 'weight' | 'dimension' | 'size_chart' | 'model_number' | 'ean' | 'group_id' | 'return_price'
+  // Flipkart system columns with fixed values: "Listing Status" (ACTIVE/INACTIVE), "Fullfilment by".
+  | 'listing_status' | 'fulfilment'
+  // Stone-specific jewellery columns ("Ruby Color", "Pearl Type", "Diamond Clarity") — only for that stone.
+  | 'gemstone';
+
+/** Jewellery stones Flipkart gives their own columns. */
+export const GEMSTONE_HEADER = /\b(ruby|rubies|emerald|sapphire|amethyst|pearl|diamond|gem ?stone|topaz|garnet|opal|coral|turquoise)s?\b/;
 
 export interface FieldRule {
   key: FieldKey;
@@ -23,6 +30,8 @@ export interface FieldRule {
 }
 
 export const FIELD_RULES: readonly FieldRule[] = [
+  { key: 'listing_status', patterns: [/^listing status$/] },
+  { key: 'fulfilment', patterns: [/^ful+fil+ment by$/, /^fulfil+ed by$/] },
   { key: 'sku', patterns: [/\b(seller )?sku( id| code)?\b/, /\bstyle (code|id)\b/, /\bproduct id\b(?!.*fsn)/, /\bseller sku\b/] },
   { key: 'group_id', patterns: [/\bgroup id\b/, /\bvariant group\b/, /\bparent sku\b/, /\bstyle group\b/], neverInvent: true },
   // "Image URL 1" is the main photo, but "Other Image URL 1" is the first *additional* one.
@@ -50,8 +59,11 @@ export const FIELD_RULES: readonly FieldRule[] = [
   { key: 'importer', patterns: [/\bimporter/] },
   { key: 'weight', patterns: [/\bweight\b/], neverInvent: true },
   { key: 'dimension', patterns: [/^product (length|breadth|width|height|depth)$/,/\b(length|breadth|width|height|depth)\b.*\b(cm|mm|inch|package|packaging|shipping)\b/, /\b(package|packaging|shipping) (length|breadth|width|height|dimension)/, /\bdimensions?\b/], neverInvent: true },
-  { key: 'model_number', patterns: [/\bmodel (number|no|name|id)\b/], neverInvent: true },
+  // One per design (the style id), never a template placeholder such as "Alphabet".
+  { key: 'model_number', patterns: [/\bmodel (number|no|name|id)\b/] },
   { key: 'ean', patterns: [/\b(ean|upc|gtin|barcode|isbn)\b/], neverInvent: true },
+  // Before 'color': "Ruby Color" / "Emerald Colour" describe that stone, not the product's colour.
+  { key: 'gemstone', patterns: [GEMSTONE_HEADER] },
   { key: 'color', patterns: [/\bcolou?r\b/, /\bshade\b/] },
   { key: 'material', patterns: [/\bfabric\b/, /\bmaterial\b/] },
   { key: 'pattern', patterns: [/\bpattern\b/, /\bprint (type|or pattern)\b/] },
@@ -121,7 +133,38 @@ export function isMandatoryText(raw: unknown): boolean {
  */
 const KNOWN_ALLOWED: Array<{ pattern: RegExp; values: string[] }> = [
   { pattern: /^ful+fil+ment by$/, values: ['Seller'] },
+  { pattern: /^listing status$/, values: ['ACTIVE', 'INACTIVE'] },
 ];
+
+/** Flipkart's service_profile codes ("Allowed values are: FA,seller,SellerSmart"). */
+export const FULFILMENT_CODES = ['seller', 'FA', 'SellerSmart'];
+
+/**
+ * Whether a dropdown list really belongs to this system column. Flipkart files can carry a stale
+ * hidden list (the product "Type" values landing on "Listing Status"); then the known values win.
+ */
+export function listFitsSystemColumn(field: FieldKey | null | undefined, values: string[]): boolean {
+  const lower = values.map((v) => cleanCellText(v).toLowerCase());
+  if (field === 'listing_status') return lower.includes('active');
+  if (field === 'fulfilment') return FULFILMENT_CODES.some((code) => lower.includes(code.toLowerCase()));
+  return true;
+}
+
+/**
+ * Removes characters a marketplace can't see but rejects on (zero-width spaces, BOM, soft hyphen,
+ * non-breaking spaces) and trims. Multi-line text keeps its line breaks.
+ */
+export function cleanCellText(value: string): string {
+  return value
+    .replace(/[​-‍⁠﻿­]/g, '')
+    .replace(/ /g, ' ')
+    .trim();
+}
+
+/** Brand exactly as the seller saved it: hidden characters removed, single spaces, case untouched. */
+export function cleanBrand(value: string | null | undefined): string {
+  return cleanCellText(String(value ?? '')).replace(/\s+/g, ' ');
+}
 
 export function knownAllowedValues(raw: unknown): string[] | null {
   const name = normalizeHeader(headerName(raw));
@@ -131,9 +174,10 @@ export function knownAllowedValues(raw: unknown): string[] | null {
 /**
  * Columns Flipkart's QC rejects when empty though the template doesn't mark them: "Please enter
  * package attributes- package_length, package_breadth, package_height, package_weight" and
- * "Procurement SLA : Mandatory attribute not given".
+ * "Procurement SLA : Mandatory attribute not given". Procurement type and Shipping provider are
+ * rejected the same way; the seller is warned before downloading while any of these are blank.
  */
-const FLIPKART_REQUIRED = /^((length|breadth|height) cm|weight kg|procurement sla( day)?)$/;
+const FLIPKART_REQUIRED = /^((length|breadth|height) cm|weight kg|procurement sla( day)?|procurement type|shipping provider)$/;
 
 export function isFlipkartRequired(raw: unknown): boolean {
   return FLIPKART_REQUIRED.test(normalizeHeader(headerName(raw)));

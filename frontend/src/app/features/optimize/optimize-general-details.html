@@ -6,11 +6,14 @@
         <span><strong>Drafted from your photo.</strong> Sellassist filled in the details below — review and edit before publishing.</span>
       </div>
       <div class="cost-action">
-        <button mat-stroked-button [disabled]="session.isGenerating()" (click)="generate()">
+        <button mat-stroked-button [disabled]="session.isGenerating() || wallet.cannotAffordListing()" (click)="generate()">
           <mat-icon>refresh</mat-icon>
           Regenerate draft
         </button>
-        @if (wallet.costNote(); as note) {
+        @if (wallet.cannotAffordListing()) {
+          <span class="cost-note" data-testid="no-coins-reason">{{ wallet.i18nText('Needs 1 coin — you have 0.', '1 coin चाहिए — आपके पास 0 हैं।') }}</span>
+          <app-next-coins-note />
+        } @else if (wallet.costNote(); as note) {
           <span class="cost-note" data-testid="regenerate-cost">{{ note }}</span>
         }
       </div>
@@ -33,8 +36,11 @@
         <span>{{ session.generationError() }}</span>
       </div>
       <div class="cost-action">
-        <button mat-stroked-button (click)="generate()">Retry</button>
-        @if (wallet.costNote(); as note) {
+        <button mat-stroked-button [disabled]="wallet.cannotAffordListing()" (click)="generate()">Retry</button>
+        @if (wallet.cannotAffordListing()) {
+          <span class="cost-note" data-testid="no-coins-reason">{{ wallet.i18nText('Needs 1 coin — you have 0.', '1 coin चाहिए — आपके पास 0 हैं।') }}</span>
+          <app-next-coins-note />
+        } @else if (wallet.costNote(); as note) {
           <span class="cost-note">{{ note }}</span>
         }
       </div>
@@ -53,6 +59,7 @@
             <mat-icon aria-hidden="true">savings</mat-icon>
             <strong>{{ wallet.i18nText('You’re out of coins', 'आपके coins खत्म हो गए हैं') }}</strong>
             <span>{{ wallet.i18nText('An AI listing uses 1 coin. Earn free coins or wait for your monthly free coins.', 'एक AI listing में 1 coin लगता है। Free coins कमाएं या मासिक free coins का इंतज़ार करें।') }}</span>
+            <app-next-coins-note />
             <button mat-flat-button color="primary" type="button" (click)="wallet.outOfCoins.set(true)">{{ wallet.i18nText('How to get coins', 'Coins कैसे पाएं') }}</button>
           </div>
         } @else {

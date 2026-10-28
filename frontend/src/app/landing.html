@@ -13,6 +13,20 @@
             सेकंडों में।
           </h1>
           <p class="hero__lead">{{ tx('heroLead') }}</p>
+        } @else if (lang() === 'te') {
+          <h1 id="hero-title" class="hero__title">
+            ఒక photo తీయండి.<br>
+            <span class="hero__grad">Listing</span> రెడీ,<br>
+            క్షణాల్లో.
+          </h1>
+          <p class="hero__lead">{{ tx('heroLead') }}</p>
+        } @else if (lang() === 'kn') {
+          <h1 id="hero-title" class="hero__title">
+            ಒಂದು photo ತೆಗೆಯಿರಿ.<br>
+            <span class="hero__grad">Listing</span> ರೆಡಿ,<br>
+            ಕ್ಷಣಗಳಲ್ಲಿ.
+          </h1>
+          <p class="hero__lead">{{ tx('heroLead') }}</p>
         } @else {
           <h1 id="hero-title" class="hero__title">
             Snap a <span class="hero__grad">photo</span>.<br>

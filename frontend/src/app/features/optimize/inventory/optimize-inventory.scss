@@ -122,7 +122,7 @@
 .inventory-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 640px;
+  min-width: 900px;
 
   th {
     text-align: left;
@@ -370,4 +370,125 @@
 .variant-low {
   display: inline-block; margin: 4px 4px 0 0; padding: 2px 8px; border-radius: 999px;
   background: #fef2f2; color: #b91c1c; font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+
+// "Hide inactive" — archived products and imports with 0 units and no price.
+.inactive-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -8px 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+
+  input {
+    width: 16px;
+    height: 16px;
+    accent-color: #ea580c;
+  }
+
+  &__hint {
+    font-weight: 500;
+    color: #64748b;
+  }
+}
+
+.row--inactive td {
+  color: #64748b;
+}
+
+.state-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.product-cell__name {
+  overflow-wrap: anywhere;
+}
+
+.product-cell__meta,
+.muted {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.sku-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px !important;
+  overflow-wrap: anywhere;
+}
+
+// Missing values are a clear next step ("Add cost price"), not a bare ₹0 or a warning icon.
+.cell-action {
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover,
+  &:focus-visible {
+    color: #9a3412;
+  }
+}
+
+.gst__note {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  text-transform: uppercase;
+}
+
+.low-alerts__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  align-self: flex-start;
+  margin-top: 6px;
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  color: #78350f;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.low-alerts__list--muted {
+  color: #92400e;
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .inventory-table td.sku-cell {
+    text-align: right;
+  }
+
+  .inventory-table td > span,
+  .inventory-table td > button {
+    min-width: 0;
+  }
 }

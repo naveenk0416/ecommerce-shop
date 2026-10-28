@@ -287,7 +287,7 @@ export class AuthCard implements AfterViewInit {
         theme: 'outline', size: 'large', shape: 'pill', logo_alignment: 'center',
         text: this.mode() === 'login' ? 'signin_with' : 'continue_with',
         width: Math.min(slot.clientWidth || 320, 400),
-        locale: this.i18n.lang() === 'hi' ? 'hi' : 'en',
+        locale: this.i18n.lang(),
       });
     } catch (error) {
       console.warn('Google sign-in unavailable', error);

@@ -30,6 +30,10 @@ export interface Listing extends ProductDetails {
   variants?: Variant[];
   /** Set once the product's sizes were pushed to Amazon (test = inactive SA-TEST SKUs). */
   amazonFamily?: { parentSku: string; theme: string; test: boolean };
+  /** Hidden from Inventory lists and alerts by the seller ("Archive") — kept, not deleted. */
+  archived?: boolean;
+  /** Marketplace status from the last sync (Flipkart: ACTIVE, INACTIVE, ARCHIVED …). */
+  listingStatus?: string;
 }
 
 /** Low stock = at or below the product's threshold (default 5 units). */

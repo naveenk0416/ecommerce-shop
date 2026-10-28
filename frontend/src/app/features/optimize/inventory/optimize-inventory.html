@@ -16,34 +16,55 @@
     <app-ui-card [elevated]="true">
       <div class="stat">
         <span class="stat__label">Potential Profit</span>
-        <span class="stat__value stat__value--positive" [title]="'₹' + (totalProfit() | number: '1.0-0')">{{ formatInr(totalProfit()) }}</span>
+        <span class="stat__value stat__value--positive" [title]="'₹' + (totalProfit() | number: '1.0-0')" data-testid="potential-profit">{{ formatInr(totalProfit()) }}</span>
+        @if (missingCostCount() > 0) {
+          <span class="stat__hint" data-testid="missing-cost-hint">{{ i18n.t(missingCostCount() + ' product' + (missingCostCount() === 1 ? '' : 's') + ' without a cost price not counted', 'Cost price के बिना ' + missingCostCount() + ' products नहीं गिने गए') }}</span>
+        }
       </div>
     </app-ui-card>
     <app-ui-card [elevated]="true">
       <div class="stat">
         <span class="stat__label">Low Stock Alerts</span>
         <span class="stat__value" [class.stat__value--warning]="lowStockCount() > 0" data-testid="low-stock-count">{{ lowStockCount() }}</span>
-        <span class="stat__hint">{{ i18n.t('Products and sizes at or below their alert level (default ' + defaultThreshold + ' units)', 'Products और sizes जो alert level पर या उससे कम हैं (default ' + defaultThreshold + ' units)') }}</span>
+        <span class="stat__hint">{{ i18n.t('Products and sizes running low (alert level: default ' + defaultThreshold + ' units)', 'Products और sizes जिनका stock कम है (alert level: default ' + defaultThreshold + ' units)') }}</span>
+        @if (zeroStockAlerts().length) {
+          <span class="stat__hint">{{ i18n.t('+ ' + zeroStockAlerts().length + ' at 0 units', '+ ' + zeroStockAlerts().length + ' का stock 0') }}</span>
+        }
       </div>
     </app-ui-card>
   </div>
 
-  @if (lowStockAlerts().length) {
+  @if (runningLowAlerts().length || zeroStockAlerts().length) {
     <section class="low-alerts" role="status" data-testid="low-stock-alerts" [attr.aria-label]="i18n.t('Low stock', 'कम stock')">
       <mat-icon aria-hidden="true">warning</mat-icon>
       <div class="low-alerts__body">
-        <strong>{{ i18n.t('Low stock', 'Stock कम है') }}</strong>
-        <ul class="low-alerts__list">
-          @for (a of lowStockAlerts(); track a.listingId + (a.variant ?? ''); let i = $index) {
-            @if (showAllAlerts() || i < 6) {
-              <li data-testid="low-stock-item">{{ a.name }}@if (a.variant) { · <b>{{ a.variant }}</b>} — {{ leftText(a.stock) }}</li>
+        @if (runningLowAlerts().length) {
+          <strong>{{ i18n.t('Running low', 'Stock कम है') }} ({{ runningLowAlerts().length }})</strong>
+          <ul class="low-alerts__list">
+            @for (a of runningLowAlerts(); track a.listingId + (a.variant ?? ''); let i = $index) {
+              @if (showAllAlerts() || i < 6) {
+                <li data-testid="low-stock-item">{{ a.name }}@if (a.variant) { · <b>{{ a.variant }}</b>} — {{ leftText(a.stock) }}</li>
+              }
             }
+          </ul>
+          @if (runningLowAlerts().length > 6) {
+            <button type="button" class="low-alerts__more" (click)="showAllAlerts.set(!showAllAlerts())">
+              {{ showAllAlerts() ? i18n.t('Show less', 'कम दिखाएं') : i18n.t('Show all ' + runningLowAlerts().length, 'सभी ' + runningLowAlerts().length + ' दिखाएं') }}
+            </button>
           }
-        </ul>
-        @if (lowStockAlerts().length > 6) {
-          <button type="button" class="low-alerts__more" (click)="showAllAlerts.set(!showAllAlerts())">
-            {{ showAllAlerts() ? i18n.t('Show less', 'कम दिखाएं') : i18n.t('Show all ' + lowStockAlerts().length, 'सभी ' + lowStockAlerts().length + ' दिखाएं') }}
+        }
+        @if (zeroStockAlerts().length) {
+          <button type="button" class="low-alerts__group" (click)="showZeroStock.set(!showZeroStock())" [attr.aria-expanded]="showZeroStock()" data-testid="zero-stock-toggle">
+            {{ i18n.t('0 units / never stocked', '0 units / कभी stock नहीं') }} ({{ zeroStockAlerts().length }})
+            <mat-icon aria-hidden="true">{{ showZeroStock() ? 'expand_less' : 'expand_more' }}</mat-icon>
           </button>
+          @if (showZeroStock()) {
+            <ul class="low-alerts__list low-alerts__list--muted" data-testid="zero-stock-list">
+              @for (a of zeroStockAlerts(); track a.listingId + (a.variant ?? '')) {
+                <li>{{ a.name }}@if (a.variant) { · <b>{{ a.variant }}</b>}</li>
+              }
+            </ul>
+          }
         }
       </div>
     </section>
@@ -77,6 +98,14 @@
         </button>
       </div>
 
+      @if (inactiveCount() > 0) {
+        <label class="inactive-toggle" data-testid="hide-inactive">
+          <input type="checkbox" [checked]="hideInactive()" (change)="setHideInactive($any($event.target).checked)" />
+          {{ i18n.t('Hide inactive', 'Inactive छिपाएं') }}
+          <span class="inactive-toggle__hint">{{ i18n.t('(' + inactiveCount() + ' archived or never stocked: 0 units and no price)', '(' + inactiveCount() + ' archived या कभी stock नहीं: 0 units, कोई price नहीं)') }}</span>
+        </label>
+      }
+
       @if (filteredListings().length === 0) {
         <div class="empty-state">
           <mat-icon aria-hidden="true">inventory_2</mat-icon>
@@ -89,9 +118,11 @@
             <thead>
               <tr>
                 <th scope="col">Product</th>
-                <th scope="col">Category</th>
+                <th scope="col">Platform</th>
+                <th scope="col">SKU</th>
                 <th scope="col">Stock</th>
-                <th scope="col">Price</th>
+                <th scope="col">Selling price</th>
+                <th scope="col">Cost</th>
                 <th scope="col">GST</th>
                 <th scope="col">Profit</th>
                 <th scope="col"><span class="visually-hidden">Actions</span></th>
@@ -99,7 +130,7 @@
             </thead>
             <tbody>
               @for (listing of filteredListings(); track listing.id) {
-                <tr>
+                <tr [class.row--inactive]="isInactive(listing)">
                   <td data-label="Product">
                     <div class="product-cell">
                       @if (listing.processedImage || listing.originalImage) {
@@ -109,15 +140,27 @@
                       }
                       <div class="product-cell__info">
                         <span class="product-cell__name">{{ listing.name }}</span>
-                        @if (listing.source === 'amazon') {
-                          <span class="source-badge source-badge--amazon">Amazon</span>
-                        } @else if (listing.source === 'flipkart') {
-                          <span class="source-badge source-badge--flipkart">Flipkart</span>
+                        @if (listing.category) {
+                          <span class="product-cell__meta">{{ listing.category }}</span>
+                        }
+                        @if (listing.archived) {
+                          <span class="state-badge">{{ i18n.t('Archived', 'Archived') }}</span>
+                        } @else if (isNeverStocked(listing)) {
+                          <span class="state-badge">{{ i18n.t('Never stocked', 'कभी stock नहीं') }}</span>
                         }
                       </div>
                     </div>
                   </td>
-                  <td data-label="Category">{{ listing.category || '—' }}</td>
+                  <td data-label="Platform">
+                    @if (listing.source === 'amazon') {
+                      <span class="source-badge source-badge--amazon">Amazon</span>
+                    } @else if (listing.source === 'flipkart') {
+                      <span class="source-badge source-badge--flipkart">Flipkart</span>
+                    } @else {
+                      <span class="muted">{{ platformOf(listing) }}</span>
+                    }
+                  </td>
+                  <td data-label="SKU" class="sku-cell">{{ listing.sku || '—' }}</td>
                   <td data-label="Stock">
                     <span class="stock-badge" [class.stock-badge--low]="isLow(listing)" [title]="'Low-stock alert at ' + thresholdOf(listing) + ' units'">{{ listing.quantity ?? 0 }} units</span>
                     @if (hasSizes(listing)) {
@@ -127,16 +170,39 @@
                       }
                     }
                   </td>
-                  <td data-label="Price" class="nowrap">{{ formatInr(priceOf(listing)) }}</td>
-                  <td data-label="GST" class="nowrap">
-                    <span [class.gst--review]="listing.gstNeedsReview || typeof listing.gstRate !== 'number'" [title]="listing.gstReason || 'Add an HSN code to calculate GST'">
-                      {{ formatGst(listing.gstRate) }}
-                      @if (listing.gstNeedsReview || typeof listing.gstRate !== 'number') {
-                        <mat-icon class="gst__icon" aria-label="Needs review">warning</mat-icon>
-                      }
-                    </span>
+                  <td data-label="Selling price" class="nowrap">
+                    @if (priceOf(listing) > 0) {
+                      {{ formatInr(priceOf(listing)) }}
+                    } @else {
+                      <button type="button" class="cell-action" (click)="openEditDialog(listing)">{{ i18n.t('Add price', 'Price जोड़ें') }}</button>
+                    }
                   </td>
-                  <td data-label="Profit" class="nowrap" [class.profit--positive]="getProfit(listing) > 0">{{ formatInr(getProfit(listing)) }}</td>
+                  <td data-label="Cost" class="nowrap">
+                    @if (hasCost(listing)) {
+                      {{ formatInr(listing.costPrice!) }}
+                    } @else {
+                      <button type="button" class="cell-action" (click)="openEditDialog(listing)" data-testid="add-cost">{{ i18n.t('Add cost price', 'Cost price जोड़ें') }}</button>
+                    }
+                  </td>
+                  <td data-label="GST" class="nowrap">
+                    @if (typeof listing.gstRate !== 'number') {
+                      <button type="button" class="cell-action" (click)="openEditDialog(listing)" [title]="listing.gstReason || 'Add an HSN code to calculate GST'">{{ i18n.t('Add HSN code', 'HSN code जोड़ें') }}</button>
+                    } @else {
+                      <span [class.gst--review]="listing.gstNeedsReview" [title]="listing.gstReason || ''">
+                        {{ formatGst(listing.gstRate) }}
+                        @if (listing.gstNeedsReview) {
+                          <span class="gst__note">{{ i18n.t('check', 'जाँचें') }}</span>
+                        }
+                      </span>
+                    }
+                  </td>
+                  <td data-label="Profit" class="nowrap" [class.profit--positive]="getProfit(listing) > 0">
+                    @if (hasCost(listing)) {
+                      {{ formatInr(getProfit(listing)) }}
+                    } @else {
+                      <button type="button" class="cell-action" (click)="openEditDialog(listing)">{{ i18n.t('Add cost', 'Cost जोड़ें') }}</button>
+                    }
+                  </td>
                   <td class="actions-cell">
                     @if (listing.source) {
                       <button
@@ -193,6 +259,15 @@
                     <button mat-icon-button (click)="openEditDialog(listing)" matTooltip="Edit" [attr.aria-label]="'Edit ' + listing.name">
                       <mat-icon>edit</mat-icon>
                     </button>
+                    @if (listing.archived) {
+                      <button mat-icon-button (click)="setArchived(listing, false)" [matTooltip]="i18n.t('Unarchive', 'Archive से हटाएं')" [attr.aria-label]="i18n.t('Unarchive ', 'Archive से हटाएं: ') + listing.name" data-testid="unarchive">
+                        <mat-icon>unarchive</mat-icon>
+                      </button>
+                    } @else {
+                      <button mat-icon-button (click)="setArchived(listing, true)" [matTooltip]="i18n.t('Archive (hide, keep the data)', 'Archive करें (छिपाएं, data रहेगा)')" [attr.aria-label]="i18n.t('Archive ', 'Archive करें: ') + listing.name" data-testid="archive">
+                        <mat-icon>archive</mat-icon>
+                      </button>
+                    }
                     <button mat-icon-button (click)="deleteListing(listing)" matTooltip="Delete" [attr.aria-label]="'Delete ' + listing.name">
                       <mat-icon>delete</mat-icon>
                     </button>

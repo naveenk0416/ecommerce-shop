@@ -88,6 +88,10 @@
         <input type="checkbox" [checked]="terms()" (change)="terms.set($any($event.target).checked)" data-testid="signup-terms" />
         @if (i18n.lang() === 'hi') {
           <span>मैं <a href="/terms" target="_blank" rel="noopener">Terms</a> और <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a> से सहमत हूँ</span>
+        } @else if (i18n.lang() === 'te') {
+          <span>నేను <a href="/terms" target="_blank" rel="noopener">Terms</a> మరియు <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>కు అంగీకరిస్తున్నాను</span>
+        } @else if (i18n.lang() === 'kn') {
+          <span>ನಾನು <a href="/terms" target="_blank" rel="noopener">Terms</a> ಮತ್ತು <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>ಗೆ ಒಪ್ಪುತ್ತೇನೆ</span>
         } @else {
           <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a></span>
         }

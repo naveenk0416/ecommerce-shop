@@ -26,3 +26,16 @@ export const OPTIMIZE_ROUTES: Routes = [
     ],
   },
 ];
+
+/**
+ * Starts downloading the workspace shell and one page's code straight away (e.g. on a hard refresh
+ * of /optimize/inventory), in parallel with the session check, instead of after authGuard. The
+ * router's own loadComponent call later reuses the same module.
+ */
+export function prefetchOptimizeRoute(child: string): void {
+  const shell = OPTIMIZE_ROUTES[0];
+  const page = shell.children?.find((route) => route.path === (child || 'general'));
+  for (const load of [shell.loadComponent, page?.loadComponent]) {
+    if (load) void Promise.resolve(load()).catch(() => undefined);
+  }
+}

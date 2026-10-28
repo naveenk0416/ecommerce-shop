@@ -27,6 +27,12 @@ export interface UserProfile extends AdditionalUserData {
   marketplacesOther?: string | null;
   /** One-time dashboard card for accounts that never answered or dismissed the question. */
   marketplacesCard?: { show: boolean };
+  businessName?: string | null;
+  preferredLanguage?: 'en' | 'hi' | 'te' | 'kn' | null;
+  /** Brand saved once in Profile, used in every listing and bulk file. */
+  defaultBrand?: string | null;
+  /** At least one AI listing made. */
+  hasFirstListing?: boolean;
 }
 
 /** /register response: the new seller is signed in straight away (email verified later).
@@ -109,7 +115,9 @@ export class AuthService {
           try {
             await this.syncUserProfileFromAPI();
           } catch (err) {
-            console.error('Session restore failed', err);
+            // An expired or revoked token is cleared quietly; the visitor simply isn't signed in.
+            const status = (err as ApiError).status;
+            if (status !== 401 && status !== 403) console.error('Session restore failed', err);
             clearAuthToken();
             this.user.set(null);
             this.profile.set(null);
@@ -133,6 +141,8 @@ export class AuthService {
       this.profile.set(body.user);
       this.user.set({ uid: body.user.uid, email: body.user.email, displayName: body.user.displayName });
     } catch (err) {
+      const status = (err as ApiError).status;
+      if (status === 401 || status === 403) throw err; // stale token — handled by the caller, no console noise
       this.handleAPIError(err);
     }
   }
@@ -251,7 +261,9 @@ export class AuthService {
       if (apiError.status === 401) apiError.code = 'auth/wrong-password';
       if (apiError.status === 403 && /not been verified/i.test(apiError.message)) apiError.code = 'auth/email-not-verified';
       if (apiError.status === 429) apiError.code = 'auth/too-many-requests';
-      console.error('Login failed:', error);
+      // Wrong password / unverified / rate-limited are normal outcomes shown in the form — only
+      // unexpected failures (network, 5xx) belong in the console.
+      if (![401, 403, 429].includes(apiError.status ?? 0)) console.error('Login failed:', error);
       throw apiError;
     }
   }

@@ -103,10 +103,18 @@
       <a class="optimize-tabs__item" routerLink="profile" routerLinkActive="optimize-tabs__item--active" data-testid="profile-tab">Profile</a>
     </nav>
 
-    <header class="optimize-header">
+    <!-- The product-editor bar only belongs on General Details and the marketplace tabs, and only
+         once a product is open. Other pages get a plain title (or none when they have their own). -->
+    @if (showEditorHeader()) {
+    <header class="optimize-header" data-testid="editor-header">
       <div class="optimize-header__titles">
-        <span class="optimize-header__breadcrumb">Listings / {{ productTitle() }}</span>
-        <h1 class="optimize-header__title">{{ productTitle() }}</h1>
+        @if (session.loadingDraft()) {
+          <span class="optimize-header__breadcrumb">Listings</span>
+          <span class="optimize-header__title-skeleton" aria-hidden="true"></span>
+        } @else {
+          <span class="optimize-header__breadcrumb">Listings / {{ productTitle() }}</span>
+          <h1 class="optimize-header__title">{{ productTitle() }}</h1>
+        }
       </div>
       <div class="optimize-header__actions">
         @if (wallet.balance() !== null) {
@@ -149,6 +157,11 @@
         </mat-menu>
       </div>
     </header>
+    } @else if (plainTitle(); as title) {
+      <header class="optimize-header optimize-header--plain" data-testid="page-header">
+        <h1 class="optimize-header__title">{{ title }}</h1>
+      </header>
+    }
 
     @if (session.loadingDraft()) {
       <p class="optimize-notice" role="status">Opening your saved listing…</p>
@@ -157,10 +170,18 @@
     }
 
     <app-account-nudges />
-    <app-wallet-nudges />
+    <app-wallet-nudges [hideMonthlySaved]="currentTab() === 'wallet'" />
 
-    <main class="optimize-content">
-      <router-outlet></router-outlet>
+    <main class="optimize-content" [class.optimize-content--no-header]="!showEditorHeader() && !plainTitle()" [attr.aria-busy]="session.loadingDraft()">
+      <!-- While a saved listing opens, the tab waits instead of flashing an empty "Untitled Product". -->
+      @if (session.loadingDraft()) {
+        <div class="optimize-content__skeleton" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+      }
+      <div [hidden]="session.loadingDraft()">
+        <router-outlet></router-outlet>
+      </div>
     </main>
   </div>
 </div>

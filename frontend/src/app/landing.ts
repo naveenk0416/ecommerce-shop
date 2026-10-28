@@ -43,7 +43,8 @@ export class Landing {
   readonly lang = this.i18n.lang;
   /** Landing text in the current language (i18n/landing.i18n.ts). */
   protected tx(key: LandingTextKey): string {
-    return LANDING_TEXT[key][this.lang()];
+    // Telugu / Kannada come from the shared dictionary (i18n/regional.i18n.ts), keyed by the English.
+    return this.i18n.t(LANDING_TEXT[key].en, LANDING_TEXT[key].hi);
   }
 
   /** In-page links — ion-content is its own scroll container, so router fragments don't scroll it. */

@@ -3,7 +3,7 @@ import { BulkValueCache } from '../api/common.js';
 import { coinConfig } from '../config/coins.js';
 import { callGemini } from '../utils/gemini.js';
 import { calculateGst, normalizeHsn } from '../utils/gst.js';
-import type { FieldKey } from './fields.js';
+import { cleanBrand, cleanCellText, GEMSTONE_HEADER, type FieldKey } from './fields.js';
 import { hasRealVariants, variantLabel, type Variant } from '../utils/variants.js';
 import type { ParsedTemplate, TemplateColumn } from './workbook.js';
 
@@ -206,7 +206,13 @@ function knownValue(field: FieldKey, col: TemplateColumn, src: ListingSource, ma
       return col.number ? (bullets[col.number - 1] ?? '') : bullets.join('\n');
     }
     case 'keywords': return pick(first(r, tab, 'searchKeywords'), first(r, 'general', 'searchTags'));
-    case 'brand': return pick(profile.brand ?? '', first(r, tab, 'brand'), first(r, 'general', 'brand'));
+    // The brand saved in Profile always wins, exactly as saved (Flipkart approves brands by exact name).
+    case 'brand': return pick(cleanBrand(profile.brand), first(r, tab, 'brand'), first(r, 'general', 'brand'));
+    case 'listing_status': return 'ACTIVE';
+    // Flipkart's code is "seller"; fitted to the template's own dropdown spelling below.
+    case 'fulfilment': return 'seller';
+    // Unique per design (sizes/colours of one product share it), never a placeholder like "Alphabet".
+    case 'model_number': return src.styleId || inv.sku || `SA-${src.draftId}`;
     case 'hsn': return normalizeHsn(inv.hsnCode || first(r, 'general', 'hsnCode'));
     case 'mrp': return listingNumber(src, 'mrp');
     case 'price': return listingNumber(src, 'sellingPrice');
@@ -236,6 +242,14 @@ function knownValue(field: FieldKey, col: TemplateColumn, src: ListingSource, ma
     case 'image': return /other|additional|back|side|extra|supplier|swatch/.test(header) || (col.number ?? 1) > 1 ? '' : (src.imageUrl ?? '');
     default: return '';
   }
+}
+
+/** Whether the listing's own text mentions the stone a column is about ("Ruby Color" → ruby). */
+function mentionsStone(header: string, context: string): boolean {
+  const stone = GEMSTONE_HEADER.exec(header)?.[1];
+  if (!stone) return false;
+  const word = /gem ?stone/.test(stone) ? '(gem ?)?stones?' : stone.replace(/ies$/, 'y').replace(/s$/, '');
+  return new RegExp(`\\b${word}`, 'i').test(context);
 }
 
 /** Attribute columns we may ask the AI to choose from the dropdown using the listing's text. */
@@ -274,6 +288,8 @@ export async function fillRows(
     hasRealVariants(src.variants) ? src.variants!.map((variant) => ({ src, variant })) : [{ src, variant: null }]
   ));
 
+  const savedBrand = cleanBrand(profile.brand);
+
   // Group-ID dropdowns ("Group 01", "Group 02" …): one group per product with sizes.
   const groupOf = new Map<string, number>();
   for (const { src, variant } of expanded) if (variant && !groupOf.has(src.draftId)) groupOf.set(src.draftId, groupOf.size);
@@ -289,6 +305,20 @@ export async function fillRows(
 
     for (const col of template.columns) {
       let value = '';
+      if (col.field === 'gemstone') {
+        // "Ruby Color", "Pearl Type" …: only for a product with that stone — never the product's own
+        // colour ("Gold, Green"). Diamond Clarity is "NA" for a set without diamonds.
+        const header = normalize(col.header);
+        const hasStone = mentionsStone(header, context);
+        if (/\bdiamond\b/.test(header) && /\bclarity\b/.test(header) && !hasStone) {
+          const na = col.allowed?.find((a) => /^(na|n\/a|not applicable)$/i.test(a.trim())) ?? 'NA';
+          cells[col.col] = { value: na, status: 'filled' };
+          continue;
+        }
+        if (hasStone && col.allowed) pendingAi.push({ key: `${col.col}:${rowIndex}`, col, row: rowIndex, ourValue: '', context });
+        cells[col.col] = { value: '', status: hasStone && col.required ? 'must_fill' : 'empty' };
+        continue;
+      }
       if (col.field === 'group_id' && variant) {
         value = col.allowed ? (col.allowed[groupOf.get(src.draftId) ?? 0] ?? '') : knownValue('group_id', col, src, marketplace, profile, variant);
       } else if (col.field && !col.neverInvent) {
@@ -306,8 +336,10 @@ export async function fillRows(
         // Sizes: "M" also matches "Medium", "UK 7" matches "7", "2-3Y" matches "2-3 Years" …
         const sizeFit = col.field === 'size' ? sizeSpellings(value).map((v) => fitAllowed(v, col.allowed!)).find(Boolean) ?? null : null;
         // A brand is never "close enough": "Eagle" must not become "EAGLE WELL" — exact (any case) only.
+        // The seller's saved brand is then written exactly as saved, not in the list's casing.
+        const brandMatch = col.field === 'brand' ? col.allowed.find((a) => normalize(a) === normalize(value)) ?? null : null;
         const fitted = col.field === 'brand'
-          ? col.allowed.find((a) => normalize(a) === normalize(value)) ?? null
+          ? (brandMatch && savedBrand && normalize(value) === normalize(savedBrand) ? savedBrand : brandMatch)
           : sizeFit ?? fitAllowed(value, col.allowed) ?? (cachedFit || null);
         if (fitted) {
           if (fitted !== value) adjusted.push({ header: col.header, from: value, to: fitted });
@@ -381,6 +413,11 @@ export async function fillRows(
         aiChosenCount.set(item.col.header, (aiChosenCount.get(item.col.header) ?? 0) + 1);
       }
     }
+  }
+
+  // Hidden characters (zero-width spaces, BOM, NBSP) make Flipkart reject values that look right.
+  for (const row of rows) {
+    for (const cell of Object.values(row.cells)) cell.value = cleanCellText(cell.value);
   }
 
   // Report.

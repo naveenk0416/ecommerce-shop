@@ -13,6 +13,7 @@ import { ensureWallet, grantBonus, processReferralAfterListing, reverseReferralO
 import { setCoinBalanceHeader } from '../utils/coin-header.js';
 import { checkSignupEmail, emailDomain } from '../utils/email-check.js';
 import { recordUserFunnelEvent } from '../utils/funnel.js';
+import { cleanBrand } from '../bulk/fields.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env['JWT_SECRET'] || 'dev_jwt_secret_change_me';
@@ -672,6 +673,12 @@ router.get('/me', authMiddleware, async (req, res) => {
       dailyStats: user.dailyStats,
       state: user.state,
       city: user.city,
+      businessName: user.businessName ?? null,
+      preferredLanguage: user.preferredLanguage ?? null,
+      /** Brand saved once (Profile) and used in every listing and bulk file. */
+      defaultBrand: user.sellerProfile?.brand ?? null,
+      /** At least one AI listing made (drives the one-time "FirstListingGenerated" ad event). */
+      hasFirstListing: !!user.firstListingAt || (user.usageCount ?? 0) > 0,
       whatsapp_opt_in: user.whatsapp_opt_in ?? false,
       catalogSizeBand: user.catalogSizeBand ?? null,
       catalogPromptDismissed: !!user.catalogPromptDismissedAt,
@@ -1076,6 +1083,23 @@ router.patch('/users/:id', authMiddleware, async (req, res) => {
     if (typeof updates.whatsapp_opt_in === 'boolean') {
       user.whatsapp_opt_in = updates.whatsapp_opt_in;
       user.whatsapp_opt_in_at = new Date();
+    }
+
+    if (updates.businessName !== undefined) {
+      const name = String(updates.businessName ?? '').trim().slice(0, 120);
+      user.businessName = name || undefined;
+    }
+    if (updates.preferredLanguage !== undefined) {
+      if (!['en', 'hi', 'te', 'kn'].includes(updates.preferredLanguage)) {
+        res.status(400).json({ error: 'Choose a language.', field: 'preferredLanguage' });
+        return;
+      }
+      user.preferredLanguage = updates.preferredLanguage;
+    }
+    // Same field the bulk-file profile uses, so the brand is saved once for listings and exports.
+    if (updates.defaultBrand !== undefined) {
+      const brand = cleanBrand(String(updates.defaultBrand ?? '').slice(0, 100));
+      user.set('sellerProfile.brand', brand || undefined);
     }
 
     // Only admins may change roles — otherwise any user could promote themselves.

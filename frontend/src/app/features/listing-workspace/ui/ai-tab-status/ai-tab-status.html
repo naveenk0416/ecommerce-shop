@@ -2,7 +2,26 @@
   <app-ui-card [elevated]="true">
     <div class="ai-tab-status">
       <mat-icon>add_photo_alternate</mat-icon>
-      <p>Upload a product photo on General Details to generate this tab's content.</p>
+      @if (recent()?.length) {
+        <p>Pick one of your listings to see this tab, or upload a new product photo on General Details.</p>
+        <ul class="ai-tab-status__picker" aria-label="Your recent listings" data-testid="recent-listings">
+          @for (draft of recent(); track draft.id) {
+            <li>
+              <a class="ai-tab-status__pick" routerLink="." [queryParams]="{ id: draft.id }" [attr.data-testid]="'pick-' + draft.id">
+                @if (draft.imageUrl) {
+                  <img [src]="draft.imageUrl" alt="" loading="lazy" />
+                } @else {
+                  <span class="ai-tab-status__pick-empty"><mat-icon aria-hidden="true">image</mat-icon></span>
+                }
+                <span class="ai-tab-status__pick-name">{{ draft.title || 'Untitled product' }}</span>
+                <mat-icon class="ai-tab-status__pick-go" aria-hidden="true">chevron_right</mat-icon>
+              </a>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p>Upload a product photo on General Details to generate this tab's content.</p>
+      }
       <a mat-flat-button color="primary" routerLink="../general">
         <mat-icon>arrow_back</mat-icon>
         Go to General Details

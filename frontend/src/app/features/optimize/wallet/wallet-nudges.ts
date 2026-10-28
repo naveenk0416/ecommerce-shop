@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Injector, computed, effect, inject, runInInjectionContext, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, computed, effect, inject, input, runInInjectionContext, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -108,6 +108,9 @@ export class WalletNudges {
   private readonly monthlySeen = signal<string | null>(null);
   private readonly catalogHidden = signal(false);
   savingBand = signal(false);
+  /** The Coins page shows this month's time saved itself; last month's figure next to it reads as
+   * a contradiction ("3.5 hours" vs "4.5 hours"), so the banner stays off there. */
+  readonly hideMonthlySaved = input(false);
 
   private uid = computed(() => this.auth.user()?.uid ?? '');
   private wallet = this.walletService.wallet;
@@ -137,7 +140,7 @@ export class WalletNudges {
 
   showMonthlySaved = computed(() => {
     const w = this.wallet();
-    if (!w || w.lastMonthTimeSaved.hours < 0.5) return false;
+    if (!w || this.hideMonthlySaved() || w.lastMonthTimeSaved.hours < 0.5) return false;
     return this.monthlySeen() !== w.timeSaved.month;
   });
 

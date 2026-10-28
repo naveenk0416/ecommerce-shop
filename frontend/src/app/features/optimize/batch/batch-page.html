@@ -11,6 +11,14 @@
     }
   </header>
 
+  <!-- 0 coins: say why nothing can start and when free coins come, instead of a dead end. -->
+  @if (!loading() && balance() < cost() && (step() === 'pick' || step() === 'group' || step() === 'details')) {
+    <div class="bp__card bp__nocoins" role="status" data-testid="batch-no-coins">
+      <p class="bp__error">{{ t('You’re out of coins — each product needs ' + cost() + ' coin to start.', 'आपके coins खत्म हो गए हैं — हर product के लिए ' + cost() + ' coin चाहिए।') }}</p>
+      <app-next-coins-note />
+    </div>
+  }
+
   @if (loading()) {
     <p class="bp__muted" role="status">{{ t('Loading…', 'Load हो रहा है…') }}</p>
   } @else {
@@ -162,6 +170,7 @@
         <p class="bp__muted">{{ t('A coin is used only for a listing that is made. Failed ones are free.', 'Coin सिर्फ़ बनी हुई listing पर लगेगा। जो नहीं बनी, वो free है।') }}</p>
         @if (!enough()) {
           <p class="bp__error" role="alert" data-testid="not-enough">{{ t('Not enough coins — untick some products.', 'Coins कम हैं — कुछ products हटाएं।') }}</p>
+          <app-next-coins-note />
         }
         <div class="bp__grid">
           @for (g of groups(); track g[0]; let gi = $index) {

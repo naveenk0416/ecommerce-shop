@@ -531,3 +531,58 @@ ion-segment-button {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Dashboard skeleton (hard refresh on /optimize/*): same shape as the workspace shell, so the page
+   doesn't jump when the real content replaces it. */
+.ws-skeleton {
+  display: flex;
+  min-height: 70vh;
+  background: #f8fafc;
+}
+.ws-skeleton__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 260px;
+  flex-shrink: 0;
+  padding: 24px 18px;
+  background: #0f172a;
+}
+.ws-skeleton__sidebar .ws-skeleton__bar { background: #1e293b; }
+.ws-skeleton__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px 32px;
+}
+.ws-skeleton__cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.ws-skeleton__bar,
+.ws-skeleton__card,
+.ws-skeleton__panel {
+  display: block;
+  border-radius: 12px;
+  background: #e2e8f0;
+  animation: ws-skeleton-pulse 1.4s ease-in-out infinite;
+}
+.ws-skeleton__bar { height: 14px; }
+.ws-skeleton__bar--title { width: 40%; height: 28px; }
+.ws-skeleton__card { height: 88px; }
+.ws-skeleton__panel { height: 320px; }
+@keyframes ws-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-skeleton__bar, .ws-skeleton__card, .ws-skeleton__panel { animation: none; }
+}
+@media (max-width: 900px) {
+  .ws-skeleton__sidebar { display: none; }
+  .ws-skeleton__main { padding: 16px; }
+  .ws-skeleton__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

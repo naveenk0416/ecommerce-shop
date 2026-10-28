@@ -8,6 +8,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { UiCard } from '../listing-workspace/ui/card/card';
 import { ListingDraftSummary, ListingService } from '../../services/listing';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { ConfirmActionData, ConfirmActionDialog } from './confirm-action-dialog';
+import { deleteWithUndo } from '../../utils/undo-delete';
 
 /** "My Listings" — every AI listing, auto-saved as a draft, newest first. */
 @Component({
@@ -148,18 +152,29 @@ export class MyListings {
     }
   }
 
+  /** Asks first; the row disappears at once and the delete is only sent if Undo isn't pressed within 5 seconds. */
   async remove(draft: ListingDraftSummary): Promise<void> {
-    const note = draft.status === 'saved' ? ' The inventory item stays, but it will no longer open this full listing.' : '';
-    if (!confirm(`Delete "${draft.title || 'Untitled product'}" from My Listings?${note}`)) return;
-    this.busyId.set(draft.id);
-    try {
-      await this.listingService.deleteDraft(draft.id);
-      this.drafts.update((list) => list.filter((d) => d.id !== draft.id));
-      this.snackBar.open('Listing deleted.', 'Dismiss', { duration: 3000 });
-    } catch (error) {
-      this.snackBar.open((error instanceof Error && error.message) || 'Could not delete this listing.', 'Dismiss', { duration: 4000 });
-    } finally {
-      this.busyId.set(null);
-    }
+    const data: ConfirmActionData = {
+      title: 'Delete this listing?',
+      intro: `"${draft.title || 'Untitled product'}" is removed from My Listings.`,
+      items: draft.status === 'saved' ? [{ heading: 'In inventory', lines: ['The inventory item stays, but it will no longer open this full listing.'] }] : [],
+      confirmLabel: 'Delete',
+    };
+    const dialog = runInInjectionContext(this.injector, () => inject(MatDialog));
+    const ok = await firstValueFrom(dialog.open<ConfirmActionDialog, ConfirmActionData, boolean>(ConfirmActionDialog, { data, width: '480px', maxWidth: '95vw' }).afterClosed());
+    if (!ok) return;
+    const index = this.drafts().findIndex((d) => d.id === draft.id);
+    this.drafts.update((list) => list.filter((d) => d.id !== draft.id));
+    deleteWithUndo(this.snackBar, {
+      message: 'Listing deleted.',
+      commit: () => this.listingService.deleteDraft(draft.id),
+      restore: () => this.drafts.update((list) => {
+        if (list.some((d) => d.id === draft.id)) return list;
+        const next = [...list];
+        next.splice(Math.max(0, index), 0, draft);
+        return next;
+      }),
+      onError: (error) => this.snackBar.open((error instanceof Error && error.message) || 'Could not delete this listing.', 'Dismiss', { duration: 4000 }),
+    });
   }
 }
