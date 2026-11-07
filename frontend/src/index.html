@@ -27,8 +27,8 @@
     <meta name="language" content="English" />
     <meta name="revisit-after" content="7 days" />
 
-    <!-- Canonical -->
-    <link rel="canonical" href="https://sellassist.in/" />
+    <!-- Canonical: set per route by the app (App.setCanonical). A static one here would point
+         every URL (e.g. /gst-calculator) at the home page. -->
 
     <!-- Theme -->
     <meta name="theme-color" content="#0f172a" />
@@ -80,6 +80,8 @@
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon_io/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
 
     <!-- Structured Data SEO -->
     <script type="application/ld+json">

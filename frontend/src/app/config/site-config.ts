@@ -55,7 +55,7 @@ export const GA4_MEASUREMENT_ID = 'G-NYCJ00ML3F';
  * these are shown to paid-ad traffic and must be truthful.
  */
 export const SHOW_STATS = false;
-export const MARKETING_STATS: ReadonlyArray<{ value: string; label: string }> = [
+export const MARKETING_STATS: readonly { value: string; label: string }[] = [
   { value: '[X]', label: 'Listings Created' },
   { value: '[Y]', label: 'Active Sellers' },
   { value: '[Z]', label: 'GST Accuracy' },

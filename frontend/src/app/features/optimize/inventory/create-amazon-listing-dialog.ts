@@ -330,13 +330,13 @@ export class CreateAmazonListingDialog {
    * item_width_height: { height: {...}, width: {...} }). Works from the attribute's own field
    * shape rather than its name, so it generalizes to whatever a given category calls its
    * quantity-style attributes. */
-  private detectQuantityAxes(attr: AmazonAttributeSummary): Array<{ key: string; unitOptions: string[] }> {
+  private detectQuantityAxes(attr: AmazonAttributeSummary): { key: string; unitOptions: string[] }[] {
     const fields = attr.fields || [];
     const topUnit = fields.find((f) => f.name === 'unit' && f.enum?.length);
     const topValue = fields.find((f) => f.name === 'value');
     if (topUnit && topValue) return [{ key: 'value', unitOptions: topUnit.enum!.map(String) }];
 
-    const axes: Array<{ key: string; unitOptions: string[] }> = [];
+    const axes: { key: string; unitOptions: string[] }[] = [];
     for (const field of fields) {
       const nested = field.nestedFields || [];
       const unit = nested.find((n) => n.name === 'unit' && n.enum?.length);
@@ -716,7 +716,7 @@ export class CreateAmazonListingDialog {
     this.retryNotice.set(null);
 
     const values = this.fieldValues();
-    const attributes: Record<string, Array<Record<string, unknown>>> = {};
+    const attributes: Record<string, Record<string, unknown>[]> = {};
 
     for (const field of this.requiredFields()) {
       const raw = (values[field.name] || '').trim();

@@ -74,7 +74,7 @@ import { ApiError } from '../../../services/api';
         <div class="profile__grid">
           <label class="field">
             <span class="field__label">{{ t('Default brand', 'Default brand', 'Default brand', 'Default brand') }}</span>
-            <input class="field__input" type="text" maxlength="100" [value]="brand()" (input)="brand.set($any($event.target).value)" data-testid="profile-brand" />
+            <input id="profile-brand" class="field__input" type="text" maxlength="100" [value]="brand()" (input)="brand.set($any($event.target).value)" data-testid="profile-brand" />
             <span class="field__hint">{{ t('Used in every listing and bulk file, exactly as typed (e.g. "Pure Essentials").', 'हर listing और bulk file में बिल्कुल ऐसे ही लिखा जाएगा (जैसे "Pure Essentials")।', 'ప్రతి listing, bulk file లో ఇలాగే రాస్తాం (ఉదా. "Pure Essentials").', 'ಪ್ರತಿ listing, bulk file‌ನಲ್ಲಿ ಹೀಗೆಯೇ ಬರೆಯುತ್ತೇವೆ (ಉದಾ. "Pure Essentials").') }}</span>
           </label>
           <label class="field">
@@ -174,6 +174,14 @@ export class ProfilePage {
         this.brand.set(p.defaultBrand ?? '');
         if (p.preferredLanguage) this.language.set(p.preferredLanguage);
       });
+      // "Set your brand" links from listings/Readiness land on /optimize/profile#profile-brand.
+      if (typeof window !== 'undefined' && window.location.hash === '#profile-brand') {
+        setTimeout(() => {
+          const input = document.getElementById('profile-brand');
+          input?.scrollIntoView({ block: 'center' });
+          input?.focus();
+        });
+      }
     });
   }
 

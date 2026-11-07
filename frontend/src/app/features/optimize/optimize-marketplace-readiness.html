@@ -6,18 +6,34 @@
       <app-ui-section title="Marketplace Readiness" icon="fact_check" description="Live status based on what's been generated for this product so far.">
         <div class="tab-shell__checklist">
           @for (row of rows(); track row.marketplace) {
-            <div class="tab-shell__row">
+            <div class="tab-shell__row" [attr.data-testid]="'readiness-' + row.marketplace">
               <span class="tab-shell__row-label">
                 <app-marketplace-icon [marketplace]="row.marketplace" [size]="18" />
                 {{ row.label }}
               </span>
-              <span class="tab-shell__badge" [class.tab-shell__badge--ready]="row.ready">
-                @if (row.ready) {
-                  Ready @if (row.score !== null) { ({{ row.score }}%) }
-                } @else {
-                  Not generated yet
+              <span
+                class="tab-shell__badge"
+                [class.tab-shell__badge--ready]="row.status === 'ready'"
+                [class.tab-shell__badge--attention]="row.status === 'attention'"
+              >
+                @switch (row.status) {
+                  @case ('ready') { Ready @if (row.score !== null) { ({{ row.score }}%) } }
+                  @case ('attention') { Needs attention @if (row.score !== null) { ({{ row.score }}%) } }
+                  @default { Not generated yet }
                 }
               </span>
+              @if (row.status === 'attention' && row.issues.length) {
+                <ul class="tab-shell__reasons">
+                  @for (issue of row.issues; track issue.label) {
+                    <li>
+                      {{ issue.text }}
+                      @if (issue.field) {
+                        <a [routerLink]="['/optimize', row.tab]" queryParamsHandling="preserve" [fragment]="'field-' + issue.field">Fix in {{ row.label }} tab</a>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
             </div>
           }
         </div>

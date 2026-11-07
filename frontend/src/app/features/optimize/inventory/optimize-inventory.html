@@ -134,7 +134,7 @@
                   <td data-label="Product">
                     <div class="product-cell">
                       @if (listing.processedImage || listing.originalImage) {
-                        <img [src]="listing.processedImage || listing.originalImage" alt="" class="product-cell__image" referrerpolicy="no-referrer" />
+                        <img [src]="listing.processedImage || listing.originalImage" alt="" class="product-cell__image" referrerpolicy="no-referrer" loading="lazy" decoding="async" width="40" height="40" />
                       } @else {
                         <span class="product-cell__placeholder"><mat-icon aria-hidden="true">image</mat-icon></span>
                       }

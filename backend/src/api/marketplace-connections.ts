@@ -914,7 +914,7 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
         res.status(422).json({ error: `Amazon rejected the update: ${failed.map((f) => `${f.label}: ${f.error}`).join(' · ')}`, children: results });
         return;
       }
-      await grantBonusSafely(uid, 'firstPublish');
+      // A price/stock update to an already-listed product isn't a first publish: no +5 here.
       await setCoinBalanceHeader(res, uid);
       res.status(failed.length ? 207 : 200).json({ ok: failed.length === 0, children: results });
       return;
@@ -946,7 +946,7 @@ router.post('/amazon/publish/:listingId', authMiddleware, async (req, res) => {
       return;
     }
     // +5 coins for the first successful publish (only reached after the marketplace accepted it).
-    await grantBonusSafely(uid, 'firstPublish');
+    // A price/stock update to an already-listed product isn't a first publish: no +5 here.
     await setCoinBalanceHeader(res, uid);
     res.json({ ok: true });
   } catch (err: any) {
@@ -987,7 +987,7 @@ router.post('/flipkart/publish/:listingId', authMiddleware, async (req, res) => 
         res.status(422).json({ error: `Flipkart rejected the update: ${failed.map((f) => `${f.label}: ${f.error}`).join(' · ')}`, children: results });
         return;
       }
-      await grantBonusSafely(uid, 'firstPublish');
+      // A price/stock update to an already-listed product isn't a first publish: no +5 here.
       await setCoinBalanceHeader(res, uid);
       res.status(failed.length ? 207 : 200).json({ ok: failed.length === 0, children: results });
       return;
@@ -1014,7 +1014,7 @@ router.post('/flipkart/publish/:listingId', authMiddleware, async (req, res) => 
       return;
     }
     // +5 coins for the first successful publish (only reached after the marketplace accepted it).
-    await grantBonusSafely(uid, 'firstPublish');
+    // A price/stock update to an already-listed product isn't a first publish: no +5 here.
     await setCoinBalanceHeader(res, uid);
     res.json({ ok: true });
   } catch (err: any) {

@@ -1,6 +1,6 @@
 import { Injectable, signal, inject, PLATFORM_ID, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { apiFetch, ApiError, clearAuthToken, getAuthToken, setAuthToken } from './api';
+import { apiFetch, ApiError, clearAuthToken, endServerSession, hasSession, setAuthToken } from './api';
 import type { Attribution } from './analytics';
 
 export type UserRole = 'FREE' | 'PAID_PRO' | 'ADMIN';
@@ -110,8 +110,8 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       // Restore session from token if present
       (async () => {
-        const token = getAuthToken();
-        if (token) {
+        // A Bearer token, or a cookie session started on this browser (the cookie itself is HttpOnly).
+        if (hasSession()) {
           try {
             await this.syncUserProfileFromAPI();
           } catch (err) {
@@ -251,7 +251,7 @@ export class AuthService {
     try {
       const body = await apiFetch<{ token: string }>('/login', {
         method: 'POST',
-        body: { email, password },
+        body: { email, password, rememberMe },
       });
       setAuthToken(body.token, rememberMe);
       await this.syncUserProfileFromAPI();
@@ -290,6 +290,7 @@ export class AuthService {
   async logout() {
     try {
       clearAuthToken();
+      void endServerSession();
       this.user.set(null);
       this.profile.set(null);
     } catch (error) {
@@ -325,7 +326,7 @@ export class AuthService {
   async incrementUsage() {
     const p = this.profile();
     const u = this.user();
-    if (!p || !u || !getAuthToken()) return;
+    if (!p || !u || !hasSession()) return;
     try {
       await apiFetch(`/users/${u.uid}`, {
         method: 'PATCH',
@@ -346,13 +347,14 @@ export class AuthService {
   async deleteAccount(password: string): Promise<void> {
     await apiFetch('/me', { method: 'DELETE', body: { password } });
     clearAuthToken();
+    void endServerSession();
     this.user.set(null);
     this.profile.set(null);
   }
 
   async updateProfile(data: Partial<UserProfile>) {
     const u = this.user();
-    if (!u || !getAuthToken()) return;
+    if (!u || !hasSession()) return;
     try {
       await apiFetch(`/users/${u.uid}`, {
         method: 'PATCH',

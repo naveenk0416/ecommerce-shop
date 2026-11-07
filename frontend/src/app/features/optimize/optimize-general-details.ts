@@ -20,6 +20,7 @@ import { RouterLink } from '@angular/router';
 import { VariantEditor } from './variants/variant-editor';
 import { NextCoinsNote } from './wallet/next-coins-note';
 import { hasRealVariants } from '../../config/size-presets';
+import { isMissingBrand, PROFILE_BRAND_LINK } from './brand.util';
 
 /** General-tab keys this form reads/writes in the session (AI content + seller-entered values). */
 type GeneralKey = 'productTitle' | 'category' | 'sku' | 'brand' | 'hsnCode' | 'description'
@@ -88,6 +89,9 @@ export class OptimizeGeneralDetails {
 
   // ---- Validation (seller-entered business numbers are required; the AI never fills them) ----
   titleError = computed(() => (this.value('productTitle').trim() ? '' : 'Add a product title.'));
+  /** Shown, not blocking: an empty or "Generic" brand gets listings rejected (Flipkart jewellery, …). */
+  brandMissing = computed(() => this.hasDraft() && isMissingBrand(this.value('brand')));
+  protected readonly profileBrand = PROFILE_BRAND_LINK;
   sellingPriceError = computed(() => {
     const n = parseAmountInput(this.value('sellingPrice'));
     if (n === null) return 'Enter your selling price.';

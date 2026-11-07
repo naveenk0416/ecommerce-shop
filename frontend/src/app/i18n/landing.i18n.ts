@@ -30,8 +30,8 @@ export const LANDING_TEXT = {
   featEyebrow: { en: 'Everything included', hi: 'सब कुछ शामिल' },
   featTitle: { en: 'One photo. Every platform. Done.', hi: 'एक photo। हर platform। काम पूरा।' },
   featSub: {
-    en: 'From listing copy to GST classification — SellAssist handles the boring stuff so you can focus on selling. Publish directly to Amazon. Flipkart publishing coming soon.',
-    hi: 'Listing लिखने से GST तक — झंझट वाला काम SellAssist करता है, आप बस बेचने पर ध्यान दें। Amazon पर सीधे publish करें। Flipkart publishing जल्द आ रहा है।',
+    en: 'From listing copy to GST classification — SellAssist handles the boring stuff so you can focus on selling. Publish to Amazon from your connected Seller Central account. Flipkart publishing coming soon.',
+    hi: 'Listing लिखने से GST तक — झंझट वाला काम SellAssist करता है, आप बस बेचने पर ध्यान दें। अपने जुड़े हुए Seller Central account से Amazon पर publish करें। Flipkart publishing जल्द आ रहा है।',
   },
   f1Title: { en: 'Image-First AI', hi: 'Photo से AI listing' },
   f1Text: { en: 'Upload a single product photo. Our AI reads colors, materials, and style — and writes the listing for you.', hi: 'बस एक product photo डालें। AI रंग, material और style पढ़कर आपकी listing लिख देता है।' },

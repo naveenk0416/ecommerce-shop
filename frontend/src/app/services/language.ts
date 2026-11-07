@@ -41,6 +41,10 @@ export class LanguageService {
         // No document (server render) — nothing to update.
       }
     });
+    // Hindi needs Noto Sans Devanagari (~118 KB); fetch it only once Hindi is chosen.
+    effect(() => {
+      if (this.lang() === 'hi') LanguageService.loadDevanagariFont();
+    });
     // Remember an explicit switch (not the automatic campaign default).
     effect(() => {
       const lang = this.lang();
@@ -51,6 +55,19 @@ export class LanguageService {
         // Storage blocked — the choice lasts for this visit only.
       }
     });
+  }
+
+  private static loadDevanagariFont(): void {
+    try {
+      if (document.getElementById('font-devanagari')) return;
+      const link = document.createElement('link');
+      link.id = 'font-devanagari';
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@500;600;700;800&display=swap';
+      document.head.appendChild(link);
+    } catch {
+      // No document (server render) — system fonts cover Hindi.
+    }
   }
 
   private static stored(): SiteLanguage | null {

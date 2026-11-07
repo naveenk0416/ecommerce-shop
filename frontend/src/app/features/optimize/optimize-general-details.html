@@ -142,7 +142,13 @@
         <div class="field-row">
           <label class="field" for="gd-brand">
             <span class="field__label">Brand</span>
-            <input id="gd-brand" class="field__input" [ngModel]="value('brand')" (ngModelChange)="update('brand', $event)" placeholder="e.g. Sellassist Basics" />
+            <input id="gd-brand" class="field__input" [ngModel]="value('brand')" (ngModelChange)="update('brand', $event)" placeholder="e.g. Sellassist Basics" [attr.aria-invalid]="brandMissing()" [attr.aria-describedby]="brandMissing() ? 'gd-brand-warn' : null" />
+            @if (brandMissing()) {
+              <span id="gd-brand-warn" class="field__error" role="note" data-testid="brand-warning">
+                {{ i18n.t('Brand is empty or "Generic" — Amazon and Flipkart may reject this listing. Enter your approved brand, or set a default in', 'Brand खाली है या "Generic" है — Amazon और Flipkart यह listing reject कर सकते हैं। अपना approved brand लिखें, या default brand सेट करें:') }}
+                <a [routerLink]="profileBrand.path" [fragment]="profileBrand.fragment">{{ i18n.t('Profile', 'Profile') }}</a>.
+              </span>
+            }
           </label>
           <div class="field">
             <label class="field__label" for="gd-hsn">HSN Code</label>

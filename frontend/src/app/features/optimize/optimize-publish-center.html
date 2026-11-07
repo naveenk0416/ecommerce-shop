@@ -3,30 +3,45 @@
 
   @if (session.hasImage()) {
     <app-ui-card [elevated]="true">
-      <app-ui-section title="Publish Center" icon="publish" description="Publishing is a demo action here — it isn't connected to a live marketplace API.">
+      <app-ui-section
+        title="Publish Center"
+        icon="publish"
+        description="Amazon listings are published from Inventory through your connected Seller Central account — you see Amazon's real result. Other channels are coming soon."
+      >
         <div class="tab-shell__checklist">
           @for (row of rows(); track row.marketplace) {
-            <div class="tab-shell__row">
+            <div class="tab-shell__row" [attr.data-testid]="'publish-row-' + row.marketplace">
               <span class="tab-shell__row-label">
                 <app-marketplace-icon [marketplace]="row.marketplace" [size]="18" />
                 {{ row.label }}
               </span>
-              @if (!row.live) {
-                <span class="tab-shell__row-actions" [attr.data-testid]="'publish-row-' + row.marketplace">
+              @if (row.marketplace !== 'amazon' && !row.live) {
+                <span class="tab-shell__row-actions">
                   <button mat-stroked-button color="primary" disabled [attr.aria-label]="i18n.t('Publish to ' + row.label + ' — coming soon', row.label + ' पर publish — जल्द आ रहा है')">
                     {{ i18n.t('Publish to ' + row.label, row.label + ' पर publish करें') }}
                   </button>
                   <app-coming-soon-publish [channel]="$any(row.marketplace)" />
                 </span>
-              } @else if (row.published) {
-                <span class="tab-shell__badge tab-shell__badge--ready">
-                  <mat-icon inline="true">check_circle</mat-icon>
-                  Published
+              } @else if (row.status === 'not_generated') {
+                <button mat-stroked-button color="primary" disabled>{{ i18n.t('Generate content first', 'पहले content बनाएं') }}</button>
+              } @else if (row.status === 'attention') {
+                <span class="tab-shell__row-actions">
+                  <span class="tab-shell__badge tab-shell__badge--attention">{{ i18n.t('Needs attention', 'ध्यान दें') }}</span>
+                  <a mat-stroked-button color="primary" routerLink="/optimize/readiness" queryParamsHandling="preserve">{{ i18n.t('See what to fix', 'क्या ठीक करना है देखें') }}</a>
                 </span>
+              } @else if (row.marketplace === 'amazon') {
+                @if (inventoryId(); as id) {
+                  <a mat-flat-button color="primary" routerLink="/optimize/inventory" [queryParams]="{ publishAmazon: id }" data-testid="publish-amazon">
+                    {{ i18n.t('Publish to Amazon', 'Amazon पर publish करें') }}
+                  </a>
+                } @else {
+                  <span class="tab-shell__row-actions">
+                    <span class="tab-shell__badge">{{ i18n.t('Save to Inventory first', 'पहले Inventory में save करें') }}</span>
+                    <a mat-stroked-button color="primary" routerLink="/optimize/general" queryParamsHandling="preserve">{{ i18n.t('Go to General Details', 'General Details पर जाएं') }}</a>
+                  </span>
+                }
               } @else {
-                <button mat-stroked-button color="primary" [disabled]="!row.ready" (click)="publish(row.tab)">
-                  {{ row.ready ? 'Publish' : 'Generate content first' }}
-                </button>
+                <a mat-stroked-button color="primary" routerLink="/optimize/inventory">{{ i18n.t('Publish from Inventory', 'Inventory से publish करें') }}</a>
               }
             </div>
           }

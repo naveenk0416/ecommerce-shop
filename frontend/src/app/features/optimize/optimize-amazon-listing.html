@@ -19,6 +19,7 @@
           <div class="tab-shell__grid">
             @for (field of section.fields; track field.key) {
               <app-editable-field
+                [appFragmentFocus]="'field-' + field.key"
                 [class.tab-shell__grid-item--full]="field.multiline"
                 [label]="field.label"
                 [maxLength]="field.maxLength"

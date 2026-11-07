@@ -7,13 +7,14 @@ import { UiSection } from '../listing-workspace/ui/section/section';
 import { SeoScoreCard } from '../listing-workspace/ui/seo-score-card/seo-score-card';
 import { AiTabStatus } from '../listing-workspace/ui/ai-tab-status/ai-tab-status';
 import { OptimizeSessionService } from './optimize-session.service';
+import { FragmentFocus } from './fragment-focus.directive';
 import { WalletService } from '../../services/wallet';
 
 @Component({
   selector: 'app-optimize-amazon-listing',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [UiCard, UiSection, EditableField, SeoScoreCard, AiTabStatus],
+  imports: [UiCard, UiSection, EditableField, FragmentFocus, SeoScoreCard, AiTabStatus],
   templateUrl: './optimize-amazon-listing.html',
   styleUrls: ['../listing-workspace/tabs/tab-shell.scss'],
 })

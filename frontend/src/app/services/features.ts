@@ -10,7 +10,10 @@ const DEFAULT_PUBLISH: Record<PublishChannel, boolean> = { amazon: true, flipkar
 
 /**
  * Which channels can really be published to, read from the backend's *_PUBLISH_ENABLED flags
- * (GET /api/features), plus the "Notify me" requests this seller has already made.
+ * (GET /api/features), plus the "Notify me" requests this seller made in this visit.
+ *
+ * "Notify me" is only sent when the seller clicks it: the POST is idempotent on the server (a
+ * repeat click answers alreadyRequested), so nothing needs to be fetched on page load.
  */
 @Injectable({ providedIn: 'root' })
 export class FeatureService {
@@ -24,14 +27,12 @@ export class FeatureService {
   private notifiedFor: string | null = null;
 
   constructor() {
+    // A different (or no) account starts with a clean "Notify me" state.
     effect(() => {
-      const user = this.auth.user();
-      if (!user) {
-        this.notified.set(new Set());
-        this.notifiedFor = null;
-        return;
-      }
-      void this.loadNotified(user.uid);
+      const uid = this.auth.user()?.uid ?? null;
+      if (uid === this.notifiedFor) return;
+      this.notifiedFor = uid;
+      this.notified.set(new Set());
     });
   }
 
@@ -49,18 +50,6 @@ export class FeatureService {
         this.flagsRequest = null;
       });
     return this.flagsRequest;
-  }
-
-  private async loadNotified(uid: string): Promise<void> {
-    if (this.notifiedFor === uid) return;
-    this.notifiedFor = uid;
-    try {
-      const res = await apiFetch<{ features: string[] }>('/features/notify-me');
-      if (this.notifiedFor === uid) this.notified.set(new Set(res.features));
-    } catch (error) {
-      console.warn('Could not load "Notify me" requests', error);
-      this.notifiedFor = null;
-    }
   }
 
   /** Records the request once on the server (repeat clicks are a no-op there too). */

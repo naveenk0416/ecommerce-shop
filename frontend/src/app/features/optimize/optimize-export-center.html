@@ -16,6 +16,12 @@
                 {{ hasResult(entry.tab) ? 'Export Excel' : 'Not generated yet' }}
               </button>
             </div>
+            @if (brandMissing(entry.tab)) {
+              <p class="tab-shell__warning" role="note" [attr.data-testid]="'export-brand-warning-' + entry.tab">
+                <mat-icon aria-hidden="true">warning</mat-icon>
+                <span>{{ entry.label }}: Brand is empty or "Generic" in this export — {{ entry.label }} may reject it. Fill the Brand column before uploading, or <a [routerLink]="profileBrand.path" [fragment]="profileBrand.fragment">set your default brand</a>.</span>
+              </p>
+            }
           }
         </div>
       </app-ui-section>

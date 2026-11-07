@@ -78,6 +78,7 @@
         }
 
         @for (field of requiredFields(); track field.name) {
+          <!-- eslint-disable-next-line @angular-eslint/template/label-has-associated-control -- the control is inside @if/@switch, which the rule cannot see -->
           <label class="field" [class.field--ai]="isAiFilled(field.name)">
             <span class="field__label">
               {{ field.label }}
@@ -163,6 +164,7 @@
             <span class="field__label">{{ ca.label }}</span>
             <div class="field-row">
               @for (sf of ca.subFields; track sf.key) {
+                <!-- eslint-disable-next-line @angular-eslint/template/label-has-associated-control -- the control is inside @if/@switch, which the rule cannot see -->
                 <label class="field" [class.field--ai]="isAiFilled(ca.name + '__' + sf.key)">
                   <span class="field__label">
                     {{ sf.label }}

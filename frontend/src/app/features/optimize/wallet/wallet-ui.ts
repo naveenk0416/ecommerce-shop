@@ -12,7 +12,7 @@ export function bonusLabel(i18n: LanguageService, id: BonusId): string {
     case 'welcome': return i18n.t('Welcome bonus (verify your email)', 'स्वागत bonus (email verify करें)');
     case 'mobile': return i18n.t('Add your mobile number', 'अपना mobile number जोड़ें');
     case 'firstInventorySave': return i18n.t('Save your first product to Inventory', 'पहला product Inventory में save करें');
-    case 'firstPublish': return i18n.t('Publish your first product to Amazon or Flipkart', 'पहला product Amazon या Flipkart पर publish करें');
+    case 'firstPublish': return i18n.t('Publish your first new product to Amazon', 'पहला नया product Amazon पर publish करें');
     case 'businessDetails': return i18n.t('Tell us about your business', 'अपने business के बारे में बताएं');
   }
 }

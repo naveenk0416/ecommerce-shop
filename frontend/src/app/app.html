@@ -1,4 +1,5 @@
 <ion-app>
+  <a class="skip-link" href="#main-content" (click)="skipToMain($event)">{{ i18n.t('Skip to main content', 'मुख्य content पर जाएं') }}</a>
   <ion-header class="ion-no-border">
     <ion-toolbar class="bg-white px-3 md:px-6 py-3 md:py-4 border-b border-slate-100">
       <div class="flex items-center justify-between w-full gap-2">
@@ -61,12 +62,13 @@
                   </button>
                 }
               </div>
-              <button (click)="openSignIn()" class="btn-ghost px-6 whitespace-nowrap hidden md:inline-flex">
-                {{ i18n.t('Sign In', 'Login') }}
-              </button>
-              <button (click)="startSignup('header')" class="header-cta" data-testid="header-get-started">
+              <!-- Real links (open in a new tab, crawlable); the click keeps the in-app flow + tracking. -->
+              <a href="/login" (click)="$event.preventDefault(); openSignIn()" class="btn-ghost px-6 whitespace-nowrap hidden md:inline-flex">
+                {{ i18n.t('Login', 'Login') }}
+              </a>
+              <a href="/signup" (click)="$event.preventDefault(); startSignup('header')" class="header-cta" data-testid="header-get-started">
                 {{ i18n.t('Get Started', 'शुरू करें') }}
-              </button>
+              </a>
             </div>
           }
 
@@ -89,10 +91,10 @@
               <button (click)="navigateTo('products'); mobileMenuOpen.set(false)" class="mobile-menu-item">Inventory</button>
             }
           } @else {
-            <button (click)="openSignIn(); mobileMenuOpen.set(false)" class="mobile-menu-item">
-              <ion-icon name="log-in"></ion-icon>
-              Sign In
-            </button>
+            <a href="/login" (click)="$event.preventDefault(); openSignIn(); mobileMenuOpen.set(false)" class="mobile-menu-item">
+              <ion-icon name="log-in" aria-hidden="true"></ion-icon>
+              {{ i18n.t('Login', 'Login') }}
+            </a>
           }
         </nav>
       }
@@ -109,7 +111,8 @@
         (goDashboard)="navigateTo('home')">
       </app-landing>
     } @else {
-      <div class="max-w-7xl mx-auto space-y-8 pb-20 pt-4 md:pt-12 md:px-6" [class.px-4]="mainView() !== 'workspace'">
+      <!-- One main landmark per view: the workspace layouts render their own <main>. -->
+      <div class="max-w-7xl mx-auto space-y-8 pb-20 pt-4 md:pt-12 md:px-6" [class.px-4]="mainView() !== 'workspace'" [attr.role]="mainView() === 'workspace' ? null : 'main'" [attr.id]="mainView() === 'workspace' ? null : 'main-content'" [attr.tabindex]="mainView() === 'workspace' ? null : -1">
         @if (showPaymentDemo && auth.isAuthReady()) {
           <!-- Developer-only Razorpay test box; showPaymentDemo is false in production builds. -->
           <section class="mb-8 rounded-[2rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-amber-50 p-6 shadow-sm">
@@ -311,7 +314,7 @@
             } @else {
               <div class="space-y-4">
                 <div class="mb-2">
-                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">Email</ion-label>
+                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1" [attr.lang]="i18n.lang()">{{ i18n.t('Email', 'Email') }}</ion-label>
                   <ion-input type="email" autofocus [value]="email()" (ionInput)="email.set($any($event).target.value)" (keyup.enter)="sendPasswordResetEmail()" placeholder="you@gmail.com" class="bg-slate-50 rounded-2xl px-5 py-2 mt-1 border border-slate-100"></ion-input>
                 </div>
 
@@ -396,7 +399,9 @@
             }
           </section>
         } @else if (mainView() === 'gst') {
-          <app-gst-calculator></app-gst-calculator>
+          @defer (on immediate) {
+            <app-gst-calculator></app-gst-calculator>
+          }
         } @else if (!auth.user()) {
           <!-- Short one-screen sign-up / login (English + Hindi) -->
           <app-auth-card [mode]="isRegistering() ? 'signup' : 'login'" />
@@ -466,7 +471,9 @@
                 </div>
 
                 @if (isEditingImage() && selectedImage(); as img) {
-                  <app-image-editor [imageSrc]="img" (done)="onEditorComplete($event)" (closeEditor)="onEditorCancel()"></app-image-editor>
+                  @defer (on immediate) {
+                    <app-image-editor [imageSrc]="img" (done)="onEditorComplete($event)" (closeEditor)="onEditorCancel()"></app-image-editor>
+                  }
                 } @else {
                   <!-- Main Action: Upload -->
                   <div class="bento-card border-2 border-dashed transition-all cursor-pointer group py-20 text-center relative overflow-hidden"
@@ -774,6 +781,7 @@
                 }
               </div>
             } @else if (mainView() === 'products') {
+              @defer (on immediate) {
               <app-products
                 [listings]="myListings()"
                 [syncingAmazon]="syncingAmazonInventory()"
@@ -785,8 +793,11 @@
                 (syncAmazon)="syncAmazonInventory()"
                 (syncFlipkart)="syncFlipkartInventory()">
               </app-products>
+              }
             } @else if (mainView() === 'admin') {
-              <app-admin (view)="viewListing($event)"></app-admin>
+              @defer (on immediate) {
+                <app-admin (view)="viewListing($event)"></app-admin>
+              }
             } @else if (mainView() === 'settings') {
               <div class="space-y-10">
                 <!-- Profile: name, email (read-only), mobile, WhatsApp consent, password, delete account -->
@@ -1031,8 +1042,8 @@
 
                       @if (platform.enabled) {
                         <div class="space-y-1">
-                          <label class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">AI Instructions (optional)</label>
-                          <textarea
+                          <label [attr.for]="'ai-instr-' + platform.id" class="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">AI Instructions (optional)</label>
+                          <textarea [id]="'ai-instr-' + platform.id"
                             class="w-full bg-slate-50 rounded-2xl px-5 py-3 border border-slate-100 text-sm text-slate-700"
                             rows="2"
                             [value]="platform.customPrompt || ''"

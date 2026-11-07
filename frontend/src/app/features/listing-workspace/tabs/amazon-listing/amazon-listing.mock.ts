@@ -1,4 +1,5 @@
 import { SeoScoreCriterion } from '../../ui/seo-score-card/seo-score-card';
+import { isMissingBrand } from '../../../optimize/brand.util';
 import { SeoCheck } from '../../ui/seo-score-card/seo-score.util';
 
 export interface AmazonFieldConfig {
@@ -151,7 +152,7 @@ export const AMAZON_SEO_CHECKS: readonly SeoCheck[] = [
   },
   { label: 'Backend keywords under byte limit', test: (get) => get('backendKeywords').length > 0 && get('backendKeywords').length <= 250 },
   { label: 'Description includes key benefits', test: (get) => get('description').length >= 200 },
-  { label: 'Brand field specified', test: (get) => get('brand').length > 0 && get('brand').toLowerCase() !== 'generic' },
+  { label: 'Brand field specified', field: 'brand', blocking: true, test: (get) => !isMissingBrand(get('brand')) },
   { label: 'Subject keywords used', test: (get) => get('subjectKeywords').split(',').filter((k) => k.trim()).length >= 3 },
 ];
 

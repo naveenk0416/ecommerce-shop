@@ -3,6 +3,10 @@ import { SeoScoreCriterion } from './seo-score-card';
 export interface SeoCheck {
   label: string;
   test: (getValue: (key: string) => string) => boolean;
+  /** The field this check is about — Readiness links straight to it. */
+  field?: string;
+  /** A failed blocking check means the marketplace needs attention, whatever the score. */
+  blocking?: boolean;
 }
 
 /** Deterministically scores a generated field set against a list of pass/fail checks. */

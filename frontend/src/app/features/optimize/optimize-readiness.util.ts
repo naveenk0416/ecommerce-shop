@@ -7,12 +7,47 @@ import { MarketplaceId } from '../listing-workspace/ui/marketplace-icon/marketpl
 import { OptimizeTabKey, TabResult } from './optimize-session.service';
 import { orderTabsByMarketplaces } from '../../config/signup-options';
 
+/** Below this score a marketplace needs attention even when no blocking check fails. */
+export const READY_SCORE = 70;
+
+export type ReadinessStatus = 'not_generated' | 'ready' | 'attention';
+
+/** One failed check, with the field to fix (null when it isn't a single field). */
+export interface ReadinessIssue {
+  label: string;
+  field: string | null;
+  blocking: boolean;
+}
+
+export interface Readiness {
+  status: ReadinessStatus;
+  score: number | null;
+  issues: ReadinessIssue[];
+}
+
+/**
+ * READY only when the score is high enough AND no blocking check (e.g. brand empty or "Generic")
+ * fails — a listing with a failed brand check is never shown as ready.
+ */
+export function evaluateReadiness(result: TabResult | undefined, checks: readonly SeoCheck[] | null): Readiness {
+  if (!result) return { status: 'not_generated', score: null, issues: [] };
+  if (!checks) return { status: 'ready', score: null, issues: [] };
+  const { score, criteria } = computeSeoScore(result, checks);
+  const issues: ReadinessIssue[] = checks
+    .filter((_, i) => !criteria[i].passed)
+    .map((check) => ({ label: check.label, field: check.field ?? null, blocking: !!check.blocking }));
+  const status: ReadinessStatus = issues.some((i) => i.blocking) || score < READY_SCORE ? 'attention' : 'ready';
+  return { status, score, issues };
+}
+
 export interface MarketplaceReadinessRow {
   tab: OptimizeTabKey;
   marketplace: MarketplaceId;
   label: string;
   score: number | null;
   ready: boolean;
+  status: ReadinessStatus;
+  issues: ReadinessIssue[];
 }
 
 type Marketplace = 'amazon' | 'flipkart' | 'meesho' | 'instagram';
@@ -39,11 +74,7 @@ const MARKETPLACES: readonly Marketplace[] = ['amazon', 'flipkart', 'meesho', 'i
  */
 export function computeMarketplaceRows(results: Partial<Record<OptimizeTabKey, TabResult>>, sellerMarketplaces?: readonly string[] | null): MarketplaceReadinessRow[] {
   return orderTabsByMarketplaces(MARKETPLACES, (tab) => tab, sellerMarketplaces).map((tab) => {
-    const result = results[tab];
-    if (!result) {
-      return { tab, marketplace: tab, label: LABELS[tab], score: null, ready: false };
-    }
-    const { score } = computeSeoScore(result, CHECKS[tab]);
-    return { tab, marketplace: tab, label: LABELS[tab], score, ready: score >= 70 };
+    const r = evaluateReadiness(results[tab], CHECKS[tab]);
+    return { tab, marketplace: tab, label: LABELS[tab], score: r.score, ready: r.status === 'ready', status: r.status, issues: r.issues };
   });
 }

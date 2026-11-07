@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { clearSessionCookie, readRequestToken, setSessionCookie } from '../utils/session-cookie.js';
 import crypto from 'crypto';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { OAuth2Client } from 'google-auth-library';
@@ -97,6 +98,13 @@ function appBaseUrl(): string {
 
 function signToken(user: any) {
   return jwt.sign({ uid: user._id.toString(), email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+/** Signs the session token and also sets it as the HttpOnly session cookie (see session-cookie.ts). */
+function issueSession(req: express.Request, res: express.Response, user: any): string {
+  const token = signToken(user);
+  setSessionCookie(res, token, req.body?.rememberMe !== false);
+  return token;
 }
 
 /** Generates a fresh verification token, stores its hash (24h expiry) on `user`, and emails the
@@ -255,13 +263,12 @@ function recordActivity(req: express.Request, user: any): void {
 }
 
 async function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = readRequestToken(req);
+  if (!token) {
     res.status(401).json({ error: 'Missing token' });
     return;
   }
 
-  const token = authHeader.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     await ensureConnected();
@@ -400,7 +407,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     // Signed in straight away: the email is verified later (it unlocks the rest of the welcome
     // coins), so the first listing can be made right now.
     res.json({
-      token: signToken(user),
+      token: issueSession(req, res, user),
       user: publicUser(user),
       requiresVerification: false,
       email: user.email,
@@ -415,6 +422,12 @@ router.post('/register', registerLimiter, async (req, res) => {
     console.error('Register error', err);
     res.status(500).json({ error: err?.message || 'Registration failed' });
   }
+});
+
+/** Ends the cookie session. Always 200, signed in or not. */
+router.post('/logout', (_req, res) => {
+  clearSessionCookie(res);
+  res.json({ ok: true });
 });
 
 router.post('/login', loginLimiter, async (req, res) => {
@@ -450,7 +463,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     // coins, bonuses, referrals and coin packs (a banner in the app asks for it).
     user.lastLogin = new Date().toISOString();
     await user.save();
-    const token = signToken(user);
+    const token = issueSession(req, res, user);
 
     res.json({ token, user: publicUser(user) });
   } catch (err: any) {
@@ -502,7 +515,7 @@ router.post('/verify-email', async (req, res) => {
 
     // Sign the user in immediately — they just proved ownership of the email, no need to make
     // them type their password again right after clicking the link.
-    const authToken = signToken(user);
+    const authToken = issueSession(req, res, user);
     await setCoinBalanceHeader(res, uid);
     res.json({ token: authToken, user: publicUser(user) });
   } catch (err: any) {
@@ -886,7 +899,7 @@ router.post('/auth/google', googleLimiter, async (req, res) => {
       await ensureWallet(user._id.toString()).catch((err) => console.error('[wallet] welcome bonus failed', err));
       await recordUserFunnelEvent('email_verified', user);
     }
-    res.json({ token: signToken(user), user: publicUser(user) });
+    res.json({ token: issueSession(req, res, user), user: publicUser(user) });
     return;
   }
   const pendingToken = jwt.sign({ kind: 'google_signup', sub: profile.sub, email: profile.email, name: profile.name ?? '' }, JWT_SECRET, { expiresIn: '30m' });
@@ -939,7 +952,7 @@ router.post('/auth/google/complete', googleLimiter, async (req, res) => {
       googleSub: pending.sub,
     });
     await setCoinBalanceHeader(res, user._id.toString());
-    res.json({ token: signToken(user), user: publicUser(user) });
+    res.json({ token: issueSession(req, res, user), user: publicUser(user) });
   } catch (err: any) {
     if (err?.code === 11000) {
       res.status(409).json(/phone/i.test(String(err?.message)) ? { error: PHONE_TAKEN_MESSAGE, code: 'PHONE_TAKEN' } : { error: 'This Google account is already registered.' });

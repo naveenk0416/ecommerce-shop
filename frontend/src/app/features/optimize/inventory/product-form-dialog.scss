@@ -48,3 +48,6 @@
 }
 
 .sizes-box { margin-top: 12px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 14px; }
+
+// "Fix the highlighted fields" next to the buttons after a failed submit.
+.form-dialog__summary { margin-right: auto; }

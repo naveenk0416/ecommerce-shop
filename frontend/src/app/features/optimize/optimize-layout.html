@@ -141,7 +141,7 @@
             @if (row.live) {
               <a mat-menu-item routerLink="publish" queryParamsHandling="preserve" [attr.data-testid]="'publish-menu-' + row.marketplace">
                 <app-marketplace-icon [marketplace]="row.marketplace" [size]="18" style="margin-right: 12px" />
-                <span>{{ row.label }} · {{ row.ready ? i18n.t('Ready', 'तैयार') : i18n.t('Generate content first', 'पहले content बनाएं') }}</span>
+                <span>{{ row.label }} · {{ row.ready ? i18n.t('Ready', 'तैयार') : row.status === 'attention' ? i18n.t('Needs attention', 'ध्यान दें') : i18n.t('Generate content first', 'पहले content बनाएं') }}</span>
               </a>
             } @else {
               <button mat-menu-item disabled type="button" [attr.data-testid]="'publish-menu-' + row.marketplace">
@@ -172,7 +172,7 @@
     <app-account-nudges />
     <app-wallet-nudges [hideMonthlySaved]="currentTab() === 'wallet'" />
 
-    <main class="optimize-content" [class.optimize-content--no-header]="!showEditorHeader() && !plainTitle()" [attr.aria-busy]="session.loadingDraft()">
+    <main id="main-content" tabindex="-1" class="optimize-content" [class.optimize-content--no-header]="!showEditorHeader() && !plainTitle()" [attr.aria-busy]="session.loadingDraft()">
       <!-- While a saved listing opens, the tab waits instead of flashing an empty "Untitled Product". -->
       @if (session.loadingDraft()) {
         <div class="optimize-content__skeleton" aria-hidden="true">

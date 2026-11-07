@@ -7,6 +7,7 @@ import { UiSection } from '../listing-workspace/ui/section/section';
 import { SeoScoreCard } from '../listing-workspace/ui/seo-score-card/seo-score-card';
 import { AiTabStatus } from '../listing-workspace/ui/ai-tab-status/ai-tab-status';
 import { OptimizeSessionService } from './optimize-session.service';
+import { FragmentFocus } from './fragment-focus.directive';
 import { WalletService } from '../../services/wallet';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -17,7 +18,7 @@ import { LanguageService } from '../../services/language';
   selector: 'app-optimize-meesho-listing',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [UiCard, UiSection, EditableField, SeoScoreCard, AiTabStatus, MatIconModule, RouterLink],
+  imports: [UiCard, UiSection, EditableField, FragmentFocus, SeoScoreCard, AiTabStatus, MatIconModule, RouterLink],
   templateUrl: './optimize-meesho-listing.html',
   styleUrls: ['../listing-workspace/tabs/tab-shell.scss'],
 })

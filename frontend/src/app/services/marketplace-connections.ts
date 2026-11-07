@@ -64,7 +64,7 @@ export interface CreateAmazonListingPayload {
    * country_of_origin: [{ value }]) — shaped by the caller using the same product type schema
    * from getAmazonProductTypeSchema(), so this stays generic across whatever product type was
    * picked rather than the backend hardcoding a fixed set of attribute names. */
-  attributes: Record<string, Array<Record<string, unknown>>>;
+  attributes: Record<string, Record<string, unknown>[]>;
 }
 
 /** One size/colour of an Amazon variation family and what happened to it. */

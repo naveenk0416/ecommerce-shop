@@ -203,7 +203,7 @@ export class GeminiService {
 
       Field-specific rules:
       - brand: if a brand name or logo is clearly visible, use it with high confidence. Otherwise
-        use "Generic" with low confidence and reason "Brand not visible in uploaded images."
+        return an empty string with confidence 0 and reason "Brand not visible — enter your brand." Never write "Generic".
       - manufacturer: if unknown, use "Generic Manufacturer".
       - importer: if unknown, use "Not Available".
       - packer: if unknown, use "Generic Packer".
@@ -341,8 +341,8 @@ export class GeminiService {
          Necklace — Rose Gold, 2-Strand").
        - category: a short category path (for example "Jewellery > Necklaces > Layered").
        - sku: always auto-generate a plausible SKU such as "NCK-RG-2041".
-       - brand: if a brand name or logo is visible use it with high confidence, otherwise use
-         "Generic" with low confidence.
+       - brand: if a brand name or logo is visible use it with high confidence, otherwise return an empty string with confidence 0 —
+         never write "Generic" (marketplaces reject it); the seller enters the brand.
        - hsnCode: an accurate 6 or 8 digit Indian HSN code based on the most likely GST
          classification for this product category. Give only the HSN code, never a GST rate —
          SellAssist calculates GST itself from the HSN code and the seller's price.
@@ -367,8 +367,8 @@ export class GeminiService {
        - description: a persuasive paragraph covering material, use cases, and benefits.
        - backendKeywords, searchTerms, subjectKeywords: distinct comma-separated keyword lists
          under 250 characters each, avoid repeating the same words across the three fields.
-       - brand: if a brand name or logo is visible use it with high confidence, otherwise use
-         "Generic" with low confidence.
+       - brand: if a brand name or logo is visible use it with high confidence, otherwise return an empty string with confidence 0 —
+         never write "Generic" (marketplaces reject it); the seller enters the brand.
        - material, color, size, variation, warranty: estimate plausible values for this product.`,
     );
   }
@@ -384,8 +384,8 @@ export class GeminiService {
        - keyHighlight1 through keyHighlight5: short, distinct selling points.
        - description: a clear paragraph covering material, use cases, and benefits.
        - searchKeywords: a comma-separated keyword list under 250 characters.
-       - brand: if a brand name or logo is visible use it with high confidence, otherwise use
-         "Generic" with low confidence.
+       - brand: if a brand name or logo is visible use it with high confidence, otherwise return an empty string with confidence 0 —
+         never write "Generic" (marketplaces reject it); the seller enters the brand.
        - material, color, size, warranty: estimate plausible values for this product.`,
     );
   }
@@ -401,8 +401,8 @@ export class GeminiService {
        - listingTitle: under 100 characters.
        - description: a short, simple, value-focused description.
        - searchKeywords: a comma-separated keyword list under 250 characters.
-       - brand: if a brand name or logo is visible use it with high confidence, otherwise use
-         "Generic" with low confidence.
+       - brand: if a brand name or logo is visible use it with high confidence, otherwise return an empty string with confidence 0 —
+         never write "Generic" (marketplaces reject it); the seller enters the brand.
        - color, size: estimate plausible values for this product.`,
     );
   }
@@ -450,8 +450,8 @@ export class GeminiService {
             Necklace — Rose Gold, 2-Strand").
           - category: a short category path (for example "Jewellery > Necklaces > Layered").
           - sku: always auto-generate a plausible SKU such as "NCK-RG-2041".
-          - brand: if a brand name or logo is visible use it with high confidence, otherwise use
-            "Generic" with low confidence.
+          - brand: if a brand name or logo is visible use it with high confidence, otherwise return an empty string with confidence 0 —
+            never write "Generic" (marketplaces reject it); the seller enters the brand.
           - hsnCode: an accurate 6 or 8 digit Indian HSN code based on the most likely GST
             classification for this product category. Give only the HSN code, never a GST rate —
             SellAssist calculates GST itself from the HSN code and the seller's price.
@@ -471,8 +471,8 @@ export class GeminiService {
           - description: a persuasive paragraph covering material, use cases, and benefits.
           - backendKeywords, searchTerms, subjectKeywords: distinct comma-separated keyword lists
             under 250 characters each, avoid repeating the same words across the three fields.
-          - brand: if a brand name or logo is visible use it with high confidence, otherwise use
-            "Generic" with low confidence.
+          - brand: if a brand name or logo is visible use it with high confidence, otherwise return an empty string with confidence 0 —
+            never write "Generic" (marketplaces reject it); the seller enters the brand.
           - material, color, size, variation, warranty: estimate plausible values for this product.`,
       },
       {
@@ -483,8 +483,8 @@ export class GeminiService {
           - keyHighlight1 through keyHighlight5: short, distinct selling points.
           - description: a clear paragraph covering material, use cases, and benefits.
           - searchKeywords: a comma-separated keyword list under 250 characters.
-          - brand: if a brand name or logo is visible use it with high confidence, otherwise use
-            "Generic" with low confidence.
+          - brand: if a brand name or logo is visible use it with high confidence, otherwise return an empty string with confidence 0 —
+            never write "Generic" (marketplaces reject it); the seller enters the brand.
           - material, color, size, warranty: estimate plausible values for this product.`,
       },
       {
@@ -495,8 +495,8 @@ export class GeminiService {
           - listingTitle: under 100 characters.
           - description: a short, simple, value-focused description.
           - searchKeywords: a comma-separated keyword list under 250 characters.
-          - brand: if a brand name or logo is visible use it with high confidence, otherwise use
-            "Generic" with low confidence.
+          - brand: if a brand name or logo is visible use it with high confidence, otherwise return an empty string with confidence 0 —
+            never write "Generic" (marketplaces reject it); the seller enters the brand.
           - color, size: estimate plausible values for this product.`,
       },
       {
@@ -520,8 +520,14 @@ export class GeminiService {
     let prompt = `
       You are an AI assistant generating a complete multi-marketplace product listing for an
       Indian e-commerce seller from a single product photo. Produce all five sections below in
-      one pass. Never leave a field blank: detect the value from the image if visible, otherwise
-      estimate a plausible value using category, material, and comparable products.
+      one pass. Never leave a field blank (except brand — see its rule): detect the value from the
+      image if visible, otherwise estimate a plausible value using category, material, and
+      comparable products.
+      Claims: bullet points, highlights, descriptions and captions may only state what is visible
+      in the photo or is a plain property of the product type. Never claim skin-friendly,
+      hypoallergenic, nickel-free, anti-tarnish, waterproof, organic, certified, BIS hallmarked,
+      pure silver/gold, dermatologically tested or similar unless it is printed on the product or
+      packaging in the photo.
     `;
 
     const properties: Record<string, unknown> = {};

@@ -361,9 +361,11 @@ export async function fillRows(
         cells[col.col] = { value: '', status: col.required ? 'must_fill' : 'empty', from: value };
         continue;
       }
-      if (!value && col.field === 'brand' && col.allowed) {
-        const generic = col.allowed.find((a) => /^generic$/i.test(a));
-        if (generic) { cells[col.col] = { value: generic, status: 'adjusted', from: '' }; continue; }
+      // No brand (none saved in Profile, none on the listing): never fall back to "Generic" —
+      // Flipkart rejects it for many categories (e.g. jewellery). The seller fills it in.
+      if (!value && col.field === 'brand') {
+        cells[col.col] = { value: '', status: col.required ? 'must_fill' : 'empty', from: '' };
+        continue;
       }
       // A required dropdown with only one choice (Meesho "Variation": "Free Size") has one answer.
       if (!value && col.required && !col.neverInvent && col.allowed?.length === 1 && !(variant && col.field === 'size')) {

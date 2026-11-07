@@ -416,7 +416,8 @@ export class AdminStats {
     this.error.set(null);
     try {
       const response = await fetch(`${apiBase}/admin/stats.csv?type=${type}&${this.query()}`, {
-        headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
+        credentials: 'include',
+        headers: getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {},
       });
       if (!response.ok) throw new Error(`Download failed (${response.status}).`);
       const blob = await response.blob();

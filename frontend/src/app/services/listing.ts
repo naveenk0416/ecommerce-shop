@@ -127,9 +127,40 @@ export interface Feedback {
 })
 export class ListingService {
   private readonly POLL_INTERVAL_MS = 5000;
+  /** A response is reused by other callers for this long (the shell and the page both ask on load). */
+  private readonly SHARE_MS = 2000;
+  private readonly shared = new Map<string, { promise: Promise<unknown>; at: number }>();
+
+  /**
+   * One request per path at a time: callers while it's in flight, or within SHARE_MS after it
+   * answered, get the same response instead of a new GET (Inventory used to fire 8 on one load).
+   */
+  private fetchShared<T>(path: string): Promise<T> {
+    const hit = this.shared.get(path);
+    if (hit && (hit.at === 0 || Date.now() - hit.at < this.SHARE_MS)) return hit.promise as Promise<T>;
+    const entry: { promise: Promise<unknown>; at: number } = { promise: Promise.resolve(), at: 0 };
+    entry.promise = apiFetch<T>(path).then(
+      (data) => {
+        entry.at = Date.now();
+        return data;
+      },
+      (error) => {
+        if (this.shared.get(path) === entry) this.shared.delete(path);
+        throw error;
+      },
+    );
+    this.shared.set(path, entry);
+    return entry.promise as Promise<T>;
+  }
+
+  /** After a change, the next read must hit the server. */
+  private invalidateShared(): void {
+    this.shared.clear();
+  }
 
   async saveListing(details: ProductDetails, originalImage = '', processedImage: string | null = null) {
     try {
+      this.invalidateShared();
       return await apiFetch<Listing>('/listings', {
         method: 'POST',
         body: {
@@ -173,7 +204,7 @@ export class ListingService {
       if (!active || inFlight) return;
       inFlight = true;
       try {
-        const payload = await apiFetch<T>(path);
+        const payload = await this.fetchShared<T>(path);
         hasNotifiedError = false;
         callback(payload);
       } catch (error) {
@@ -209,7 +240,7 @@ export class ListingService {
       // one-time fetch
       (async () => {
         try {
-          const data = await apiFetch<Listing[]>(`/listings?mine=true`);
+          const data = await this.fetchShared<Listing[]>(`/listings?mine=true`);
           callback(data || []);
         } catch (err) {
           console.error('Failed to fetch listings (one-time):', err);
@@ -225,7 +256,7 @@ export class ListingService {
     if (!poll) {
       (async () => {
         try {
-          const data = await apiFetch<Listing[]>(`/listings?all=true`);
+          const data = await this.fetchShared<Listing[]>(`/listings?all=true`);
           callback(data || []);
         } catch (err) {
           console.error('Failed to fetch all listings (one-time):', err);
@@ -248,6 +279,7 @@ export class ListingService {
 
   async deleteListing(id: string) {
     try {
+      this.invalidateShared();
       return apiFetch(`/listings/${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
@@ -259,6 +291,7 @@ export class ListingService {
 
   async updateListing(id: string, updates: Partial<Listing>): Promise<Listing> {
     try {
+      this.invalidateShared();
       return await apiFetch<Listing>(`/listings/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         body: updates,
@@ -272,6 +305,7 @@ export class ListingService {
   /** Logs a sale; the server reduces stock in the same atomic operation and returns the new stock. */
   async logSale(sale: Omit<Sale, 'id' | 'uid' | 'date' | 'variantLabel'>): Promise<LogSaleResponse> {
     try {
+      this.invalidateShared();
       return await apiFetch<LogSaleResponse>(`/listings/${encodeURIComponent(sale.listingId)}/sales`, {
         method: 'POST',
         body: {

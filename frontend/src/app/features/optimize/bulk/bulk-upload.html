@@ -27,14 +27,14 @@
               <li>{{ t('Choose your category (e.g. Kurtis) and download the template.', 'अपनी category चुनें (जैसे Kurtis) और template download करें।') }}</li>
               <li>{{ t('Upload that file here — don’t change it first.', 'वही file यहाँ upload करें — पहले उसमें कुछ न बदलें।') }}</li>
             </ol>
-            <img class="bulk__shot" src="assets/bulk/meesho-template.png" alt="Meesho Supplier Panel: Catalog Uploads, Add Bulk Catalog" (error)="$any($event.target).hidden = true" />
+            <img class="bulk__shot" src="assets/bulk/meesho-template.png" loading="lazy" (error)="$any($event.target).hidden = true" alt="Meesho Supplier Panel: Catalog Uploads, Add Bulk Catalog" (error)="$any($event.target).hidden = true" />
           } @else {
             <ol>
               <li>{{ t('Open Flipkart Seller Hub → Listings → Add in bulk.', 'Flipkart Seller Hub खोलें → Listings → Add in bulk.') }}</li>
               <li>{{ t('Choose the category (e.g. Kurta) and download the template.', 'Category चुनें (जैसे Kurta) और template download करें।') }}</li>
               <li>{{ t('Upload that file here — don’t change it first.', 'वही file यहाँ upload करें — पहले उसमें कुछ न बदलें।') }}</li>
             </ol>
-            <img class="bulk__shot" src="assets/bulk/flipkart-template.png" alt="Flipkart Seller Hub: Listings, Add in bulk" (error)="$any($event.target).hidden = true" />
+            <img class="bulk__shot" src="assets/bulk/flipkart-template.png" loading="lazy" (error)="$any($event.target).hidden = true" alt="Flipkart Seller Hub: Listings, Add in bulk" (error)="$any($event.target).hidden = true" />
           }
           <button type="button" class="bulk__btn bulk__btn--primary" (click)="goTo(2)" data-testid="to-step-2">{{ t('Next: upload template', 'आगे: template upload करें') }}</button>
         </div>
@@ -126,6 +126,12 @@
             <p class="bulk__muted">{{ t('You must fill:', 'आपको भरना होगा:') }} {{ mustFillHeaders() }}</p>
           }
           @for (code of r.instructions; track code) { <p class="bulk__warn">{{ instructionText(code) }}</p> }
+          @if (brandMissing()) {
+            <p class="bulk__warn" role="note" data-testid="bulk-brand-warning">
+              {{ t('No brand saved — the Brand column is left empty (never "Generic", which Flipkart rejects for categories like jewellery). Add your approved brand before uploading.', 'कोई brand save नहीं है — Brand column खाली छोड़ा गया है ("Generic" नहीं, Flipkart jewellery जैसी categories में इसे reject करता है)। Upload से पहले अपना approved brand जोड़ें।') }}
+              <button type="button" class="bulk__link" (click)="openProfile()">{{ t('Add brand', 'Brand जोड़ें') }}</button>
+            </p>
+          }
           @if (profileIncomplete()) {
             <p class="bulk__warn">
               {{ t('Brand, manufacturer and country of origin come from your business details.', 'Brand, manufacturer और country of origin आपकी business details से भरते हैं।') }}

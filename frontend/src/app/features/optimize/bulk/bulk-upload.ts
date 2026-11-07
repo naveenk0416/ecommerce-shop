@@ -6,6 +6,7 @@ import {
 } from '../../../services/bulk-upload';
 import { LanguageService } from '../../../services/language';
 import { ListingDraftSummary, ListingService } from '../../../services/listing';
+import { isMissingBrand } from '../brand.util';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -49,7 +50,7 @@ export function priceProblems(rows: BulkRow[], columns: BulkColumn[], marketplac
 /** What the marketplace said about one of our rows (from its error file). */
 export interface MarketError {
   status: string;
-  messages: Array<{ text: string; col: number | null }>;
+  messages: { text: string; col: number | null }[];
 }
 
 /** Error-file rows → our rows: by SKU, then product name, then position in the file. */
@@ -472,6 +473,8 @@ export class BulkUpload {
   }
 
   // ---- Seller profile ----
+  readonly brandMissing = computed(() => isMissingBrand(this.profile().brand));
+
   readonly profileIncomplete = computed(() => {
     const p = this.profile();
     return !p.manufacturerName || !p.countryOfOrigin;

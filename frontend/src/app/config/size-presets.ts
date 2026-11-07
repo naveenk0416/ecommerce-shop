@@ -51,11 +51,11 @@ export function variantLabel(v: Pick<Variant, 'size' | 'colour'>): string {
 }
 
 /** True when the product really has sizes/colours (not just one default variant). */
-export function hasRealVariants(variants: Array<Pick<Variant, 'size' | 'colour'>> | null | undefined): boolean {
+export function hasRealVariants(variants: Pick<Variant, 'size' | 'colour'>[] | null | undefined): boolean {
   return !!variants && (variants.length > 1 || (variants.length === 1 && !!(variants[0].size || variants[0].colour)));
 }
 
-export function totalStock(variants: Array<Pick<Variant, 'stock'>>): number {
+export function totalStock(variants: Pick<Variant, 'stock'>[]): number {
   return variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
 }
 

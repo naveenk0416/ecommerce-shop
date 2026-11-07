@@ -43,9 +43,9 @@ export const REGIONAL_TEXT: Readonly<Record<string, { te: string; kn: string }>>
   // ---- Landing: features ----
   'Everything included': { te: 'అన్నీ ఉన్నాయి', kn: 'ಎಲ್ಲವೂ ಇದೆ' },
   'One photo. Every platform. Done.': { te: 'ఒక photo. ప్రతి platform. పని పూర్తి.', kn: 'ಒಂದು photo. ಪ್ರತಿ platform. ಕೆಲಸ ಮುಗಿಯಿತು.' },
-  'From listing copy to GST classification — SellAssist handles the boring stuff so you can focus on selling. Publish directly to Amazon. Flipkart publishing coming soon.': {
-    te: 'Listing రాయడం నుండి GST వరకు — కష్టమైన పని SellAssist చేస్తుంది, మీరు అమ్మకంపై దృష్టి పెట్టండి. Amazon లో నేరుగా publish చేయండి. Flipkart publishing త్వరలో.',
-    kn: 'Listing ಬರೆಯುವುದರಿಂದ GST ವರೆಗೆ — ಕಷ್ಟದ ಕೆಲಸ SellAssist ಮಾಡುತ್ತದೆ, ನೀವು ಮಾರಾಟದ ಮೇಲೆ ಗಮನ ಕೊಡಿ. Amazon‌ನಲ್ಲಿ ನೇರವಾಗಿ publish ಮಾಡಿ. Flipkart publishing ಶೀಘ್ರದಲ್ಲೇ.',
+  'From listing copy to GST classification — SellAssist handles the boring stuff so you can focus on selling. Publish to Amazon from your connected Seller Central account. Flipkart publishing coming soon.': {
+    te: 'Listing రాయడం నుండి GST వరకు — కష్టమైన పని SellAssist చేస్తుంది, మీరు అమ్మకంపై దృష్టి పెట్టండి. మీ Seller Central account తో Amazon లో publish చేయండి. Flipkart publishing త్వరలో.',
+    kn: 'Listing ಬರೆಯುವುದರಿಂದ GST ವರೆಗೆ — ಕಷ್ಟದ ಕೆಲಸ SellAssist ಮಾಡುತ್ತದೆ, ನೀವು ಮಾರಾಟದ ಮೇಲೆ ಗಮನ ಕೊಡಿ. ನಿಮ್ಮ Seller Central account‌ನಿಂದ Amazon‌ನಲ್ಲಿ publish ಮಾಡಿ. Flipkart publishing ಶೀಘ್ರದಲ್ಲೇ.',
   },
   'Image-First AI': { te: 'Photo తో AI listing', kn: 'Photo‌ಯಿಂದ AI listing' },
   'Upload a single product photo. Our AI reads colors, materials, and style — and writes the listing for you.': {
@@ -135,7 +135,7 @@ export const REGIONAL_TEXT: Readonly<Record<string, { te: string; kn: string }>>
 
   // ---- Header ----
   'Language': { te: 'భాష', kn: 'ಭಾಷೆ' },
-  'Sign In': { te: 'Login', kn: 'Login' },
+  'Sign In': { te: 'లాగిన్', kn: 'ಲಾಗಿನ್' },
 
   // ---- Landing: try 1 listing free (guest) ----
   'Upload product photo': { te: 'Product photo upload చేయండి', kn: 'Product photo upload ಮಾಡಿ' },
@@ -182,7 +182,9 @@ export const REGIONAL_TEXT: Readonly<Record<string, { te: string; kn: string }>>
   'Remember me': { te: 'నన్ను గుర్తుంచుకో', kn: 'ನನ್ನನ್ನು ನೆನಪಿಡಿ' },
   'Forgot password?': { te: 'Password మర్చిపోయారా?', kn: 'Password ಮರೆತಿರಾ?' },
   'Please wait…': { te: 'దయచేసి ఆగండి…', kn: 'ದಯವಿಟ್ಟು ಕಾಯಿರಿ…' },
-  'Login': { te: 'Login', kn: 'Login' },
+  'Login': { te: 'లాగిన్', kn: 'ಲಾಗಿನ್' },
+  'Skip to main content': { te: 'ముఖ్య content కి వెళ్లండి', kn: 'ಮುಖ್ಯ content‌ಗೆ ಹೋಗಿ' },
+  'Get Started': { te: 'ప్రారంభించండి', kn: 'ಪ್ರಾರಂಭಿಸಿ' },
   'Already have an account? Login': { te: 'ఇప్పటికే account ఉందా? Login', kn: 'ಈಗಾಗಲೇ account ಇದೆಯಾ? Login' },
   'New here? Create a free account': { te: 'కొత్తగా వచ్చారా? Free account తెరవండి', kn: 'ಹೊಸಬರೇ? Free account ತೆರೆಯಿರಿ' },
 
@@ -240,7 +242,7 @@ export const REGIONAL_TEXT: Readonly<Record<string, { te: string; kn: string }>>
   'Welcome bonus (verify your email)': { te: 'స్వాగత bonus (email verify చేయండి)', kn: 'ಸ್ವಾಗತ bonus (email verify ಮಾಡಿ)' },
   'Add your mobile number': { te: 'మీ mobile number జోడించండి', kn: 'ನಿಮ್ಮ mobile number ಸೇರಿಸಿ' },
   'Save your first product to Inventory': { te: 'మొదటి product ని Inventory లో save చేయండి', kn: 'ಮೊದಲ product ಅನ್ನು Inventory‌ನಲ್ಲಿ save ಮಾಡಿ' },
-  'Publish your first product to Amazon or Flipkart': { te: 'మొదటి product ని Amazon లేదా Flipkart లో publish చేయండి', kn: 'ಮೊದಲ product ಅನ್ನು Amazon ಅಥವಾ Flipkart‌ನಲ್ಲಿ publish ಮಾಡಿ' },
+  'Publish your first new product to Amazon': { te: 'మొదటి కొత్త product ని Amazon లో publish చేయండి', kn: 'ಮೊದಲ ಹೊಸ product ಅನ್ನು Amazon‌ನಲ್ಲಿ publish ಮಾಡಿ' },
   'Tell us about your business': { te: 'మీ business గురించి చెప్పండి', kn: 'ನಿಮ್ಮ business ಬಗ್ಗೆ ತಿಳಿಸಿ' },
   'Your referral link': { te: 'మీ referral link', kn: 'ನಿಮ್ಮ referral link' },
   'Copy': { te: 'Copy చేయండి', kn: 'Copy ಮಾಡಿ' },
@@ -283,4 +285,30 @@ export const REGIONAL_TEXT: Readonly<Record<string, { te: string; kn: string }>>
   'Save': { te: 'Save చేయండి', kn: 'Save ಮಾಡಿ' },
   'Saved': { te: 'Save అయింది', kn: 'Save ಆಯಿತು' },
   'Undo': { te: 'వెనక్కి', kn: 'ಹಿಂದಕ್ಕೆ' },
+
+  // ---- Forgot / reset password, email verification ----
+  'Continue': { te: 'కొనసాగండి', kn: 'ಮುಂದುವರಿಯಿರಿ' },
+  'Reset password': { te: 'Password reset చేయండి', kn: 'Password reset ಮಾಡಿ' },
+  'Enter your account email and we’ll send you a link to reset your password.': { te: 'మీ account email రాయండి — password reset చేసే link పంపుతాం.', kn: 'ನಿಮ್ಮ account email ಬರೆಯಿರಿ — password reset ಮಾಡುವ link ಕಳುಹಿಸುತ್ತೇವೆ.' },
+  'If an account exists for this email, a reset link has been sent. Check your inbox:': { te: 'ఈ email కి account ఉంటే, reset link పంపాం. మీ inbox చూడండి:', kn: 'ಈ email‌ಗೆ account ಇದ್ದರೆ, reset link ಕಳುಹಿಸಿದ್ದೇವೆ. ನಿಮ್ಮ inbox ನೋಡಿ:' },
+  'Send reset link': { te: 'Reset link పంపండి', kn: 'Reset link ಕಳುಹಿಸಿ' },
+  'Back to Login': { te: 'Login కి తిరిగి వెళ్లండి', kn: 'Login‌ಗೆ ಹಿಂತಿರುಗಿ' },
+  'Go to Login': { te: 'Login కి వెళ్లండి', kn: 'Login‌ಗೆ ಹೋಗಿ' },
+  'Password reset links work once and expire after 30 minutes. Request a new one below.': { te: 'Password reset link ఒక్కసారే పనిచేస్తుంది, 30 నిమిషాల్లో expire అవుతుంది. కింద కొత్తది అడగండి.', kn: 'Password reset link ಒಮ್ಮೆ ಮಾತ್ರ ಕೆಲಸ ಮಾಡುತ್ತದೆ, 30 ನಿಮಿಷದಲ್ಲಿ expire ಆಗುತ್ತದೆ. ಕೆಳಗೆ ಹೊಸದನ್ನು ಕೇಳಿ.' },
+  'Request a new reset link': { te: 'కొత్త reset link అడగండి', kn: 'ಹೊಸ reset link ಕೇಳಿ' },
+  'This link is invalid or has expired': { te: 'ఈ link సరైనది కాదు లేదా expire అయింది', kn: 'ಈ link ಸರಿಯಿಲ್ಲ ಅಥವಾ expire ಆಗಿದೆ' },
+  'Password updated': { te: 'Password మార్చబడింది', kn: 'Password ಬದಲಾಗಿದೆ' },
+  'Set a new password': { te: 'కొత్త password పెట్టండి', kn: 'ಹೊಸ password ಹಾಕಿ' },
+  'Your password has been changed successfully.': { te: 'మీ password విజయవంతంగా మార్చబడింది.', kn: 'ನಿಮ್ಮ password ಯಶಸ್ವಿಯಾಗಿ ಬದಲಾಗಿದೆ.' },
+  'Choose a new password for your account.': { te: 'మీ account కి కొత్త password ఎంచుకోండి.', kn: 'ನಿಮ್ಮ account‌ಗೆ ಹೊಸ password ಆರಿಸಿ.' },
+  'New password': { te: 'కొత్త password', kn: 'ಹೊಸ password' },
+  'Confirm password': { te: 'Password మళ్లీ రాయండి', kn: 'Password ಮತ್ತೆ ಬರೆಯಿರಿ' },
+  'Updating…': { te: 'Update అవుతోంది…', kn: 'Update ಆಗುತ್ತಿದೆ…' },
+  'Update password': { te: 'Password update చేయండి', kn: 'Password update ಮಾಡಿ' },
+  'Verification links work once and expire after 24 hours. Enter your email to get a new verification link.': { te: 'Verification link ఒక్కసారే పనిచేస్తుంది, 24 గంటల్లో expire అవుతుంది. కొత్త link కోసం మీ email రాయండి.', kn: 'Verification link ಒಮ್ಮೆ ಮಾತ್ರ ಕೆಲಸ ಮಾಡುತ್ತದೆ, 24 ಗಂಟೆಯಲ್ಲಿ expire ಆಗುತ್ತದೆ. ಹೊಸ link‌ಗಾಗಿ ನಿಮ್ಮ email ಬರೆಯಿರಿ.' },
+  'Email address': { te: 'Email address', kn: 'Email address' },
+  'Sending…': { te: 'పంపుతున్నాం…', kn: 'ಕಳುಹಿಸುತ್ತಿದ್ದೇವೆ…' },
+  'Resend in': { te: 'మళ్లీ పంపడానికి', kn: 'ಮತ್ತೆ ಕಳುಹಿಸಲು' },
+  'Send new verification link': { te: 'కొత్త verification link పంపండి', kn: 'ಹೊಸ verification link ಕಳುಹಿಸಿ' },
+  'If that account needs verification, a new link is on its way — check your inbox.': { te: 'ఆ account కి verification అవసరమైతే, కొత్త link వస్తోంది — మీ inbox చూడండి.', kn: 'ಆ account‌ಗೆ verification ಬೇಕಿದ್ದರೆ, ಹೊಸ link ಬರುತ್ತಿದೆ — ನಿಮ್ಮ inbox ನೋಡಿ.' },
 };

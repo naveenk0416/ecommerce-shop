@@ -55,9 +55,9 @@ export interface BulkRow {
 
 export interface BulkReport {
   filledColumns: string[];
-  emptyMandatory: Array<{ header: string; rows: number }>;
-  adjusted: Array<{ header: string; from: string; to: string }>;
-  aiChosen: Array<{ header: string; count: number }>;
+  emptyMandatory: { header: string; rows: number }[];
+  adjusted: { header: string; from: string; to: string }[];
+  aiChosen: { header: string; count: number }[];
   /** 'IMAGES_SEPARATE' | 'SAVE_TO_INVENTORY_FOR_PRICE' */
   instructions: string[];
   filledPercent: number;
@@ -73,7 +73,7 @@ export interface BulkErrorRow {
   /** "INVALID" (Meesho), "Failed" (Flipkart) */
   status: string;
   /** col: the template column the message is about, when known. */
-  messages: Array<{ text: string; col: number | null }>;
+  messages: { text: string; col: number | null }[];
 }
 
 export interface SellerProfile {
@@ -99,7 +99,7 @@ export class BulkUploadService {
     if (token) headers.set('Authorization', `Bearer ${token}`);
     const device = getDeviceId();
     if (device) headers.set('X-Device-Id', device);
-    const response = await fetch(`${apiBase}${path}`, { method: 'POST', headers, body: file });
+    const response = await fetch(`${apiBase}${path}`, { method: 'POST', credentials: 'include', headers, body: file });
     const data = await response.json().catch(() => null);
     if (!response.ok) {
       const error: ApiError = new Error(data?.error || 'Upload failed');
@@ -124,11 +124,11 @@ export class BulkUploadService {
   }
 
   /** The filled file, in the template's own format (.xls comes back as .xlsx). */
-  async download(templateId: string, rows: Array<{ cells: Record<number, string> }>): Promise<{ blob: Blob; fileName: string }> {
+  async download(templateId: string, rows: { cells: Record<number, string> }[]): Promise<{ blob: Blob; fileName: string }> {
     const headers = new Headers({ 'Content-Type': 'application/json' });
     const token = getAuthToken();
     if (token) headers.set('Authorization', `Bearer ${token}`);
-    const response = await fetch(`${apiBase}/bulk/templates/${templateId}/download`, { method: 'POST', headers, body: JSON.stringify({ rows }) });
+    const response = await fetch(`${apiBase}/bulk/templates/${templateId}/download`, { method: 'POST', credentials: 'include', headers, body: JSON.stringify({ rows }) });
     if (!response.ok) {
       const data = await response.json().catch(() => null);
       const error: ApiError = new Error(data?.error || 'Download failed');

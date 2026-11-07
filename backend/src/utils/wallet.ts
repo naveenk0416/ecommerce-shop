@@ -23,7 +23,7 @@ const BONUS_KEYS: Record<BonusId, string> = {
 const BONUS_REASONS: Record<BonusId, string> = {
   mobile: 'Mobile number added to your profile',
   firstInventorySave: 'First product saved to inventory',
-  firstPublish: 'First product published to Amazon or Flipkart',
+  firstPublish: 'First new product published to Amazon',
   businessDetails: 'Business details added',
 };
 

@@ -6,24 +6,67 @@ const isBrowser = typeof window !== 'undefined' && typeof window.location !== 'u
 export const apiBase = 'https://api.sellassist.in/api';
 
 const AUTH_TOKEN_KEY = 'auth_token';
+/** Not a secret: only tells the app a cookie session probably exists, so a signed-out visitor
+ * doesn't get a pointless 401 from /me on every page load. */
+const SESSION_HINT_KEY = 'sa_session_hint';
 
-/** Reads the session token from whichever storage holds it — localStorage when "Remember me"
- * was checked (persists across browser restarts), sessionStorage otherwise (cleared on tab close). */
+/**
+ * On sellassist.in the session lives in an HttpOnly cookie set by the API (same-site with
+ * api.sellassist.in), so no token is kept in localStorage/sessionStorage where an XSS could read
+ * it. Elsewhere (localhost → the deployed API is cross-site, so the cookie isn't sent) the token is
+ * kept in sessionStorage/localStorage as before.
+ */
+const cookieSession = isBrowser && /(^|\.)sellassist\.in$/i.test(window.location.hostname);
+
+/** This page's token (cookie mode): covers the time until the first reload. Never persisted. */
+let memoryToken: string | null = null;
+
+function storage(kind: 'local' | 'session'): Storage | null {
+  try {
+    return kind === 'local' ? window.localStorage : window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** The Bearer token to send, if any: this page's token, else a token stored before the cookie
+ * session existed (still valid until it expires; removed on sign-out). */
 export function getAuthToken(): string | null {
   if (!isBrowser) return null;
-  return window.localStorage.getItem(AUTH_TOKEN_KEY) ?? window.sessionStorage.getItem(AUTH_TOKEN_KEY);
+  return memoryToken ?? storage('local')?.getItem(AUTH_TOKEN_KEY) ?? storage('session')?.getItem(AUTH_TOKEN_KEY) ?? null;
+}
+
+/** True when a session may exist (a Bearer token, or a cookie session started on this browser). */
+export function hasSession(): boolean {
+  if (!isBrowser) return false;
+  return !!getAuthToken() || (cookieSession && !!(storage('local')?.getItem(SESSION_HINT_KEY) ?? storage('session')?.getItem(SESSION_HINT_KEY)));
 }
 
 export function setAuthToken(token: string, remember: boolean): void {
   if (!isBrowser) return;
   clearAuthToken();
-  (remember ? window.localStorage : window.sessionStorage).setItem(AUTH_TOKEN_KEY, token);
+  if (cookieSession) {
+    // The API also set the HttpOnly cookie; keep only a non-secret hint plus this page's copy.
+    memoryToken = token;
+    storage(remember ? 'local' : 'session')?.setItem(SESSION_HINT_KEY, '1');
+    return;
+  }
+  storage(remember ? 'local' : 'session')?.setItem(AUTH_TOKEN_KEY, token);
 }
 
 export function clearAuthToken(): void {
   if (!isBrowser) return;
-  window.localStorage.removeItem(AUTH_TOKEN_KEY);
-  window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  memoryToken = null;
+  for (const kind of ['local', 'session'] as const) {
+    storage(kind)?.removeItem(AUTH_TOKEN_KEY);
+    storage(kind)?.removeItem(SESSION_HINT_KEY);
+  }
+}
+
+/** Signs out server-side too: clears the HttpOnly cookie (scripts can't). */
+export function endServerSession(): Promise<void> {
+  if (!isBrowser) return Promise.resolve();
+  return fetch(`${apiBase}/logout`, { method: 'POST', credentials: 'include' }).then(() => undefined, () => undefined);
 }
 
 type CoinBalanceListener = (balance: { free: number; paid: number }) => void;
@@ -67,6 +110,8 @@ export async function apiFetch<T = unknown>(path: string, options: ApiOptions = 
   if (deviceId) headers.set('X-Device-Id', deviceId);
 
   const response = await fetch(`${apiBase}${path}`, {
+    // Sends the HttpOnly session cookie (same-site api.sellassist.in).
+    credentials: 'include',
     ...options,
     headers,
     body,

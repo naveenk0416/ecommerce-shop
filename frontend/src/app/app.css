@@ -296,8 +296,10 @@ ion-toolbar {
   border: 1px solid #e2e8f0;
 }
 
+/* 44×44 px minimum touch target (WCAG 2.5.5). */
 .header-lang button {
-  min-height: 32px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 0 0.6rem;
   border-radius: 999px;
   font-size: 12px;
@@ -322,12 +324,15 @@ ion-toolbar {
   .header-lang__short {
     display: inline;
   }
+  .header-lang button {
+    padding: 0 0.25rem;
+  }
 }
 
 .header-cta {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 0.85rem;
   border-radius: 999px;
   background: linear-gradient(135deg, #f97316, #dc2626);
@@ -585,4 +590,21 @@ ion-segment-button {
   .ws-skeleton__sidebar { display: none; }
   .ws-skeleton__main { padding: 16px; }
   .ws-skeleton__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Skip link: hidden until focused with the keyboard. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -100px;
+  z-index: 10000;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 700;
+}
+
+.skip-link:focus {
+  top: 8px;
 }

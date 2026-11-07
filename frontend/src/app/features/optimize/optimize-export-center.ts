@@ -12,6 +12,8 @@ import { FLIPKART_LISTING_SECTIONS } from '../listing-workspace/tabs/flipkart-li
 import { MEESHO_LISTING_SECTIONS } from '../listing-workspace/tabs/meesho-listing/meesho-listing.mock';
 import { OptimizeSessionService, OptimizeTabKey } from './optimize-session.service';
 import { FieldConfig } from '../listing-workspace/models/field-section.model';
+import { RouterLink } from '@angular/router';
+import { isMissingBrand, PROFILE_BRAND_LINK } from './brand.util';
 
 type MarketplaceTab = Extract<OptimizeTabKey, 'amazon' | 'flipkart' | 'meesho'>;
 
@@ -32,7 +34,7 @@ const MARKETPLACE_EXPORTS: readonly MarketplaceExport[] = [
   selector: 'app-optimize-export-center',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [UiCard, UiSection, AiTabStatus, MarketplaceIcon, MatButtonModule, MatIconModule],
+  imports: [UiCard, UiSection, AiTabStatus, MarketplaceIcon, MatButtonModule, MatIconModule, RouterLink],
   templateUrl: './optimize-export-center.html',
   styleUrls: ['../listing-workspace/tabs/tab-shell.scss'],
 })
@@ -41,6 +43,16 @@ export class OptimizeExportCenter {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   protected readonly marketplaces = MARKETPLACE_EXPORTS;
+
+  protected readonly profileBrand = PROFILE_BRAND_LINK;
+
+  /** Empty or "Generic" brand in this marketplace's export (or the General tab). */
+  brandMissing(tab: MarketplaceTab): boolean {
+    if (!this.hasResult(tab)) return false;
+    const own = this.session.getResult(tab)?.['brand']?.values?.[0];
+    const general = this.session.getResult('general')?.['brand']?.values?.[0];
+    return isMissingBrand(own ?? general);
+  }
 
   hasResult(tab: MarketplaceTab): boolean {
     return !!this.session.getResult(tab);

@@ -400,12 +400,13 @@ test('seller profile: saved once and reused; pincode validated; logs keep no fil
   const fill = await api('POST', `/bulk/templates/${t.id}/fill`, { draftIds: [id] }, token);
   const brandCol = t.columns.find((c: any) => c.header === 'Brand').col;
   assert.deepEqual(fill.data.rows[0].cells[brandCol], { value: '', status: 'must_fill', from: 'Rangoli' }, 'a brand is never swapped for another list value');
-  // No saved brand and the template allows "Generic" → Generic.
+  // No saved brand, even though the template allows "Generic" → left for the seller, never "Generic".
   const { uid: uid2, token: token2 } = await seller();
   const id2 = await kurtiListing(uid2, { inventory: true });
   const t2 = (await upload(token2, await flipkartKurta(), 'flipkart')).data;
   const fill2 = await api('POST', `/bulk/templates/${t2.id}/fill`, { draftIds: [id2] }, token2);
-  assert.equal(fill2.data.rows[0].cells[brandCol].value, 'Generic');
+  assert.notEqual(fill2.data.rows[0].cells[brandCol].value, 'Generic');
+  assert.equal(fill2.data.rows[0].cells[brandCol].value, '');
   const cells = Object.fromEntries(Object.entries(fill.data.rows[0].cells).map(([k, c]: any) => [k, c.value]));
   await api('POST', `/bulk/templates/${t.id}/download`, { rows: [{ cells }] }, token);
   const log = await common.BulkFileLog.findOne({ uid }).lean();

@@ -37,7 +37,6 @@ import { LanguageService, SITE_LANGUAGES } from './services/language';
 import { ConsentService } from './services/consent';
 import { FloatingUiService } from './services/floating-ui';
 import { CookieBanner } from './ui/cookie-banner/cookie-banner';
-import { DASHBOARD_PATH, safeReturnUrl } from './guards/auth.guard';
 import { BUSINESS, PAYMENTS_ENABLED, WHATSAPP_NUMBER, WHATSAPP_PREFILL } from './config/site-config';
 
 @Component({
@@ -502,8 +501,11 @@ export class App {
       effect(() => {
         const view = this.mainView();
         const landing = this.showLanding();
-        // Routed pages set their own title via the route's `title`.
-        if (view === 'page' && !landing) return;
+        const path = this.currentPath();
+        // One canonical per public URL (index.html ships "/" for every route).
+        this.setCanonical(landing ? '/' : path);
+        // Routed pages and the /optimize workspace set their own title via the route's `title`.
+        if ((view === 'page' || view === 'workspace') && !landing) return;
         let title = 'SellAssist - AI-Powered Selling Partner';
         let description = 'Empowering Indian sellers with AI-driven product optimization and inventory management.';
 
@@ -530,9 +532,13 @@ export class App {
             case 'admin':
               title = 'Admin Panel - SellAssist';
               break;
-            case 'auth':
-              title = this.isRegistering() ? 'Create your account - SellAssist' : 'Sign in - SellAssist';
+            case 'auth': {
+              const mode = this.passwordResetMode();
+              title = path === '/verify-email' ? 'Verify your email - SellAssist'
+                : mode === 'forgot' || mode === 'reset' || mode === 'invalid' ? 'Reset password - SellAssist'
+                : this.isRegistering() ? 'Create your account - SellAssist' : 'Sign in - SellAssist';
               break;
+            }
           }
         }
 
@@ -543,11 +549,12 @@ export class App {
       });
 
       // Reactively fetch listings when user changes
+      const listingsUid = computed(() => this.auth.user()?.uid ?? null);
       effect(() => {
-        const user = this.auth.user();
+        const uid = listingsUid();
         const isAdmin = this.auth.isAdmin();
 
-        if (user) {
+        if (uid) {
           // Note: no navigation here — profile refreshes (e.g. incrementUsage)
           // re-run this effect and must not yank the user off their current view.
           // Single fetch on initial load/auth change — poll=false avoids hammering
@@ -556,7 +563,7 @@ export class App {
           if (isAdmin) {
             this.listingService.getAllListings((listings) => this.myListings.set(listings), false, (error) => this.notifyListingsFetchError(error));
           } else {
-            this.listingService.getListings(user.uid, (listings) => this.myListings.set(listings), false, (error) => this.notifyListingsFetchError(error));
+            this.listingService.getListings(uid, (listings) => this.myListings.set(listings), false, (error) => this.notifyListingsFetchError(error));
           }
         } else {
           // No redirect here: authGuard already sends signed-out visitors of /inventory and
@@ -566,6 +573,29 @@ export class App {
         }
       });
     }
+  }
+
+  /** Skip link: focus the current view's main landmark (the page scrolls inside ion-content). */
+  skipToMain(event: Event) {
+    event.preventDefault();
+    const main = document.getElementById('main-content');
+    main?.focus();
+    main?.scrollIntoView({ block: 'start' });
+  }
+
+  /** <link rel="canonical"> and og:url for the current page ("/home" is the same page as "/"). */
+  private setCanonical(path: string) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const clean = !path || path === '/home' ? '/' : path.replace(/\/+$/, '');
+    const href = `https://sellassist.in${clean}`;
+    let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'canonical';
+      document.head.appendChild(link);
+    }
+    if (link.href !== href) link.href = href;
+    this.metaService.updateTag({ property: 'og:url', content: href });
   }
 
   setRating(rating: number) {

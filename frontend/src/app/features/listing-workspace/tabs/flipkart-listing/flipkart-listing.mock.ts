@@ -1,4 +1,5 @@
 import { FieldSection } from '../../models/field-section.model';
+import { isMissingBrand } from '../../../optimize/brand.util';
 import { SeoCheck } from '../../ui/seo-score-card/seo-score.util';
 
 /** Field layout for the Flipkart tab — shared by the AI-driven /optimize variant. */
@@ -46,5 +47,5 @@ export const FLIPKART_SEO_CHECKS: readonly SeoCheck[] = [
   },
   { label: 'Search keywords under byte limit', test: (get) => get('searchKeywords').length > 0 && get('searchKeywords').length <= 250 },
   { label: 'Description present', test: (get) => get('description').length >= 150 },
-  { label: 'Brand field specified', test: (get) => get('brand').length > 0 && get('brand').toLowerCase() !== 'generic' },
+  { label: 'Brand field specified', field: 'brand', blocking: true, test: (get) => !isMissingBrand(get('brand')) },
 ];

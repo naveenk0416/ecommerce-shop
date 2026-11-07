@@ -10,7 +10,8 @@
 
   <label class="field" for="pf-name">
     <span class="field__label">Product name *</span>
-    <input id="pf-name" class="field__input" [ngModel]="name()" (ngModelChange)="name.set($event)" placeholder="e.g. Layered Coin Charm Necklace" [attr.aria-invalid]="!!errors()['name']" />
+    <input id="pf-name" class="field__input" [ngModel]="name()" (ngModelChange)="name.set($event)" placeholder="e.g. Layered Coin Charm Necklace" required (blur)="touch('name')" [attr.aria-invalid]="!!shownError('name')" [attr.aria-describedby]="shownError('name') ? 'pf-name-error' : null" />
+    @if (shownError('name')) { <span id="pf-name-error" class="field__error">{{ shownError('name') }}</span> }
   </label>
 
   <div class="field-row">
@@ -23,35 +24,35 @@
       @if (hasSizes()) {
         <input id="pf-quantity" class="field__input" type="number" [value]="sizeTotal()" readonly title="Total of all sizes — edit stock per size below" />
       } @else {
-        <input id="pf-quantity" class="field__input" type="number" min="0" step="1" inputmode="numeric" [ngModel]="quantity()" (ngModelChange)="quantity.set($event)" [attr.aria-invalid]="!!errors()['quantity']" />
+        <input id="pf-quantity" class="field__input" type="number" min="0" step="1" inputmode="numeric" [ngModel]="quantity()" (ngModelChange)="quantity.set($event)" (blur)="touch('quantity')" [attr.aria-invalid]="!!shownError('quantity')" [attr.aria-describedby]="shownError('quantity') ? 'pf-quantity-error' : null" />
       }
-      @if (errors()['quantity']) { <span class="field__error">{{ errors()['quantity'] }}</span> }
+      @if (shownError('quantity')) { <span id="pf-quantity-error" class="field__error">{{ shownError('quantity') }}</span> }
     </label>
   </div>
 
   <div class="field-row">
     <label class="field" for="pf-cost">
       <span class="field__label">Cost price (₹)</span>
-      <input id="pf-cost" class="field__input" type="number" min="0" inputmode="decimal" [ngModel]="costPrice()" (ngModelChange)="costPrice.set($event)" [attr.aria-invalid]="!!errors()['costPrice']" />
-      @if (errors()['costPrice']) { <span class="field__error">{{ errors()['costPrice'] }}</span> }
+      <input id="pf-cost" class="field__input" type="number" min="0" inputmode="decimal" [ngModel]="costPrice()" (ngModelChange)="costPrice.set($event)" (blur)="touch('costPrice')" [attr.aria-invalid]="!!shownError('costPrice')" [attr.aria-describedby]="shownError('costPrice') ? 'pf-cost-error' : null" />
+      @if (shownError('costPrice')) { <span id="pf-cost-error" class="field__error">{{ shownError('costPrice') }}</span> }
     </label>
     <label class="field" for="pf-selling">
       <span class="field__label">Selling price (₹) *</span>
-      <input id="pf-selling" class="field__input" type="number" min="0" inputmode="decimal" [ngModel]="sellingPrice()" (ngModelChange)="sellingPrice.set($event)" [attr.aria-invalid]="!!errors()['sellingPrice']" />
-      @if (errors()['sellingPrice'] && sellingPrice() !== null) { <span class="field__error">{{ errors()['sellingPrice'] }}</span> }
+      <input id="pf-selling" class="field__input" type="number" min="0" inputmode="decimal" [ngModel]="sellingPrice()" (ngModelChange)="sellingPrice.set($event)" (blur)="touch('sellingPrice')" [attr.aria-invalid]="!!shownError('sellingPrice')" [attr.aria-describedby]="shownError('sellingPrice') ? 'pf-selling-error' : null" />
+      @if (shownError('sellingPrice')) { <span id="pf-selling-error" class="field__error">{{ shownError('sellingPrice') }}</span> }
     </label>
   </div>
 
   <div class="field-row">
     <label class="field" for="pf-mrp">
       <span class="field__label">Maximum Retail Price (MRP, ₹)</span>
-      <input id="pf-mrp" class="field__input" type="number" min="0" inputmode="decimal" [ngModel]="mrp()" (ngModelChange)="mrp.set($event)" placeholder="Defaults to selling price" [attr.aria-invalid]="!!errors()['mrp']" />
-      @if (errors()['mrp']) { <span class="field__error">{{ errors()['mrp'] }}</span> }
+      <input id="pf-mrp" class="field__input" type="number" min="0" inputmode="decimal" [ngModel]="mrp()" (ngModelChange)="mrp.set($event)" placeholder="Defaults to selling price" (blur)="touch('mrp')" [attr.aria-invalid]="!!shownError('mrp')" [attr.aria-describedby]="shownError('mrp') ? 'pf-mrp-error' : null" />
+      @if (shownError('mrp')) { <span id="pf-mrp-error" class="field__error">{{ shownError('mrp') }}</span> }
     </label>
     <label class="field" for="pf-threshold">
       <span class="field__label">Low-stock alert at (units)</span>
-      <input id="pf-threshold" class="field__input" type="number" min="0" step="1" inputmode="numeric" [ngModel]="lowStockThreshold()" (ngModelChange)="lowStockThreshold.set($event)" [placeholder]="defaultThreshold + ' (default)'" [attr.aria-invalid]="!!errors()['lowStockThreshold']" />
-      @if (errors()['lowStockThreshold']) { <span class="field__error">{{ errors()['lowStockThreshold'] }}</span> }
+      <input id="pf-threshold" class="field__input" type="number" min="0" step="1" inputmode="numeric" [ngModel]="lowStockThreshold()" (ngModelChange)="lowStockThreshold.set($event)" [placeholder]="defaultThreshold + ' (default)'" (blur)="touch('lowStockThreshold')" [attr.aria-invalid]="!!shownError('lowStockThreshold')" [attr.aria-describedby]="shownError('lowStockThreshold') ? 'pf-threshold-error' : null" />
+      @if (shownError('lowStockThreshold')) { <span id="pf-threshold-error" class="field__error">{{ shownError('lowStockThreshold') }}</span> }
     </label>
   </div>
 
@@ -84,8 +85,11 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
+  @if (submitted() && !isValid()) {
+    <span class="field__error form-dialog__summary" role="alert">Fix the highlighted fields to continue.</span>
+  }
   <button mat-stroked-button (click)="cancel()">Cancel</button>
-  <button mat-flat-button color="primary" [disabled]="!isValid()" (click)="submit()">
+  <button mat-flat-button color="primary" type="button" (click)="submit()">
     <mat-icon aria-hidden="true">{{ isEditing ? 'save' : 'add' }}</mat-icon>
     {{ isEditing ? 'Save Changes' : 'Add Product' }}
   </button>

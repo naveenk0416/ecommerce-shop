@@ -1,4 +1,6 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, runInInjectionContext, signal } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
 import { Router } from '@angular/router';
 import { AiFieldExtraction, formatGeminiError, GeminiService, isOutOfCoinsError } from '../../services/gemini';
 import { AssistsLeft, isBlockedAiField, WalletService, WalletSummary } from '../../services/wallet';
@@ -12,6 +14,8 @@ import { normalizeHashtags } from '../../utils/hashtags';
 import { resizeImage } from '../../utils/image';
 import { SELLER_FIELD_KEYS } from './listing-summary.model';
 import { hasRealVariants, totalStock, Variant } from '../../config/size-presets';
+import { BrandPromptDialog, BrandPromptResult } from './brand-prompt-dialog';
+import { cleanSavedBrand, isMissingBrand } from './brand.util';
 
 export type OptimizeTabKey = 'general' | 'amazon' | 'flipkart' | 'meesho' | 'instagram';
 
@@ -55,6 +59,7 @@ export class OptimizeSessionService {
   private readonly snackBar = inject(MatSnackBar);
   private readonly auth = inject(AuthService);
   private readonly analytics = inject(AnalyticsService);
+  private readonly injector = inject(Injector);
 
   /** Data URL for a fresh upload, or the draft's image URL once loaded from the backend. */
   imagePreview = signal<string | null>(null);
@@ -173,6 +178,57 @@ export class OptimizeSessionService {
     if (this.isGenerating()) return;
     this.generationError.set(null);
     this.startProgress();
+    void this.ensureBrandChosen().then((proceed) => {
+      if (proceed) {
+        this.runGeneration();
+        return;
+      }
+      this.stopProgress();
+      this.generationError.set(this.i18n.t(
+        'Add your brand name to generate this listing — no coins were used.',
+        'यह listing बनाने के लिए अपना brand name जोड़ें — कोई coin खर्च नहीं हुआ।',
+      ));
+    });
+  }
+
+  /**
+   * Before the first AI listing: with no default brand in Profile, ask for it (saved to Profile) so
+   * "Generic" is never written silently. A seller who chose "Continue without a brand" isn't asked
+   * again on this browser; the Brand field then stays empty and is flagged. False = cancelled.
+   */
+  private async ensureBrandChosen(): Promise<boolean> {
+    const profile = this.auth.profile();
+    if (!profile || !isMissingBrand(profile.defaultBrand)) return true;
+    const skipKey = `sa_brand_skip_${profile.uid}`;
+    try {
+      if (window.localStorage.getItem(skipKey) === '1') return true;
+    } catch {
+      // Storage blocked — ask.
+    }
+    const dialog = runInInjectionContext(this.injector, () => inject(MatDialog));
+    const result = await firstValueFrom(
+      dialog.open<BrandPromptDialog, void, BrandPromptResult>(BrandPromptDialog, { width: '480px', maxWidth: '95vw' }).afterClosed(),
+    );
+    if (!result) return false;
+    if (result.brand === null) {
+      try {
+        window.localStorage.setItem(skipKey, '1');
+      } catch {
+        // Asked again next time.
+      }
+      return true;
+    }
+    const brand = result.brand;
+    try {
+      await this.auth.updateProfile({ defaultBrand: brand });
+    } catch {
+      // Still used for this listing even if saving to Profile failed.
+      this.auth.profile.update((p) => (p ? { ...p, defaultBrand: brand } : p));
+    }
+    return true;
+  }
+
+  private runGeneration(): void {
     // Before this call the seller had never generated a listing → "FirstListingGenerated" on success.
     const firstListing = this.auth.profile()?.hasFirstListing === false;
     const t0 = performance.now();
@@ -185,7 +241,7 @@ export class OptimizeSessionService {
       })
       .then((data) => {
         tAi = performance.now();
-        const next = this.enforceLimits(data as Partial<Record<OptimizeTabKey, TabResult>>);
+        const next = flagUnverifiedClaims(this.enforceLimits(data as Partial<Record<OptimizeTabKey, TabResult>>));
         // Regenerating must not wipe what the seller typed (prices, stock).
         const previousGeneral = this.cache().general ?? {};
         const sellerValues = Object.fromEntries(SELLER_FIELD_KEYS.filter((k) => previousGeneral[k]).map((k) => [k, previousGeneral[k]]));
@@ -375,9 +431,27 @@ export class OptimizeSessionService {
    * exactly as saved (Flipkart rejects "pure essentials" for an approved "Pure Essentials").
    */
   private withDefaultBrand(results: Partial<Record<OptimizeTabKey, TabResult>>): Partial<Record<OptimizeTabKey, TabResult>> {
-    const brand = (this.auth.profile()?.defaultBrand ?? '').replace(/\s+/g, ' ').trim();
-    if (!brand) return results;
-    const field = { values: [brand], confidence: 100, reason: 'Your brand from Profile.' } as AiFieldExtraction;
+    const saved = cleanSavedBrand(this.auth.profile()?.defaultBrand);
+    if (isMissingBrand(saved)) {
+      // No saved brand: drop any "Generic" the AI still wrote; keep a brand it really read off the photo.
+      const out: Partial<Record<OptimizeTabKey, TabResult>> = {};
+      for (const [tab, fields] of Object.entries(results) as [OptimizeTabKey, TabResult][]) {
+        const current = fields['brand'];
+        if (!current && tab !== 'general') {
+          out[tab] = fields;
+          continue;
+        }
+        const values = (current?.values ?? []).filter((v) => !isMissingBrand(v));
+        out[tab] = {
+          ...fields,
+          brand: values.length && current
+            ? { ...current, values }
+            : { values: [''], confidence: 0, reason: 'Brand not set — add it in Profile.' },
+        };
+      }
+      return out;
+    }
+    const field = { values: [saved], confidence: 100, reason: 'Your brand from Profile.' } as AiFieldExtraction;
     const out: Partial<Record<OptimizeTabKey, TabResult>> = {};
     for (const [tab, fields] of Object.entries(results) as [OptimizeTabKey, TabResult][]) {
       out[tab] = fields['brand'] || tab === 'general' ? { ...fields, brand: field } : fields;
@@ -515,4 +589,33 @@ export class OptimizeSessionService {
       },
     };
   }
+}
+
+/**
+ * Claims a photo can't prove (e.g. "skin-friendly", "nickel-free", "hallmarked"). The prompt
+ * forbids them unless printed on the product; anything that still slips through is marked
+ * "Check this" with low confidence so the seller confirms or removes it before publishing.
+ */
+const UNVERIFIED_CLAIM = /\b(skin[- ]?friendly|hypo-?allergenic|nickel[- ]free|lead[- ]free|allergy[- ]free|anti[- ]?tarnish|tarnish[- ]free|water[- ]?proof|organic|certified|hallmark(?:ed)?|BIS|pure (?:silver|gold)|dermatologically|non[- ]toxic|chemical[- ]free)\b/i;
+
+/** Fields with marketing copy (bullets, highlights, descriptions, captions). */
+const CLAIM_FIELD = /^(description|bulletPoint\d|keyHighlight\d|caption|seoTitle|listingTitle|productTitle)$/;
+
+function flagUnverifiedClaims(data: Partial<Record<OptimizeTabKey, TabResult>>): Partial<Record<OptimizeTabKey, TabResult>> {
+  const out: Partial<Record<OptimizeTabKey, TabResult>> = {};
+  for (const [tab, fields] of Object.entries(data) as [OptimizeTabKey, TabResult][]) {
+    const next: TabResult = { ...fields };
+    for (const [key, field] of Object.entries(fields ?? {})) {
+      if (!CLAIM_FIELD.test(key)) continue;
+      const match = UNVERIFIED_CLAIM.exec(field?.values?.[0] ?? '');
+      if (!match) continue;
+      next[key] = {
+        ...field,
+        confidence: Math.min(field.confidence ?? 0, 40),
+        reason: `Check this: "${match[0]}" isn't visible in the photo — keep it only if it's true.`,
+      };
+    }
+    out[tab] = next;
+  }
+  return out;
 }

@@ -188,9 +188,12 @@ export class OptimizeInventory {
 
   constructor() {
     void this.features.load();
+    // Keyed on the user id and role only: a profile refresh (coins, usage) must not restart polling.
+    const uid = computed(() => this.auth.user()?.uid ?? null);
     effect((onCleanup) => {
-      const user = this.auth.user();
-      if (!user) {
+      const userId = uid();
+      const admin = this.auth.isAdmin();
+      if (!userId) {
         this.listings.set([]);
         return;
       }
@@ -201,9 +204,9 @@ export class OptimizeInventory {
           { duration: 5000 },
         );
       };
-      const stop = this.auth.isAdmin()
+      const stop = admin
         ? this.listingService.getAllListings((listings) => this.setFromPoll(listings), true, onError)
-        : this.listingService.getListings(user.uid, (listings) => this.setFromPoll(listings), true, onError);
+        : this.listingService.getListings(userId, (listings) => this.setFromPoll(listings), true, onError);
       onCleanup(() => stop());
     });
   }
@@ -212,6 +215,15 @@ export class OptimizeInventory {
    * briefly show their old values (e.g. stock jumping back from 3 to 4 after a sale). */
   private recentLocal = new Map<string, { listing: Listing; until: number }>();
   private deletedLocal = new Map<string, number>();
+
+  /** Publish Center → "Publish to Amazon" lands here with ?publishAmazon=<inventory id>. */
+  private pendingAmazonPublish: string | null = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get('publishAmazon');
+    } catch {
+      return null;
+    }
+  })();
 
   private setFromPoll(listings: Listing[]): void {
     const now = Date.now();
@@ -222,6 +234,15 @@ export class OptimizeInventory {
       .map((l) => (l.id && this.recentLocal.has(l.id) ? { ...l, ...this.recentLocal.get(l.id)!.listing } : l));
     for (const [id, entry] of this.recentLocal) if (!merged.some((l) => l.id === id)) merged.unshift(entry.listing);
     this.listings.set(merged);
+    if (this.pendingAmazonPublish) {
+      const target = merged.find((l) => l.id === this.pendingAmazonPublish);
+      this.pendingAmazonPublish = null;
+      const tree = this.router.parseUrl(this.router.url);
+      const { publishAmazon: _drop, ...rest } = tree.queryParams; // eslint-disable-line @typescript-eslint/no-unused-vars
+      tree.queryParams = rest;
+      void this.router.navigateByUrl(tree, { replaceUrl: true });
+      if (target && !target.source) this.openCreateAmazonListingDialog(target);
+    }
   }
 
   /** Applies a server response to the table (and therefore the cards) without waiting for the next poll. */
@@ -292,7 +313,7 @@ export class OptimizeInventory {
 
   openAddDialog(): void {
     this.dialog
-      .open<ProductFormDialog, Listing | null, ProductFormResult>(ProductFormDialog, { data: null, maxWidth: '95vw' })
+      .open<ProductFormDialog, Listing | null, ProductFormResult>(ProductFormDialog, { data: null, maxWidth: '95vw', ariaModal: true, autoFocus: 'first-tabbable', restoreFocus: true })
       .afterClosed()
       .subscribe((result) => {
         if (!result) return;
@@ -377,7 +398,7 @@ export class OptimizeInventory {
 
   openEditDialog(listing: Listing): void {
     this.dialog
-      .open<ProductFormDialog, Listing | null, ProductFormResult | 'open-full-listing'>(ProductFormDialog, { data: listing, maxWidth: '95vw' })
+      .open<ProductFormDialog, Listing | null, ProductFormResult | 'open-full-listing'>(ProductFormDialog, { data: listing, maxWidth: '95vw', ariaModal: true, autoFocus: 'first-tabbable', restoreFocus: true })
       .afterClosed()
       .subscribe((result) => {
         if (result === 'open-full-listing') {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -35,9 +35,19 @@ const num = (v: unknown): number | null => {
   imports: [FormsModule, MatButtonModule, MatIconModule, MatDialogModule, VariantEditor],
   templateUrl: './product-form-dialog.html',
   styleUrl: './product-form-dialog.scss',
+  host: {
+    '(keydown.escape)': 'onEscape($event)',
+    '(keydown.tab)': 'trapTab($event)',
+    '(keydown.shift.tab)': 'trapTab($event)',
+  },
 })
 export class ProductFormDialog {
   private readonly dialogRef = inject(MatDialogRef<ProductFormDialog, ProductFormResult | 'open-full-listing'>);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /** Fields the seller has left (blur) — errors show only for these, or for all after a submit. */
+  readonly touched = signal<ReadonlySet<string>>(new Set());
+  readonly submitted = signal(false);
   private readonly listingService = inject(ListingService);
   protected readonly data = inject<Listing | null>(MAT_DIALOG_DATA as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -103,6 +113,43 @@ export class ProductFormDialog {
     return Object.keys(this.errors()).length === 0;
   }
 
+  /** The error for a field, once the seller has left it or tried to submit. */
+  shownError(key: string): string | null {
+    if (!this.submitted() && !this.touched().has(key)) return null;
+    return this.errors()[key] ?? null;
+  }
+
+  touch(key: string): void {
+    if (this.touched().has(key)) return;
+    this.touched.update((set) => new Set(set).add(key));
+  }
+
+  /** Esc closes the dialog (also when a host listener elsewhere swallowed the CDK's own handler). */
+  onEscape(event: Event): void {
+    event.stopPropagation();
+    this.dialogRef.close();
+  }
+
+  /** Keeps Tab / Shift+Tab inside the dialog. */
+  trapTab(event: Event): void {
+    const key = event as KeyboardEvent;
+    const container = this.host.nativeElement.closest('.mat-mdc-dialog-container') ?? this.host.nativeElement;
+    const focusable = Array.from(container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )).filter((el) => el.offsetParent !== null || el === document.activeElement);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (key.shiftKey && (active === first || !container.contains(active))) {
+      key.preventDefault();
+      last.focus();
+    } else if (!key.shiftKey && (active === last || !container.contains(active))) {
+      key.preventDefault();
+      first.focus();
+    }
+  }
+
   cancel(): void {
     this.dialogRef.close();
   }
@@ -112,7 +159,12 @@ export class ProductFormDialog {
   }
 
   submit(): void {
-    if (!this.isValid()) return;
+    this.submitted.set(true);
+    if (!this.isValid()) {
+      // Every required-field error is now visible; move to the first one.
+      setTimeout(() => this.host.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+      return;
+    }
     const sellingPrice = num(this.sellingPrice())!;
     this.dialogRef.close({
       name: this.name().trim(),
