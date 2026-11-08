@@ -5,6 +5,7 @@ import { gstFieldsFor, normalizeListingNumbers, parseAmount } from '../utils/lis
 import { ensureWallet, grantBonus } from '../utils/wallet.js';
 import { ownImageUrl, publicApiUrl } from '../utils/public-url.js';
 import { setCoinBalanceHeader } from '../utils/coin-header.js';
+import { makeThumbnail } from '../utils/thumbnail.js';
 import { applyVariants, hasRealVariants, sanitizeVariants, totalStock, variantLabel, variantsOf, type Variant } from '../utils/variants.js';
 
 const router = express.Router();
@@ -174,10 +175,22 @@ router.get('/:id/image.jpg', async (req, res) => {
       return;
     }
     const [, contentType, base64Data] = match;
-    res.setHeader('Content-Type', contentType);
     // Versioned URLs (?v=…) change whenever the image changes, so browsers may keep them forever.
     res.setHeader('Cache-Control', req.query['v'] ? 'public, max-age=31536000, immutable' : 'public, max-age=86400');
-    res.send(Buffer.from(base64Data, 'base64'));
+    const image = Buffer.from(base64Data, 'base64');
+    // ?size=thumb: a small WebP for list rows (Inventory) instead of the full multi-hundred-KB image.
+    if (req.query['size'] === 'thumb') {
+      try {
+        const thumb = await makeThumbnail(`${req.params['id']}:${variant || ''}:${req.query['v'] || ''}`, image);
+        res.setHeader('Content-Type', 'image/webp');
+        res.send(thumb);
+        return;
+      } catch (err) {
+        console.warn('Thumbnail failed, serving full image', err);
+      }
+    }
+    res.setHeader('Content-Type', contentType);
+    res.send(image);
   } catch (err: any) {
     console.error('Serve listing image error', err);
     res.status(500).end();

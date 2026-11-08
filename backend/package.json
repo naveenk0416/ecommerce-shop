@@ -29,6 +29,7 @@
     "nodemailer": "^9.0.3",
     "razorpay": "^2.9.6",
     "resend": "^6.18.1",
+    "sharp": "^0.34.4",
     "tsx": "^4.21.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },

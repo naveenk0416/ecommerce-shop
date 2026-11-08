@@ -55,6 +55,12 @@ export interface LowStockAlert {
   styleUrl: './optimize-inventory.scss',
 })
 export class OptimizeInventory {
+  /** Our own listing image URLs get a small WebP thumbnail (?size=thumb); other URLs pass through. */
+  protected thumbUrl(url: string | null | undefined): string {
+    if (!url || !/\/api\/listings\/[^/]+\/image\.jpg/.test(url)) return url || '';
+    return url + (url.includes('?') ? '&' : '?') + 'size=thumb';
+  }
+
   protected readonly auth = inject(AuthService);
   private readonly listingService = inject(ListingService);
   private readonly marketplaceConnections = inject(MarketplaceConnectionsService);
