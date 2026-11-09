@@ -18,6 +18,11 @@ const SESSION_HINT_KEY = 'sa_session_hint';
  */
 const cookieSession = isBrowser && /(^|\.)sellassist\.in$/i.test(window.location.hostname);
 
+/** Keep no token in storage only on sellassist.in and only when the API confirmed it set the cookie. */
+export function cookieOnlySession(hostname: string, session: string | null | undefined): boolean {
+  return /(^|\.)sellassist\.in$/i.test(hostname) && session === 'cookie';
+}
+
 /** This page's token (cookie mode): covers the time until the first reload. Never persisted. */
 let memoryToken: string | null = null;
 
@@ -42,10 +47,15 @@ export function hasSession(): boolean {
   return !!getAuthToken() || (cookieSession && !!(storage('local')?.getItem(SESSION_HINT_KEY) ?? storage('session')?.getItem(SESSION_HINT_KEY)));
 }
 
-export function setAuthToken(token: string, remember: boolean): void {
+/**
+ * @param session "cookie" when the API says it set the HttpOnly session cookie. Without it (an API
+ * older than the cookie change, e.g. frontend deployed first) the token is stored as before —
+ * otherwise a reload would find no cookie and sign the user out.
+ */
+export function setAuthToken(token: string, remember: boolean, session?: string | null): void {
   if (!isBrowser) return;
   clearAuthToken();
-  if (cookieSession) {
+  if (cookieOnlySession(window.location.hostname, session)) {
     // The API also set the HttpOnly cookie; keep only a non-secret hint plus this page's copy.
     memoryToken = token;
     storage(remember ? 'local' : 'session')?.setItem(SESSION_HINT_KEY, '1');

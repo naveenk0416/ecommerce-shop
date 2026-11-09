@@ -25,7 +25,7 @@ ion-toolbar {
 .modern-table th {
   padding: 1rem 1.5rem;
   background-color: rgba(248, 250, 252, 0.5);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -126,7 +126,7 @@ ion-toolbar {
   border-radius: 50%;
   background: #dc2626;
   color: #fff;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1;
 }
@@ -186,7 +186,7 @@ ion-toolbar {
 
 .auth-alert--success .auth-alert__icon::before {
   content: '✓';
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .remember-me-checkbox {
@@ -205,7 +205,7 @@ ion-toolbar {
 }
 
 .profile-field label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -317,6 +317,56 @@ ion-toolbar {
   display: none;
 }
 
+/* Under 480px the full switcher moves into the Menu; this one button shows the current language. */
+.header-lang-compact {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+}
+
+.mobile-lang {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.mobile-lang button {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.mobile-lang .mobile-lang__on {
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  border-color: transparent;
+  color: #fff;
+}
+
+@media (max-width: 479px) {
+  .header-lang {
+    display: none;
+  }
+  .header-lang-compact {
+    display: inline-flex;
+  }
+}
+
 @media (max-width: 419px) {
   .header-lang__long {
     display: none;
@@ -359,6 +409,16 @@ ion-toolbar {
 
 ion-content.has-cookie-bar {
   --padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+/* The floating WhatsApp button (48px, 16px from the bottom) gets the same treatment: the last
+   line of the page can always scroll clear of it — and of the cookie bar below it. */
+ion-content.has-whatsapp-fab {
+  --padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+ion-content.has-whatsapp-fab.has-cookie-bar {
+  --padding-bottom: calc(140px + env(safe-area-inset-bottom));
 }
 
 /* Sign-up / login on a phone: the form's big button is near the bottom of the screen, so the

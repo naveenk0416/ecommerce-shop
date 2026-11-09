@@ -26,7 +26,7 @@
       <div class="stat">
         <span class="stat__label">Low Stock Alerts</span>
         <span class="stat__value" [class.stat__value--warning]="lowStockCount() > 0" data-testid="low-stock-count">{{ lowStockCount() }}</span>
-        <span class="stat__hint">{{ i18n.t('Products and sizes running low (alert level: default ' + defaultThreshold + ' units)', 'Products और sizes जिनका stock कम है (alert level: default ' + defaultThreshold + ' units)') }}</span>
+        <span class="stat__hint">{{ i18n.t('Running low (alert at ' + defaultThreshold + ' units)', 'Stock कम (alert ' + defaultThreshold + ' units पर)') }}</span>
         @if (zeroStockAlerts().length) {
           <span class="stat__hint">{{ i18n.t('+ ' + zeroStockAlerts().length + ' at 0 units', '+ ' + zeroStockAlerts().length + ' का stock 0') }}</span>
         }
@@ -134,7 +134,12 @@
                   <td data-label="Product">
                     <div class="product-cell">
                       @if (listing.processedImage || listing.originalImage) {
-                        <img [src]="thumbUrl(listing.processedImage || listing.originalImage)" alt="" class="product-cell__image" referrerpolicy="no-referrer" loading="lazy" decoding="async" width="40" height="40" />
+                        <span class="product-cell__thumb" [class.product-cell__thumb--failed]="failedImages().has(listing.id!)">
+                          <mat-icon aria-hidden="true">image</mat-icon>
+                          @if (!failedImages().has(listing.id!)) {
+                            <img [src]="thumbUrl(listing.processedImage || listing.originalImage)" alt="" class="product-cell__image" referrerpolicy="no-referrer" loading="lazy" decoding="async" width="40" height="40" (error)="markImageFailed(listing.id)" />
+                          }
+                        </span>
                       } @else {
                         <span class="product-cell__placeholder"><mat-icon aria-hidden="true">image</mat-icon></span>
                       }
@@ -181,12 +186,12 @@
                     @if (hasCost(listing)) {
                       {{ formatInr(listing.costPrice!) }}
                     } @else {
-                      <button type="button" class="cell-action" (click)="openEditDialog(listing)" data-testid="add-cost">{{ i18n.t('Add cost price', 'Cost price जोड़ें') }}</button>
+                      <button type="button" class="cell-action" (click)="openEditDialog(listing)" data-testid="add-cost">{{ i18n.t('Add cost', 'Cost जोड़ें') }}</button>
                     }
                   </td>
                   <td data-label="GST" class="nowrap">
                     @if (typeof listing.gstRate !== 'number') {
-                      <button type="button" class="cell-action" (click)="openEditDialog(listing)" [title]="listing.gstReason || 'Add an HSN code to calculate GST'">{{ i18n.t('Add HSN code', 'HSN code जोड़ें') }}</button>
+                      <button type="button" class="cell-action" (click)="openEditDialog(listing)" [title]="listing.gstReason || 'Add an HSN code to calculate GST'">{{ i18n.t('Add HSN', 'HSN जोड़ें') }}</button>
                     } @else {
                       <span [class.gst--review]="listing.gstNeedsReview" [title]="listing.gstReason || ''">
                         {{ formatGst(listing.gstRate) }}
@@ -200,7 +205,8 @@
                     @if (hasCost(listing)) {
                       {{ formatInr(getProfit(listing)) }}
                     } @else {
-                      <button type="button" class="cell-action" (click)="openEditDialog(listing)">{{ i18n.t('Add cost', 'Cost जोड़ें') }}</button>
+                      <!-- One prompt per missing item: "Add cost" is already in the Cost column. -->
+                      <span class="muted" [title]="i18n.t('Add a cost price to see profit', 'Profit देखने के लिए cost price जोड़ें')">—</span>
                     }
                   </td>
                   <td class="actions-cell">

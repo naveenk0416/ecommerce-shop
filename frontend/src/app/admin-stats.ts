@@ -321,7 +321,7 @@ function isoDay(date: Date): string {
   styles: `
     .stats { display: flex; flex-direction: column; gap: 16px; }
     .stats__head { display: flex; flex-direction: column; gap: 10px; }
-    .stats__title { margin: 0 8px; font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.2em; }
+    .stats__title { margin: 0 8px; font-size: 11px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.2em; }
     .stats__filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
     .stats__filters label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; font-weight: 700; color: #64748b; }
     .stats__filters input { height: 36px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0 10px; font-size: 13px; background: #fff; }

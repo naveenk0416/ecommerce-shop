@@ -15,9 +15,10 @@ import { DEFAULT_LOW_STOCK_THRESHOLD, Listing, ListingService, isLowStock, lowSt
 import { MarketplaceConnectionsService } from '../../../services/marketplace-connections';
 import { parsePrice } from '../../../utils/price';
 import { formatGstRate, formatInrCompact } from '../../../utils/format';
-import { ProductFormDialog, ProductFormResult } from './product-form-dialog';
-import { LogSaleDialog, LogSaleResult } from './log-sale-dialog';
-import { CreateAmazonListingDialog } from './create-amazon-listing-dialog';
+// The dialogs load on first open (dynamic import), so their code isn't part of the Inventory page.
+import type { ProductFormDialog, ProductFormResult } from './product-form-dialog';
+import type { LogSaleDialog, LogSaleResult } from './log-sale-dialog';
+import type { CreateAmazonListingDialog } from './create-amazon-listing-dialog';
 import { ConfirmActionData, ConfirmActionDialog } from '../confirm-action-dialog';
 import { WalletService } from '../../../services/wallet';
 import { FeatureService, NotifyFeature } from '../../../services/features';
@@ -56,6 +57,12 @@ export interface LowStockAlert {
 })
 export class OptimizeInventory {
   /** Our own listing image URLs get a small WebP thumbnail (?size=thumb); other URLs pass through. */
+  /** Rows whose thumbnail failed to load show the neutral placeholder instead of a broken box. */
+  protected readonly failedImages = signal<ReadonlySet<string>>(new Set());
+  protected markImageFailed(id: string | undefined): void {
+    if (id) this.failedImages.update((set) => new Set(set).add(id));
+  }
+
   protected thumbUrl(url: string | null | undefined): string {
     if (!url || !/\/api\/listings\/[^/]+\/image\.jpg/.test(url)) return url || '';
     return url + (url.includes('?') ? '&' : '?') + 'size=thumb';
@@ -247,7 +254,7 @@ export class OptimizeInventory {
       const { publishAmazon: _drop, ...rest } = tree.queryParams; // eslint-disable-line @typescript-eslint/no-unused-vars
       tree.queryParams = rest;
       void this.router.navigateByUrl(tree, { replaceUrl: true });
-      if (target && !target.source) this.openCreateAmazonListingDialog(target);
+      if (target && !target.source) void this.openCreateAmazonListingDialog(target);
     }
   }
 
@@ -317,9 +324,10 @@ export class OptimizeInventory {
     return (sell - cost) * Number(listing.quantity ?? 0);
   }
 
-  openAddDialog(): void {
+  async openAddDialog(): Promise<void> {
+    const dialogComponent = (await import('./product-form-dialog')).ProductFormDialog;
     this.dialog
-      .open<ProductFormDialog, Listing | null, ProductFormResult>(ProductFormDialog, { data: null, maxWidth: '95vw', ariaModal: true, autoFocus: 'first-tabbable', restoreFocus: true })
+      .open<ProductFormDialog, Listing | null, ProductFormResult>(dialogComponent, { data: null, maxWidth: '95vw', ariaModal: true, autoFocus: 'first-tabbable', restoreFocus: true })
       .afterClosed()
       .subscribe((result) => {
         if (!result) return;
@@ -386,9 +394,10 @@ export class OptimizeInventory {
     }
   }
 
-  openCreateAmazonListingDialog(listing: Listing): void {
+  async openCreateAmazonListingDialog(listing: Listing): Promise<void> {
+    const dialogComponent = (await import('./create-amazon-listing-dialog')).CreateAmazonListingDialog;
     this.dialog
-      .open<CreateAmazonListingDialog, Listing, boolean>(CreateAmazonListingDialog, { data: listing, width: '560px', maxWidth: '95vw' })
+      .open<CreateAmazonListingDialog, Listing, boolean>(dialogComponent, { data: listing, width: '560px', maxWidth: '95vw' })
       .afterClosed()
       .subscribe((created) => {
         if (!created) return;
@@ -402,9 +411,10 @@ export class OptimizeInventory {
     if (listing.draftId) this.router.navigate(['/optimize/general'], { queryParams: { id: listing.draftId } });
   }
 
-  openEditDialog(listing: Listing): void {
+  async openEditDialog(listing: Listing): Promise<void> {
+    const dialogComponent = (await import('./product-form-dialog')).ProductFormDialog;
     this.dialog
-      .open<ProductFormDialog, Listing | null, ProductFormResult | 'open-full-listing'>(ProductFormDialog, { data: listing, maxWidth: '95vw', ariaModal: true, autoFocus: 'first-tabbable', restoreFocus: true })
+      .open<ProductFormDialog, Listing | null, ProductFormResult | 'open-full-listing'>(dialogComponent, { data: listing, maxWidth: '95vw', ariaModal: true, autoFocus: 'first-tabbable', restoreFocus: true })
       .afterClosed()
       .subscribe((result) => {
         if (result === 'open-full-listing') {
@@ -425,9 +435,10 @@ export class OptimizeInventory {
       });
   }
 
-  openSaleDialog(listing: Listing): void {
+  async openSaleDialog(listing: Listing): Promise<void> {
+    const dialogComponent = (await import('./log-sale-dialog')).LogSaleDialog;
     this.dialog
-      .open<LogSaleDialog, Listing, LogSaleResult>(LogSaleDialog, { data: listing, maxWidth: '95vw' })
+      .open<LogSaleDialog, Listing, LogSaleResult>(dialogComponent, { data: listing, maxWidth: '95vw' })
       .afterClosed()
       .subscribe((result) => {
         if (!result || !listing.id) return;

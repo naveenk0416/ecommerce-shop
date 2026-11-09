@@ -1,3 +1,5 @@
+import { MatDialog } from '@angular/material/dialog';
+import { confirmSignOut } from './features/optimize/confirm-sign-out';
 import { ChangeDetectionStrategy, Component, signal, inject, PLATFORM_ID, effect, computed, isDevMode, untracked } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -11,7 +13,7 @@ import { IonApp, IonHeader, IonToolbar, IonContent,
   ToastController, AlertController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, menu, logoWhatsapp, personCircle, pencil, save, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, eyeOff, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, storefront, linkOutline, unlink, heart, trendingUp } from 'ionicons/icons';
+import { camera, cloudUpload, sparkles, image, list, pricetag, copy, checkmark, logIn, logOut, logOutOutline, menu, logoWhatsapp, personCircle, pencil, save, arrowForward, arrowBack, flash, rocket, shieldCheckmark, close, cube, settings, chevronUpOutline, chevronDownOutline, logoFacebook, logoInstagram, logoTwitter, shareSocial, shieldCheckmarkOutline, calculator, informationCircle, lockClosed, mailOutline, fingerPrintOutline, calendarOutline, ellipsisHorizontal, chevronForwardOutline, refresh, star, eye, eyeOff, trash, colorPalette, time, add, albumsOutline, search, logoAmazon, storefront, linkOutline, unlink, heart, trendingUp, globe } from 'ionicons/icons';
 import { GeminiService, ProductDetails, isOutOfCoinsError } from './services/gemini';
 import { WalletService } from './services/wallet';
 import { AuthService } from './services/auth';
@@ -68,7 +70,11 @@ export class App {
   private router = inject(Router);
   private analytics = inject(AnalyticsService);
   readonly i18n = inject(LanguageService);
+  private readonly dialog = inject(MatDialog);
   readonly languages = SITE_LANGUAGES;
+  /** Current language for the compact phone header button. */
+  readonly currentLanguageLabel = computed(() => SITE_LANGUAGES.find((l) => l.code === this.i18n.lang())?.label ?? 'English');
+  readonly currentLanguageShort = computed(() => SITE_LANGUAGES.find((l) => l.code === this.i18n.lang())?.short ?? 'EN');
   readonly consent = inject(ConsentService);
   readonly floating = inject(FloatingUiService);
   private wallet = inject(WalletService);
@@ -395,7 +401,7 @@ export class App {
   }
 
   constructor() {
-    addIcons({menu,logoWhatsapp,calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,arrowForward,sparkles,cloudUpload,colorPalette,image,pencil,save,time,add,albumsOutline,search,logoAmazon,storefront,linkOutline,unlink,flash,heart,eye,eyeOff,trash,trendingUp,logoFacebook,logoInstagram,logoTwitter,list,camera,pricetag,copy,checkmark,logIn,logOutOutline,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star});
+    addIcons({menu,logoWhatsapp,calculator,shieldCheckmark,logOut,close,personCircle,arrowBack,arrowForward,sparkles,cloudUpload,colorPalette,image,pencil,save,time,add,albumsOutline,search,logoAmazon,storefront,linkOutline,unlink,flash,heart,eye,eyeOff,trash,trendingUp,logoFacebook,logoInstagram,logoTwitter,list,camera,pricetag,copy,checkmark,logIn,logOutOutline,rocket,shieldCheckmarkOutline,cube,settings,chevronUpOutline,chevronDownOutline,shareSocial,informationCircle,lockClosed,mailOutline,fingerPrintOutline,calendarOutline,ellipsisHorizontal,chevronForwardOutline,refresh,star,globe});
     
     // Subscribe to route changes
     this.router.events.pipe(
@@ -1220,6 +1226,8 @@ export class App {
   }
 
   async logout() {
+    this.mobileMenuOpen.set(false);
+    if (!(await confirmSignOut(this.dialog, this.i18n))) return;
     try {
       await this.auth.logout();
       this.navigateTo('landing');

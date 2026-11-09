@@ -32,7 +32,7 @@ import { checkmarkCircle, sparkles, rocket, flash, star, close } from 'ionicons/
                 <ion-icon name="flash" class="text-2xl"></ion-icon>
               </div>
               @if (auth.profile()?.role === 'FREE') {
-                <ion-badge color="medium" class="text-[9px] uppercase tracking-widest px-2 py-1">Current Plan</ion-badge>
+                <ion-badge color="medium" class="text-[11px] uppercase tracking-widest px-2 py-1">Current Plan</ion-badge>
               }
             </div>
             <ion-card-title class="text-2xl font-black text-slate-900 mb-2">Free</ion-card-title>
@@ -58,7 +58,7 @@ import { checkmarkCircle, sparkles, rocket, flash, star, close } from 'ionicons/
 
         <!-- Pro Plan -->
         <ion-card class="pricing-card m-0 rounded-[2.5rem] border-2 border-orange-500 shadow-xl flex flex-col relative overflow-visible transform scale-105 z-10 transition-all">
-          <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">
+          <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-4 py-1 rounded-full text-[11px] font-black uppercase tracking-[0.2em] shadow-lg">
             Recommended
           </div>
           <ion-card-header class="p-8">
@@ -67,7 +67,7 @@ import { checkmarkCircle, sparkles, rocket, flash, star, close } from 'ionicons/
                 <ion-icon name="rocket" class="text-2xl"></ion-icon>
               </div>
               @if (auth.profile()?.role === 'PAID_PRO') {
-                <ion-badge color="warning" class="text-[9px] uppercase tracking-widest px-2 py-1">Current Plan</ion-badge>
+                <ion-badge color="warning" class="text-[11px] uppercase tracking-widest px-2 py-1">Current Plan</ion-badge>
               }
             </div>
             <ion-card-title class="text-2xl font-black text-slate-900 mb-2">PAID_PRO</ion-card-title>

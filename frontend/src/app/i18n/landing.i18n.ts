@@ -47,6 +47,8 @@ export const LANDING_TEXT = {
   f6Text: { en: 'Every listing is saved. Browse, copy, and re-use anytime from your dashboard.', hi: 'हर listing save रहती है। Dashboard से कभी भी देखें, copy करें और फिर से use करें।' },
   f7Title: { en: 'Inventory & Stock', hi: 'Inventory और stock' },
   f7Text: { en: 'Track stock for every product, get low-stock alerts, and log sales — all next to your listings.', hi: 'हर product का stock देखें, कम stock पर alert पाएं और sales लिखें — सब listings के साथ।' },
+  f8Title: { en: 'Flipkart & Meesho bulk file', hi: 'Flipkart और Meesho bulk file' },
+  f8Text: { en: 'Download the official template, upload it, get it filled — free, you upload it yourself.', hi: 'Official template download करें, upload करें, भरी हुई file पाएं — free, upload आप खुद करते हैं।' },
 
   // ---- Inventory ----
   invEyebrow: { en: 'Inventory management', hi: 'Inventory संभालें' },

@@ -83,6 +83,19 @@ export const REGIONAL_TEXT: Readonly<Record<string, { te: string; kn: string }>>
     kn: 'ಪ್ರತಿ product stock ನೋಡಿ, stock ಕಡಿಮೆಯಾದರೆ alert ಪಡೆಯಿರಿ, sales ಬರೆಯಿರಿ — ಎಲ್ಲವೂ listings ಪಕ್ಕದಲ್ಲೇ.',
   },
 
+  'Flipkart & Meesho bulk file': { te: 'Flipkart & Meesho bulk file', kn: 'Flipkart & Meesho bulk file' },
+  'Download the official template, upload it, get it filled — free, you upload it yourself.': {
+    te: 'Official template download చేయండి, upload చేయండి, నింపిన file పొందండి — free, upload మీరే చేస్తారు.',
+    kn: 'Official template download ಮಾಡಿ, upload ಮಾಡಿ, ತುಂಬಿದ file ಪಡೆಯಿರಿ — free, upload ನೀವೇ ಮಾಡುತ್ತೀರಿ.',
+  },
+
+  'Sign out?': { te: 'Logout చేయాలా?', kn: 'Logout ಮಾಡಬೇಕೆ?' },
+  'Sign out': { te: 'Logout చేయండి', kn: 'Logout ಮಾಡಿ' },
+  'You will need to sign in again to see your listings and inventory.': {
+    te: 'మీ listings, inventory చూడటానికి మళ్ళీ login చేయాలి.',
+    kn: 'ನಿಮ್ಮ listings, inventory ನೋಡಲು ಮತ್ತೆ login ಮಾಡಬೇಕು.',
+  },
+
   // ---- Landing: inventory ----
   'Inventory management': { te: 'Inventory నిర్వహణ', kn: 'Inventory ನಿರ್ವಹಣೆ' },
   'Know your stock. Sell without surprises.': { te: 'మీ stock తెలుసుకోండి. టెన్షన్ లేకుండా అమ్మండి.', kn: 'ನಿಮ್ಮ stock ತಿಳಿಯಿರಿ. ಚಿಂತೆ ಇಲ್ಲದೆ ಮಾರಿ.' },

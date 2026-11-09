@@ -19,7 +19,7 @@ import { Canvas, FabricImage } from 'fabric';
           </div>
           <div>
             <h3 class="text-white font-black text-sm tracking-tight">Image Studio</h3>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Manual Optimization</p>
+            <p class="text-[11px] text-slate-400 font-bold uppercase tracking-widest">Manual Optimization</p>
           </div>
         </div>
         <div class="flex gap-2">
@@ -52,11 +52,11 @@ import { Canvas, FabricImage } from 'fabric';
         <ion-segment [value]="activeTool()" (ionChange)="activeTool.set($any($event).detail.value)" class="bg-slate-900/50 p-1 rounded-xl">
           <ion-segment-button value="adjust">
             <ion-icon name="sunny"></ion-icon>
-            <ion-label class="text-[10px] font-bold">Adjust</ion-label>
+            <ion-label class="text-[11px] font-bold">Adjust</ion-label>
           </ion-segment-button>
           <ion-segment-button value="background">
             <ion-icon name="color-palette"></ion-icon>
-            <ion-label class="text-[10px] font-bold">Canvas</ion-label>
+            <ion-label class="text-[11px] font-bold">Canvas</ion-label>
           </ion-segment-button>
         </ion-segment>
 
@@ -65,14 +65,14 @@ import { Canvas, FabricImage } from 'fabric';
             <div class="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
               <div class="space-y-1">
                 <div class="flex justify-between items-center px-1">
-                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-slate-400">Brightness</ion-label>
+                  <ion-label class="text-[11px] font-black uppercase tracking-widest text-slate-400">Brightness</ion-label>
                   <ion-badge color="dark" class="text-[8px] font-mono">{{brightness()}}</ion-badge>
                 </div>
                 <ion-range [min]="-1" [max]="1" [step]="0.01" [value]="brightness()" (ionInput)="onBrightnessChange($event)" class="ion-no-padding"></ion-range>
               </div>
               <div class="space-y-1">
                 <div class="flex justify-between items-center px-1">
-                  <ion-label class="text-[10px] font-black uppercase tracking-widest text-slate-400">Contrast</ion-label>
+                  <ion-label class="text-[11px] font-black uppercase tracking-widest text-slate-400">Contrast</ion-label>
                   <ion-badge color="dark" class="text-[8px] font-mono">{{contrast()}}</ion-badge>
                 </div>
                 <ion-range [min]="-1" [max]="1" [step]="0.01" [value]="contrast()" (ionInput)="onContrastChange($event)" class="ion-no-padding"></ion-range>
@@ -82,7 +82,7 @@ import { Canvas, FabricImage } from 'fabric';
 
           @if (activeTool() === 'background') {
             <div class="flex flex-col gap-4 animate-in slide-in-from-bottom-2 duration-300">
-               <ion-label class="text-[10px] font-black uppercase tracking-widest text-slate-400">Canvas Color</ion-label>
+               <ion-label class="text-[11px] font-black uppercase tracking-widest text-slate-400">Canvas Color</ion-label>
                <div class="flex flex-wrap gap-3">
                  @for (color of presetColors; track color) {
                    <button (click)="setBackgroundColor(color)" 
@@ -100,10 +100,10 @@ import { Canvas, FabricImage } from 'fabric';
                </div>
                
                <div class="flex items-center gap-4 mt-2">
-                 <button (click)="resetImage()" class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-300 transition-colors">
+                 <button (click)="resetImage()" class="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-red-400 hover:text-red-300 transition-colors">
                    <ion-icon name="trash"></ion-icon> Reset Layout
                  </button>
-                 <button (click)="centerImage()" class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-orange-400 hover:text-orange-300 transition-colors">
+                 <button (click)="centerImage()" class="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-orange-400 hover:text-orange-300 transition-colors">
                    <ion-icon name="scan-outline"></ion-icon> Center Object
                  </button>
                </div>

@@ -1,4 +1,4 @@
-<main id="main-content" tabindex="-1" class="landing-container">
+<div id="main-content" tabindex="-1" class="landing-container">
 
   <!-- Hero Section -->
   <section class="hero" [attr.lang]="lang()" aria-labelledby="hero-title">
@@ -245,6 +245,16 @@
           <h3 class="feature-title">{{ tx('f7Title') }}</h3>
           <p class="feature-text">{{ tx('f7Text') }}</p>
         </div>
+
+        @if (showBulkFileCard) {
+          <div class="feature-card" data-testid="feature-bulk-file">
+            <div class="feature-icon bg-sky-100 text-sky-600">
+              <ion-icon name="cloud-upload"></ion-icon>
+            </div>
+            <h3 class="feature-title">{{ tx('f8Title') }}</h3>
+            <p class="feature-text">{{ tx('f8Text') }}</p>
+          </div>
+        }
       </div>
     </div>
   </section>
@@ -381,4 +391,4 @@
     </div>
   </footer>
 
-</main>
+</div>

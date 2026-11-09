@@ -10,6 +10,9 @@ import type express from 'express';
  * Authorization: Bearer header, which keeps working.
  */
 export const SESSION_COOKIE = 'sa_session';
+/** Sent as `session` in sign-in responses, so the web app knows this API set the cookie (an older API
+ * that only returns the token must keep working while the frontend is deployed ahead of it). */
+export const SESSION_KIND = 'cookie' as const;
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // matches the JWT's 7d expiry
 
 function cookieOptions(): express.CookieOptions {

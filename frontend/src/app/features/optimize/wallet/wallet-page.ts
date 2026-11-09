@@ -120,7 +120,7 @@ export function timeSavedText(i18n: LanguageService, hours: number, lastMonth = 
   styles: `
     .wallet { display: flex; flex-direction: column; gap: 16px; }
     .wallet__head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .wallet__title { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
+    .wallet__title { margin: 0; font-size: var(--page-title-size); font-weight: 800; color: #0f172a; }
     .wallet__loading { color: #64748b; }
     .wallet__error { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 14px; }
     .wallet__error p { margin: 0; flex: 1 1 240px; }

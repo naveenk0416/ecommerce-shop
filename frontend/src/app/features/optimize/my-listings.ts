@@ -20,9 +20,9 @@ import { deleteWithUndo } from '../../utils/undo-delete';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, MatButtonModule, MatIconModule, MatTooltipModule, UiCard, RouterLink],
   template: `
-    <app-ui-card [elevated]="true">
-      <div class="my-listings">
-        <div class="my-listings__header">
+    <div class="my-listings">
+      <!-- Title outside the card, so it starts at the same left edge as every other page. -->
+      <div class="my-listings__header">
           <div>
             <h2 class="my-listings__title">My Listings</h2>
             <p class="my-listings__subtitle">Every listing you generate is saved here automatically — open it to keep editing, copy it for a similar product, or delete it.</p>
@@ -37,8 +37,9 @@ import { deleteWithUndo } from '../../utils/undo-delete';
               New listing
             </button>
           </div>
-        </div>
+      </div>
 
+      <app-ui-card [elevated]="true">
         @if (loading()) {
           <p class="my-listings__empty" role="status">Loading your listings…</p>
         } @else if (error()) {
@@ -72,14 +73,14 @@ import { deleteWithUndo } from '../../utils/undo-delete';
             }
           </ul>
         }
-      </div>
-    </app-ui-card>
+      </app-ui-card>
+    </div>
   `,
   styles: `
     .my-listings { display: flex; flex-direction: column; gap: 16px; }
     .my-listings__header { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
     .my-listings__actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .my-listings__title { margin: 0; font-size: 18px; font-weight: 800; color: #0f172a; }
+    .my-listings__title { margin: 0; font-size: var(--page-title-size); font-weight: 800; color: #0f172a; }
     .my-listings__subtitle { margin: 4px 0 0; font-size: 13px; color: #64748b; max-width: 560px; }
     .my-listings__empty { margin: 0; padding: 24px 0; text-align: center; color: #64748b; }
     .my-listings__empty--error { color: #b91c1c; }

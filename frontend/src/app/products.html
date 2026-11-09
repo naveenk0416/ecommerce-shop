@@ -3,15 +3,15 @@
   <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
     <div class="bento-card bg-slate-950 border-none relative overflow-hidden group shadow-2xl">
       <div class="relative z-10 p-2">
-        <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500 block mb-2">Total Products</span>
-        <p class="text-[9px] text-slate-600 mb-3">Products you have added</p>
+        <span class="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-500 block mb-2">Total Products</span>
+        <p class="text-[11px] text-slate-600 mb-3">Products you have added</p>
         <div class="flex items-baseline gap-3">
           <h2 class="text-4xl font-extrabold text-white tracking-tighter font-display italic">{{ listings().length }}</h2>
           <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Items</span>
         </div>
         <div class="flex items-center gap-2 mt-6 px-3 py-1 bg-white/5 w-fit rounded-full border border-white/10">
           <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></div>
-          <span class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Live Sync</span>
+          <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Live Sync</span>
         </div>
         
         @if (lowStockCount > 0) {
@@ -25,8 +25,8 @@
     </div>
 
     <div class="bento-card border-slate-200 bg-white shadow-sm">
-      <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 block mb-1">Total Stock Value</span>
-      <p class="text-[9px] text-slate-400 mb-3">Combined value of all your products</p>
+      <span class="text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 block mb-1">Total Stock Value</span>
+      <p class="text-[11px] text-slate-400 mb-3">Combined value of all your products</p>
       <div class="flex items-baseline gap-1">
         <span class="text-xl font-medium text-slate-400 font-display">₹</span>
         <h2 class="text-3xl font-extrabold text-slate-900 tracking-tighter font-display">{{ totalValue | number:'1.0-0' }}</h2>
@@ -50,12 +50,12 @@
          role="button">
       <div class="flex flex-col h-full justify-between">
         <div>
-          <span class="text-[10px] font-bold uppercase tracking-[0.25em] text-orange-200 block mb-3">Add Product</span>
+          <span class="text-[11px] font-bold uppercase tracking-[0.25em] text-orange-200 block mb-3">Add Product</span>
           <h3 class="text-2xl font-bold text-white tracking-tight font-display">+ Add New Product</h3>
           <p class="text-sm text-orange-100/70 mt-2">Enter details manually</p>
         </div>
         <div class="flex items-center justify-between mt-4">
-          <p class="text-[9px] font-bold text-orange-100/60 uppercase tracking-widest leading-tight">Tap to<br>add product</p>
+          <p class="text-[11px] font-bold text-orange-100/60 uppercase tracking-widest leading-tight">Tap to<br>add product</p>
           <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm text-white flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-inner border border-white/30">
             <ion-icon name="add" class="text-3xl"></ion-icon>
           </div>
@@ -93,11 +93,11 @@
         <table class="w-full text-left border-collapse min-w-[760px]">
           <thead>
             <tr class="bg-slate-950">
-              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Product Name</th>
-              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Product Code</th>
-              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-center">Stock Qty</th>
-              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Price & Profit</th>
-              <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Actions</th>
+              <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300">Product Name</th>
+              <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300">Product Code</th>
+              <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300 text-center">Stock Qty</th>
+              <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300">Price & Profit</th>
+              <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
@@ -124,10 +124,10 @@
                 </td>
                 <td class="py-3 px-3">
                   <div class="flex flex-col gap-2">
-                    <span class="text-[10px] font-mono text-slate-500 font-bold px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 w-fit tracking-tighter">
+                    <span class="text-[11px] font-mono text-slate-500 font-bold px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 w-fit tracking-tighter">
                       #{{ (listing.id || 'TEMP').substring(0,8).toUpperCase() }}
                     </span>
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">{{ listing.hsnCode || 'No HSN' }}</span>
+                    <span class="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">{{ listing.hsnCode || 'No HSN' }}</span>
                   </div>
                 </td>
                 <td class="py-3 px-3 text-center">
@@ -147,21 +147,21 @@
                 <td class="py-3 px-3">
                   <div class="flex flex-col gap-1">
                     <div class="flex items-baseline gap-1.5">
-                      <span class="text-[10px] text-slate-400 font-bold">Price:</span>
+                      <span class="text-[11px] text-slate-400 font-bold">Price:</span>
                       <span class="text-sm font-black text-slate-900 font-display">₹{{ parsePrice(listing.priceINR) | number }}</span>
                     </div>
                     @if (getProfit(listing) > 0) {
                       <div class="flex items-baseline gap-1.5">
-                        <span class="text-[10px] text-emerald-400 font-bold">Profit:</span>
+                        <span class="text-[11px] text-emerald-400 font-bold">Profit:</span>
                         <span class="text-[11px] font-bold text-emerald-600">₹{{ getProfit(listing) | number }}</span>
                       </div>
                     } @else if (listing.costPrice && getProfit(listing) < 0) {
                       <div class="flex items-baseline gap-1.5">
-                        <span class="text-[10px] text-red-400 font-bold">Loss:</span>
+                        <span class="text-[11px] text-red-400 font-bold">Loss:</span>
                         <span class="text-[11px] font-bold text-red-600">₹{{ -getProfit(listing) | number }}</span>
                       </div>
                     } @else {
-                      <span class="text-[9px] font-bold text-slate-300 uppercase tracking-[0.1em] mt-1">{{ listing.costPrice ? 'Break-even' : 'No cost set' }}</span>
+                      <span class="text-[11px] font-bold text-slate-300 uppercase tracking-[0.1em] mt-1">{{ listing.costPrice ? 'Break-even' : 'No cost set' }}</span>
                     }
                   </div>
                 </td>
@@ -209,7 +209,7 @@
   </div>
 
   <!-- Status Bar Footer -->
-  <div class="mt-12 flex flex-col sm:flex-row items-center justify-between px-8 py-5 bg-slate-50 rounded-2xl border border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-[0.25em]">
+  <div class="mt-12 flex flex-col sm:flex-row items-center justify-between px-8 py-5 bg-slate-50 rounded-2xl border border-slate-100 text-[11px] text-slate-400 font-bold uppercase tracking-[0.25em]">
     <div class="flex items-center gap-3">
       <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
       <p>© 2026 SELLASSIST — YOUR SMART SELLING PARTNER</p>
@@ -233,7 +233,7 @@
             <h2 class="text-xl font-black text-slate-900 tracking-tight uppercase">Record a Sale</h2>
             <div class="flex items-center gap-2 mt-1.5 px-3 py-1 bg-emerald-50 w-fit rounded-full border border-emerald-100">
               <div class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-              <p class="text-[9px] text-emerald-600 font-bold uppercase tracking-widest">Enter the sale details below</p>
+              <p class="text-[11px] text-emerald-600 font-bold uppercase tracking-widest">Enter the sale details below</p>
             </div>
           </div>
           <button (click)="closeSaleModal()" class="btn-icon-premium w-12 h-12">
@@ -249,8 +249,8 @@
               </div>
               <div>
                  <h4 class="text-sm font-bold text-slate-900 uppercase tracking-tight">{{ selectedListingForSale()?.name }}</h4>
-                 <p class="text-[10px] text-slate-400 font-medium uppercase mt-1">Ref ID: {{ selectedListingForSale()?.id?.substring(0,8) }}</p>
-                 <p class="text-[10px] font-bold uppercase tracking-widest mt-1"
+                 <p class="text-[11px] text-slate-400 font-medium uppercase mt-1">Ref ID: {{ selectedListingForSale()?.id?.substring(0,8) }}</p>
+                 <p class="text-[11px] font-bold uppercase tracking-widest mt-1"
                     [class.text-emerald-600]="availableStock() > 0"
                     [class.text-red-500]="availableStock() === 0">
                    {{ availableStock() }} in stock
@@ -261,13 +261,13 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div class="space-y-6">
                 <div class="space-y-2">
-                  <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1 block">Where did you sell?</span>
+                  <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1 block">Where did you sell?</span>
                   <div class="grid grid-cols-3 gap-3">
                     @for (p of ['Amazon', 'Flipkart', 'Meesho', 'Instagram', 'Offline', 'Other']; track p) {
                       <button (click)="saleData.platform = $any(p)" 
                               [class.bg-slate-900]="saleData.platform === p"
                               [class.text-white]="saleData.platform === p"
-                              class="h-14 rounded-2xl border border-slate-200 text-[10px] font-bold uppercase tracking-tight transition-all hover:bg-slate-50">
+                              class="h-14 rounded-2xl border border-slate-200 text-[11px] font-bold uppercase tracking-tight transition-all hover:bg-slate-50">
                         {{ p }}
                       </button>
                     }
@@ -278,12 +278,12 @@
               <div class="space-y-6">
                 <div class="grid grid-cols-2 gap-6">
                   <div class="space-y-2">
-                    <label for="sale-qty" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">How Many Sold?</label>
+                    <label for="sale-qty" class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">How Many Sold?</label>
                     <input type="number" id="sale-qty" [(ngModel)]="saleData.quantity" min="1" [max]="availableStock()"
                            class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-center focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all">
                   </div>
                   <div class="space-y-2">
-                    <label for="sale-price" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Sale Price (₹)</label>
+                    <label for="sale-price" class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Sale Price (₹)</label>
                     <input type="number" id="sale-price" [(ngModel)]="saleData.salePrice" 
                            class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-center focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all">
                   </div>
@@ -314,7 +314,7 @@
             <h2 class="text-xl font-black text-slate-900 tracking-tight uppercase">Add New Product</h2>
             <div class="flex items-center gap-2 mt-1.5 px-3 py-1 bg-slate-100 w-fit rounded-full border border-slate-200">
               <div class="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
-              <p class="text-[9px] text-slate-600 font-bold uppercase tracking-widest">Fill in the details below</p>
+              <p class="text-[11px] text-slate-600 font-bold uppercase tracking-widest">Fill in the details below</p>
             </div>
           </div>
           <button (click)="closeAddModal()" class="btn-icon-premium w-12 h-12">
@@ -332,7 +332,7 @@
               
               <div class="space-y-6">
                 <div class="space-y-2">
-                  <label for="asset-name" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Product Name *</label>
+                  <label for="asset-name" class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Product Name *</label>
                   <div class="relative group">
                     <ion-icon name="pricetag" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-orange-500 transition-colors"></ion-icon>
                     <input type="text" id="asset-name" [(ngModel)]="newProduct.name" placeholder="E.g. Blue Cotton T-Shirt..."
@@ -341,7 +341,7 @@
                 </div>
 
                 <div class="space-y-2">
-                  <label for="market-class" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Category</label>
+                  <label for="market-class" class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Category</label>
                   <div class="relative group">
                     <ion-icon name="list" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-orange-500 transition-colors"></ion-icon>
                     <input type="text" id="market-class" [(ngModel)]="newProduct.category" placeholder="E.g. Clothing, Electronics, Food..."
@@ -350,7 +350,7 @@
                 </div>
 
                 <div class="space-y-2">
-                  <label for="critical-brief" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Description (Optional)</label>
+                  <label for="critical-brief" class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Description (Optional)</label>
                   <div class="relative group">
                     <textarea id="critical-brief" [(ngModel)]="newProduct.description" placeholder="Describe your product — features, colour, size, material..."
                                rows="5" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all resize-none"></textarea>
@@ -368,14 +368,14 @@
               <div class="space-y-6">
                 <div class="grid grid-cols-2 gap-6">
                   <div class="space-y-2">
-                    <label for="cost-price" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Cost Price (₹)</label>
+                    <label for="cost-price" class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Cost Price (₹)</label>
                     <div class="relative group">
                       <input type="number" id="cost-price" [(ngModel)]="newProduct.costPrice" placeholder="0.00" 
                              class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-center focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
                     </div>
                   </div>
                   <div class="space-y-2">
-                    <label for="selling-price" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Selling Price (₹) *</label>
+                    <label for="selling-price" class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Selling Price (₹) *</label>
                     <div class="relative group">
                       <input type="number" id="selling-price" [(ngModel)]="newProduct.sellingPrice" placeholder="0.00" 
                              class="w-full h-14 px-4 bg-orange-50 border border-orange-100 rounded-2xl text-sm font-extrabold text-center text-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:bg-white transition-all">
@@ -385,21 +385,21 @@
 
                 <div class="grid grid-cols-2 gap-6">
                   <div class="space-y-2">
-                    <label for="quant-units" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Quantity in Stock</label>
+                    <label for="quant-units" class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">Quantity in Stock</label>
                     <div class="relative group">
                       <input type="number" id="quant-units" [(ngModel)]="newProduct.quantity" placeholder="Units" 
                              class="w-full h-14 px-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-center focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all">
                     </div>
                   </div>
                   <div class="space-y-2">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">GST Rate</span>
+                    <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">GST Rate</span>
                     <!-- Calculated by the backend from HSN + selling price (GST 2.0) when the product is saved. -->
                     <p class="h-14 px-4 flex items-center bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-500">Calculated automatically from the HSN code and price</p>
                   </div>
                 </div>
 
                 <div class="space-y-2" [class.hidden]="!auth.isPro()">
-                  <label for="hsn-index" class="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">HSN Code (Optional)</label>
+                  <label for="hsn-index" class="text-[11px] font-bold uppercase tracking-widest text-slate-400 ml-1">HSN Code (Optional)</label>
                   <div class="relative group">
                     <ion-icon name="barcode-outline" class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></ion-icon>
                     <input type="text" id="hsn-index" [(ngModel)]="newProduct.hsnCode" placeholder="Enter HSN code for tax purposes..."

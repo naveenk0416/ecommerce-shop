@@ -39,14 +39,14 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="bg-orange-600 p-8 rounded-[2.5rem] border-none shadow-xl shadow-orange-600/20 text-white relative overflow-hidden group">
             <div class="relative z-10">
-              <h3 class="text-[10px] font-black uppercase tracking-[0.25em] text-orange-200 mb-1">Total Users</h3>
+              <h3 class="text-[11px] font-black uppercase tracking-[0.25em] text-orange-200 mb-1">Total Users</h3>
               <p class="text-5xl font-black font-display italic">{{ users().length }}</p>
             </div>
             <ion-icon name="people" class="absolute -right-6 -bottom-6 text-8xl text-white/10 rotate-12 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-0"></ion-icon>
           </div>
           <div class="bg-slate-950 p-8 rounded-[2.5rem] border-none shadow-xl shadow-slate-950/20 text-white relative overflow-hidden group">
             <div class="relative z-10">
-              <h3 class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 mb-1">Total Listings</h3>
+              <h3 class="text-[11px] font-black uppercase tracking-[0.25em] text-slate-500 mb-1">Total Listings</h3>
               <p class="text-5xl font-black font-display italic">{{ listings().length }}</p>
             </div>
             <ion-icon name="cube" class="absolute -right-6 -bottom-6 text-8xl text-white/5 rotate-12 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-0"></ion-icon>
@@ -59,9 +59,9 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
         <!-- Users Table -->
         <section class="space-y-4 pt-4">
           <div class="flex items-center justify-between px-2 gap-4 flex-wrap">
-            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Registered Users</h3>
+            <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Registered Users</h3>
             <div class="flex items-center gap-3 flex-wrap">
-              <span class="text-[9px] font-bold text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{{ filteredUsers().length }} of {{ users().length }}</span>
+              <span class="text-[11px] font-bold text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{{ filteredUsers().length }} of {{ users().length }}</span>
               <div class="relative">
                 <ion-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></ion-icon>
                 <input
@@ -84,11 +84,11 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
               <table class="w-full text-left border-collapse min-w-[680px]">
                 <thead>
                   <tr class="bg-slate-950">
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">User</th>
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Role</th>
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-center">Total Usage</th>
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Last Login</th>
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Actions</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300">User</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300">Role</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300 text-center">Total Usage</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Last Login</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -105,7 +105,7 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
                           <div class="min-w-0">
                             <h4 class="text-sm font-bold text-slate-900 tracking-tight truncate">{{ user.displayName || 'Anonymous User' }}</h4>
                             <p class="text-[11px] text-slate-400 font-medium truncate flex items-center gap-1.5 mt-0.5">
-                              <ion-icon name="mail-outline" class="text-[10px] text-orange-500"></ion-icon>
+                              <ion-icon name="mail-outline" class="text-[11px] text-orange-500"></ion-icon>
                               {{ user.email }}
                             </p>
                           </div>
@@ -113,7 +113,7 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
                       </td>
                       <td class="py-3 px-3">
                         <select
-                          class="text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg border border-slate-100 bg-slate-50 text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-300 disabled:opacity-50"
+                          class="text-[11px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg border border-slate-100 bg-slate-50 text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-300 disabled:opacity-50"
                           [class.bg-slate-950]="user.role === 'ADMIN'"
                           [class.text-white]="user.role === 'ADMIN'"
                           [class.bg-orange-100]="user.role === 'PAID_PRO'"
@@ -132,7 +132,7 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
                       </td>
                       <td class="py-3 px-3 text-right">
                         <p class="text-sm font-bold text-slate-900 leading-none tabular-nums">{{ user.lastLogin | date:'shortTime' }}</p>
-                        <p class="text-[9px] font-bold text-slate-400 mt-1.5 uppercase tracking-widest">{{ user.lastLogin | date:'dd MMM yyyy' }}</p>
+                        <p class="text-[11px] font-bold text-slate-400 mt-1.5 uppercase tracking-widest">{{ user.lastLogin | date:'dd MMM yyyy' }}</p>
                       </td>
                       <td class="py-3 px-3 text-right">
                         <div class="flex justify-end gap-2">
@@ -161,9 +161,9 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
         <!-- Listings Table -->
         <section class="space-y-4 pt-4">
           <div class="flex items-center justify-between px-2 gap-4 flex-wrap">
-            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">All Saved Listings</h3>
+            <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">All Saved Listings</h3>
             <div class="flex items-center gap-3 flex-wrap">
-              <span class="text-[9px] font-bold text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{{ filteredListings().length }} of {{ listings().length }}</span>
+              <span class="text-[11px] font-bold text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{{ filteredListings().length }} of {{ listings().length }}</span>
               <div class="relative">
                 <ion-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></ion-icon>
                 <input
@@ -186,11 +186,11 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
               <table class="w-full text-left border-collapse min-w-[720px]">
                 <thead>
                   <tr class="bg-slate-950">
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Product</th>
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Owner</th>
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Saved On</th>
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Price</th>
-                    <th class="py-3 px-3 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Actions</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300">Product</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300">Owner</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300">Saved On</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Price</th>
+                    <th class="py-3 px-3 text-[11px] font-black uppercase tracking-[0.25em] text-slate-300 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -206,17 +206,17 @@ const SALE_PLATFORMS: Sale['platform'][] = ['Amazon', 'Flipkart', 'Meesho', 'Ins
                           </div>
                           <div class="max-w-[260px]">
                             <h4 class="text-sm font-bold text-slate-900 tracking-tight leading-tight line-clamp-2">{{ listing.name }}</h4>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{{ listing.quantity ?? 0 }} in stock</p>
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">{{ listing.quantity ?? 0 }} in stock</p>
                           </div>
                         </div>
                       </td>
                       <td class="py-3 px-3">
-                        <span class="text-[10px] font-mono font-bold text-slate-500 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-100">
+                        <span class="text-[11px] font-mono font-bold text-slate-500 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-100">
                           {{ listing.uid.substring(0, 12) }}…
                         </span>
                       </td>
                       <td class="py-3 px-3">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ listing.createdAt | date:'dd MMM yyyy' }}</span>
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{{ listing.createdAt | date:'dd MMM yyyy' }}</span>
                       </td>
                       <td class="py-3 px-3 text-right">
                         <span class="text-sm font-black text-slate-900 font-display tabular-nums">₹{{ price(listing.priceINR) | number }}</span>

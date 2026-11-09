@@ -83,7 +83,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
 
   .badge {
     @apply inline-flex items-center px-4 py-2 bg-white rounded-2xl shadow-premium border border-slate-100 mb-8 animate-bounce transition-all hover:scale-105;
-    @apply text-[10px] font-black uppercase tracking-[0.25em] text-orange-600;
+    @apply text-[11px] font-black uppercase tracking-[0.25em] text-orange-600;
   }
 
   .hero-title {
@@ -119,7 +119,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   }
 
   .check-item {
-    @apply flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500;
+    @apply flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500;
   }
 
   .check-item ion-icon {
@@ -147,7 +147,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   .dot.green { @apply bg-green-400; }
 
   .url-bar {
-    @apply bg-white border border-slate-100 rounded-lg px-4 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-64 text-center;
+    @apply bg-white border border-slate-100 rounded-lg px-4 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-widest w-64 text-center;
   }
 
   .mock-field {
@@ -155,7 +155,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   }
 
   .mock-label {
-    @apply text-[9px] font-black uppercase tracking-widest text-slate-400 block;
+    @apply text-[11px] font-black uppercase tracking-widest text-slate-400 block;
   }
 
   .mock-value {
@@ -176,7 +176,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   }
 
   .stat-label {
-    @apply text-[10px] font-black uppercase tracking-[0.2em] text-slate-400;
+    @apply text-[11px] font-black uppercase tracking-[0.2em] text-slate-400;
   }
 
   /* Partner strip */
@@ -185,7 +185,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   }
 
   .partner-label {
-    @apply text-[10px] font-black uppercase tracking-[0.25em] text-slate-300;
+    @apply text-[11px] font-black uppercase tracking-[0.25em] text-slate-300;
   }
 
   .partner-logos {
@@ -194,11 +194,12 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
 
   /* How It Works */
   .how-steps {
-    @apply flex flex-col md:flex-row items-start md:items-center gap-0;
+    /* Phone: one centred column of equal-width steps; desktop: a row with connectors. */
+    @apply flex flex-col md:flex-row items-center gap-12 md:gap-0;
   }
 
   .how-step {
-    @apply flex-1 flex flex-col items-center text-center relative;
+    @apply w-full max-w-[320px] mx-auto md:max-w-none md:mx-0 md:w-auto flex-1 flex flex-col items-center text-center relative;
   }
 
   .how-connector {
@@ -222,7 +223,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   }
 
   .step-text {
-    @apply text-slate-500 font-medium leading-relaxed max-w-[220px] text-sm;
+    @apply text-slate-500 font-medium leading-relaxed max-w-[260px] md:max-w-[220px] text-sm;
   }
 
   /* Feature Cards */
@@ -248,7 +249,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
 
   /* Sections */
   .section-eyebrow {
-    @apply inline-block text-[10px] font-black uppercase tracking-[0.3em] text-orange-500 mb-4 bg-orange-50 px-4 py-2 rounded-full;
+    @apply inline-block text-[11px] font-black uppercase tracking-[0.3em] text-orange-500 mb-4 bg-orange-50 px-4 py-2 rounded-full;
   }
 
   .section-title {
@@ -269,7 +270,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   }
 
   .cta-eyebrow {
-    @apply text-[10px] font-black uppercase tracking-[0.3em] text-orange-400 mb-4 relative z-10;
+    @apply text-[11px] font-black uppercase tracking-[0.3em] text-orange-400 mb-4 relative z-10;
   }
 
   .cta-title {
@@ -281,7 +282,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   }
 
   .btn-cta-primary {
-    @apply relative z-10 inline-flex items-center justify-center gap-3 rounded-[12px] font-bold uppercase tracking-[0.15em] text-[11px] transition-all duration-300 bg-orange-500 text-white py-[16px] px-[40px] shadow-[0_12px_30px_rgba(249,115,22,0.5)] hover:bg-orange-400 hover:-translate-y-0.5 active:scale-95;padding:10px !important;
+    @apply relative z-10 inline-flex items-center justify-center gap-3 min-h-[44px] rounded-[12px] font-bold uppercase tracking-[0.15em] text-[11px] transition-all duration-300 bg-orange-500 text-white py-[16px] px-[40px] shadow-[0_12px_30px_rgba(249,115,22,0.5)] hover:bg-orange-400 hover:-translate-y-0.5 active:scale-95;padding:10px !important;
   }
 
   .detailed-footer {
@@ -289,15 +290,16 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   }
 
   .footer-heading {
-    @apply text-[10px] font-black tracking-[0.25em] uppercase text-slate-900 mb-5;
+    @apply text-[11px] font-black tracking-[0.25em] uppercase text-slate-900 mb-5;
   }
 
   .footer-links {
-    @apply space-y-3 text-sm font-medium text-slate-500;
+    @apply space-y-0 text-sm font-medium text-slate-500;
   }
 
+  /* 44px tap height per link; the list keeps roughly its old spacing. */
   .footer-links li a {
-    @apply hover:text-orange-500 transition-colors;
+    @apply inline-flex items-center min-h-[44px] hover:text-orange-500 transition-colors;
   }
 
   .footer-social-icon {
@@ -321,19 +323,19 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
 @layer components {
   /* Premium Button System */
   .btn-premium-base {
-    @apply relative inline-flex items-center justify-center gap-3 rounded-[15px] font-bold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none px-[30px] py-[15px];
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[15px] font-bold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none px-[30px] py-[15px];
   }
 
   .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-linear-to-br from-[#F97316] to-[#FB923C] text-white py-[18px] px-[42px] shadow-[0_10px_25px_rgba(249,115,22,0.4)] hover:brightness-110 hover:-translate-y-0.5 active:scale-95;padding: 10px !important;
+    @apply relative inline-flex items-center justify-center gap-3 min-h-[44px] rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-linear-to-br from-[#F97316] to-[#FB923C] text-white py-[18px] px-[42px] shadow-[0_10px_25px_rgba(249,115,22,0.4)] hover:brightness-110 hover:-translate-y-0.5 active:scale-95;padding: 10px !important;
   }
 
   .btn-secondary {
-    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-white border border-slate-100 text-slate-950 px-[32px] py-[18px] hover:bg-slate-50 hover:border-slate-200 active:scale-95 shadow-sm;padding: 10px !important;
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-semibold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none bg-white border border-slate-100 text-slate-950 px-[32px] py-[18px] hover:bg-slate-50 hover:border-slate-200 active:scale-95 shadow-sm;padding: 10px !important;
   }
 
   .btn-ghost {
-    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-bold uppercase tracking-[0.2em] text-[10px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none text-slate-600 border-2 border-slate-200 py-[14px] px-[26px] hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50/60 active:scale-95;
+    @apply relative inline-flex items-center justify-center gap-3 rounded-[12px] font-bold uppercase tracking-[0.2em] text-[11px] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none text-slate-600 border-2 border-slate-200 py-[14px] px-[26px] hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50/60 active:scale-95;
   }
 
   .btn-orange-premium {
@@ -341,7 +343,7 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
   }
 
   .nav-tab {
-    @apply relative inline-flex items-center justify-center gap-2 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] h-12 px-6 transition-all duration-300 text-slate-400 hover:text-orange-600;
+    @apply relative inline-flex items-center justify-center gap-2 rounded-full font-bold uppercase tracking-[0.2em] text-[11px] h-12 px-6 transition-all duration-300 text-slate-400 hover:text-orange-600;
   }
 
   .nav-tab-active {
@@ -371,6 +373,14 @@ html:lang(hi) :is(h1, h2, h3, h4, h5) {
 :root {
   --ion-font-family: var(--font-sans);
   --ion-color-primary: #0f172a;
+  /* One page-title size for every app page (layout header and pages with their own title). */
+  --page-title-size: 28px;
+}
+
+@media (max-width: 480px) {
+  :root {
+    --page-title-size: 22px;
+  }
 }
 
 body {

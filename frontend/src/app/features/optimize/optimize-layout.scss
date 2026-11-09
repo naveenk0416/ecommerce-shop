@@ -62,7 +62,7 @@
 
   &__group-label {
     padding: 0 10px 6px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -204,7 +204,7 @@
 
   &__title {
     margin: 4px 0 0;
-    font-size: 28px;
+    font-size: var(--page-title-size);
     font-weight: 800;
     color: #0f172a;
     overflow-wrap: anywhere;
@@ -333,7 +333,11 @@
 
   &__item {
     flex-shrink: 0;
-    padding: 7px 12px;
+    // 44px tap height (WCAG target size); the pill keeps its look.
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
     border-radius: 999px;
     background: #fff;
     border: 1px solid #e2e8f0;
@@ -378,7 +382,7 @@
     padding-bottom: 16px;
 
     &__title {
-      font-size: 22px;
+      font-size: var(--page-title-size);
     }
 
     &__actions {
@@ -394,9 +398,10 @@
     }
   }
 
+  // Phones keep the same 16px gutter as the header, so every page title and card share one left edge.
   .optimize-content {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 

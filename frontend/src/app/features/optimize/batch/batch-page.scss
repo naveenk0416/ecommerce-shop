@@ -2,7 +2,7 @@
 
 .bp { max-width: 980px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 88px; }
 .bp__head { display: flex; flex-direction: column; gap: 6px; }
-.bp__title { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
+.bp__title { margin: 0; font-size: var(--page-title-size); font-weight: 800; color: #0f172a; }
 .bp__steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; font-weight: 700; color: #94a3b8; }
 .bp__steps li { padding: 4px 10px; border-radius: 999px; background: #f1f5f9; }
 .bp__step--on { background: #fff7ed !important; color: #c2410c; }

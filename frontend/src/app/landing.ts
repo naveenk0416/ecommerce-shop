@@ -10,7 +10,7 @@ import { RouterLink } from '@angular/router';
 import { GuestTry } from './landing/guest-try';
 import { AnalyticsService } from './services/analytics';
 import { LANDING_TEXT, LandingTextKey } from './i18n/landing.i18n';
-import { camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoLinkedin, logoFacebook, sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle, image, copy, settings, checkmarkCircle, chevronForward, text, documentText, cash, time, school, statsChart, cube, alertCircle, sync, receipt } from 'ionicons/icons';
+import { camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoLinkedin, logoFacebook, sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle, image, copy, settings, checkmarkCircle, chevronForward, text, documentText, cash, time, school, statsChart, cube, alertCircle, sync, receipt, cloudUpload } from 'ionicons/icons';
 
 @Component({
   selector: 'app-landing',
@@ -41,6 +41,9 @@ export class Landing {
   /** Hero language — shared with the cookie banner and sign-up form (LanguageService). */
   private readonly i18n = inject(LanguageService);
   readonly lang = this.i18n.lang;
+  /** Flipkart & Meesho bulk-file feature card. Turn on only after a fresh Flipkart upload of a
+   * filled file passes in Seller Hub — ads promise this, so the claim must be true when shown. */
+  protected readonly showBulkFileCard = false;
   /** Landing text in the current language (i18n/landing.i18n.ts). */
   protected tx(key: LandingTextKey): string {
     // Telugu / Kannada come from the shared dictionary (i18n/regional.i18n.ts), keyed by the English.
@@ -59,7 +62,7 @@ export class Landing {
       camera, analytics, globe, logoAmazon, logoInstagram, logoTwitter, logoLinkedin, logoFacebook,
       sparkles, flash, rocket, shieldCheckmark, arrowForward, logoGoogle, image,
       copy, settings, checkmarkCircle, chevronForward, text, documentText, cash, time, school, statsChart,
-      cube, alertCircle, sync, receipt
+      cube, alertCircle, sync, receipt, cloudUpload
     });
   }
 }

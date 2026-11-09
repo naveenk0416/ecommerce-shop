@@ -56,7 +56,7 @@ for (const file of files) {
     }
     for (const n of [1, 10]) {
       const { rows, report } = await fillRows('check', t, marketplace, Array.from({ length: n }, (_, i) => sample(i + 1)), {
-        brand: 'Generic', manufacturerName: 'Sample Textiles', manufacturerAddress: 'Ring Road, Surat, Gujarat 395002', countryOfOrigin: 'India',
+        brand: 'Rangoli', manufacturerName: 'Sample Textiles', manufacturerAddress: 'Ring Road, Surat, Gujarat 395002', countryOfOrigin: 'India',
       }, { useCacheAndAi: false });
       const writes: CellWrite[] = [];
       rows.forEach((row, i) => {

@@ -80,6 +80,7 @@
   align-self: center;
   margin-top: 10px;
   padding: 8px 4px;
+  min-height: 44px;
   background: none;
   color: #c2410c;
   font-size: 15px;

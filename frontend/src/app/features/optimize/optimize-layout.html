@@ -172,7 +172,7 @@
     <app-account-nudges />
     <app-wallet-nudges [hideMonthlySaved]="currentTab() === 'wallet'" />
 
-    <main id="main-content" tabindex="-1" class="optimize-content" [class.optimize-content--no-header]="!showEditorHeader() && !plainTitle()" [attr.aria-busy]="session.loadingDraft()">
+    <div id="main-content" tabindex="-1" class="optimize-content" [class.optimize-content--no-header]="!showEditorHeader() && !plainTitle()" [attr.aria-busy]="session.loadingDraft()">
       <!-- While a saved listing opens, the tab waits instead of flashing an empty "Untitled Product". -->
       @if (session.loadingDraft()) {
         <div class="optimize-content__skeleton" aria-hidden="true">
@@ -182,6 +182,6 @@
       <div [hidden]="session.loadingDraft()">
         <router-outlet></router-outlet>
       </div>
-    </main>
+    </div>
   </div>
 </div>

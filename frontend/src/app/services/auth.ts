@@ -39,6 +39,8 @@ export interface UserProfile extends AdditionalUserData {
  * emailSent is false when the verification email couldn't be delivered. */
 export interface RegisterResult {
   token: string;
+  /** "cookie" when the API also set the HttpOnly session cookie. */
+  session?: string;
   email: string;
   emailSent?: boolean;
   emailError?: string;
@@ -168,7 +170,7 @@ export class AuthService {
           attribution: additionalData.attribution ?? undefined,
         },
       });
-      setAuthToken(result.token, true);
+      setAuthToken(result.token, true, result.session);
       await this.syncUserProfileFromAPI();
       return result;
     } catch (error) {
@@ -195,12 +197,12 @@ export class AuthService {
 
   /** "Continue with Google": signs in an existing account, or returns a pending token for a new one. */
   async signInWithGoogle(credential: string): Promise<GoogleSignInResult> {
-    const body = await apiFetch<{ token?: string; needsProfile?: boolean; pendingToken?: string; email?: string; name?: string }>('/auth/google', {
+    const body = await apiFetch<{ token?: string; session?: string; needsProfile?: boolean; pendingToken?: string; email?: string; name?: string }>('/auth/google', {
       method: 'POST',
       body: { credential },
     });
     if (body.token) {
-      setAuthToken(body.token, true);
+      setAuthToken(body.token, true, body.session);
       await this.syncUserProfileFromAPI();
       return { signedIn: true };
     }
@@ -210,8 +212,8 @@ export class AuthService {
   /** New Google account: only the mobile number and terms are asked. */
   async completeGoogleSignup(data: { pendingToken: string; phoneNumber: string; termsAccepted: boolean; whatsappOptIn: boolean; attribution?: Attribution | null }): Promise<void> {
     try {
-      const body = await apiFetch<{ token: string }>('/auth/google/complete', { method: 'POST', body: { ...data, attribution: data.attribution ?? undefined } });
-      setAuthToken(body.token, true);
+      const body = await apiFetch<{ token: string; session?: string }>('/auth/google/complete', { method: 'POST', body: { ...data, attribution: data.attribution ?? undefined } });
+      setAuthToken(body.token, true, body.session);
       await this.syncUserProfileFromAPI();
     } catch (error) {
       const apiError = error as ApiError & { code?: string };
@@ -249,11 +251,11 @@ export class AuthService {
 
   async loginWithEmail(email: string, password: string, rememberMe = true) {
     try {
-      const body = await apiFetch<{ token: string }>('/login', {
+      const body = await apiFetch<{ token: string; session?: string }>('/login', {
         method: 'POST',
         body: { email, password, rememberMe },
       });
-      setAuthToken(body.token, rememberMe);
+      setAuthToken(body.token, rememberMe, body.session);
       await this.syncUserProfileFromAPI();
       return this.user();
     } catch (error) {
@@ -271,11 +273,11 @@ export class AuthService {
   /** Verifies the emailed token and, on success, signs the user in — they just proved ownership
    * of the email, so there's no need to make them type their password again. */
   async verifyEmail(token: string, rememberMe = true) {
-    const body = await apiFetch<{ token: string }>('/verify-email', {
+    const body = await apiFetch<{ token: string; session?: string }>('/verify-email', {
       method: 'POST',
       body: { token },
     });
-    setAuthToken(body.token, rememberMe);
+    setAuthToken(body.token, rememberMe, body.session);
     await this.syncUserProfileFromAPI();
     return this.user();
   }

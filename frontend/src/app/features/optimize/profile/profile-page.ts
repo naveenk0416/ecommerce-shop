@@ -1,3 +1,5 @@
+import { MatDialog } from '@angular/material/dialog';
+import { confirmSignOut } from '../confirm-sign-out';
 import { ChangeDetectionStrategy, Component, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../services/auth';
@@ -105,7 +107,7 @@ import { ApiError } from '../../../services/api';
   styles: `
     :host { display: block; }
     .profile { max-width: 720px; display: flex; flex-direction: column; gap: 12px; }
-    .profile__title { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
+    .profile__title { margin: 0; font-size: var(--page-title-size); font-weight: 800; color: #0f172a; }
     .profile__meta { margin: -6px 0 0; font-size: 13px; color: #64748b; word-break: break-all; }
     .profile__card { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
     .profile__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
@@ -137,6 +139,7 @@ export class ProfilePage {
   private readonly analytics = inject(AnalyticsService);
   private readonly wallet = inject(WalletService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   protected readonly t = (en: string, hi: string, te?: string, kn?: string) => this.i18n.t(en, hi, te, kn);
   protected readonly states = INDIAN_STATES_AND_UTS;
   protected readonly bands = CATALOG_SIZE_BANDS;
@@ -227,6 +230,7 @@ export class ProfilePage {
   }
 
   async signOut(): Promise<void> {
+    if (!(await confirmSignOut(this.dialog, this.i18n))) return;
     await this.auth.logout();
     await this.router.navigate(['/home']);
   }

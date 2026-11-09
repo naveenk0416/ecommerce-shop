@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { clearSessionCookie, readRequestToken, setSessionCookie } from '../utils/session-cookie.js';
+import { clearSessionCookie, readRequestToken, SESSION_KIND, setSessionCookie } from '../utils/session-cookie.js';
 import crypto from 'crypto';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { OAuth2Client } from 'google-auth-library';
@@ -407,7 +407,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     // Signed in straight away: the email is verified later (it unlocks the rest of the welcome
     // coins), so the first listing can be made right now.
     res.json({
-      token: issueSession(req, res, user),
+      token: issueSession(req, res, user), session: SESSION_KIND,
       user: publicUser(user),
       requiresVerification: false,
       email: user.email,
@@ -465,7 +465,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     await user.save();
     const token = issueSession(req, res, user);
 
-    res.json({ token, user: publicUser(user) });
+    res.json({ token, session: SESSION_KIND, user: publicUser(user) });
   } catch (err: any) {
     console.error('Login error', err);
     res.status(500).json({ error: err?.message || 'Login failed' });
@@ -517,7 +517,7 @@ router.post('/verify-email', async (req, res) => {
     // them type their password again right after clicking the link.
     const authToken = issueSession(req, res, user);
     await setCoinBalanceHeader(res, uid);
-    res.json({ token: authToken, user: publicUser(user) });
+    res.json({ token: authToken, session: SESSION_KIND, user: publicUser(user) });
   } catch (err: any) {
     console.error('Verify email error', err);
     res.status(500).json({ error: 'Failed to verify email' });
@@ -899,7 +899,7 @@ router.post('/auth/google', googleLimiter, async (req, res) => {
       await ensureWallet(user._id.toString()).catch((err) => console.error('[wallet] welcome bonus failed', err));
       await recordUserFunnelEvent('email_verified', user);
     }
-    res.json({ token: issueSession(req, res, user), user: publicUser(user) });
+    res.json({ token: issueSession(req, res, user), session: SESSION_KIND, user: publicUser(user) });
     return;
   }
   const pendingToken = jwt.sign({ kind: 'google_signup', sub: profile.sub, email: profile.email, name: profile.name ?? '' }, JWT_SECRET, { expiresIn: '30m' });
@@ -952,7 +952,7 @@ router.post('/auth/google/complete', googleLimiter, async (req, res) => {
       googleSub: pending.sub,
     });
     await setCoinBalanceHeader(res, user._id.toString());
-    res.json({ token: issueSession(req, res, user), user: publicUser(user) });
+    res.json({ token: issueSession(req, res, user), session: SESSION_KIND, user: publicUser(user) });
   } catch (err: any) {
     if (err?.code === 11000) {
       res.status(409).json(/phone/i.test(String(err?.message)) ? { error: PHONE_TAKEN_MESSAGE, code: 'PHONE_TAKEN' } : { error: 'This Google account is already registered.' });
