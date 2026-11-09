@@ -4,7 +4,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fillRows, type ListingSource } from './fill.js';
+import { fillRows, listingBrand, type ListingSource } from './fill.js';
 import { cleanBrand, cleanCellText, listFitsSystemColumn, matchHeader } from './fields.js';
 import type { ParsedTemplate, TemplateColumn } from './workbook.js';
 import { withSavedBrand } from '../api/marketplace-connections.js';
@@ -78,4 +78,21 @@ test('Flipkart sync keeps the saved brand casing at the start of a product name'
   assert.equal(withSavedBrand('pure essentials steel bottle', 'Pure Essentials'), 'Pure Essentials steel bottle');
   assert.equal(withSavedBrand('pure essentialsx bottle', 'Pure Essentials'), 'pure essentialsx bottle');
   assert.equal(withSavedBrand('Other brand bottle', 'Pure Essentials'), 'Other brand bottle');
+});
+
+test('brand: General (as typed) wins, then the Profile default, then the marketplace tab — never "Generic"', () => {
+  assert.equal(listingBrand('Pure Essentials', '', 'Generic'), 'Pure Essentials', 'typed on General after generation');
+  assert.equal(listingBrand('', 'Pure Essentials', ''), 'Pure Essentials', 'empty listing → Profile default');
+  assert.equal(listingBrand('Generic', 'Pure Essentials', 'Generic'), 'Pure Essentials');
+  assert.equal(listingBrand('Rangoli', 'Pure Essentials', ''), 'Rangoli', 'a different brand typed on this listing is kept');
+  assert.equal(listingBrand('pure essentials', 'Pure Essentials', ''), 'Pure Essentials', 'same name → the Profile spelling');
+  assert.equal(listingBrand('', '', 'Biba'), 'Biba');
+  assert.equal(listingBrand('N/A', '', 'Generic'), '');
+});
+
+test('Flipkart file: the brand typed on General reaches the Brand column when Profile is empty', async () => {
+  const edited: ListingSource = { ...necklace, results: { ...necklace.results, general: { ...necklace.results.general, brand: f('Pure Essentials') }, flipkart: { ...necklace.results.flipkart, brand: f('') } } };
+  const t = template([column(1, 'Brand')]);
+  const { rows } = await fillRows('u', t, 'flipkart', [edited], {}, { useCacheAndAi: false });
+  assert.equal(rows[0].cells[1].value, 'Pure Essentials');
 });

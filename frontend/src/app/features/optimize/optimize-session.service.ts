@@ -15,7 +15,7 @@ import { resizeImage } from '../../utils/image';
 import { SELLER_FIELD_KEYS } from './listing-summary.model';
 import { hasRealVariants, totalStock, Variant } from '../../config/size-presets';
 import { BrandPromptDialog, BrandPromptResult } from './brand-prompt-dialog';
-import { cleanSavedBrand, isMissingBrand } from './brand.util';
+import { BRAND_TABS, cleanSavedBrand, isMissingBrand, withListingBrand } from './brand.util';
 
 export type OptimizeTabKey = 'general' | 'amazon' | 'flipkart' | 'meesho' | 'instagram';
 
@@ -130,8 +130,15 @@ export class OptimizeSessionService {
     this.galleryImages.update((images) => [...images, dataUrl]);
   }
 
+  /**
+   * What every tab, Readiness and the exports read: the saved results with each marketplace tab's
+   * Brand taken from the listing (General, else the Profile default) — so a brand typed on General
+   * or saved in Profile shows up everywhere at once, with no regeneration.
+   */
+  private readonly resolved = computed(() => withListingBrand(this.cache(), this.auth.profile()?.defaultBrand));
+
   getResult(tab: OptimizeTabKey): TabResult | undefined {
-    return this.cache()[tab];
+    return this.resolved()[tab];
   }
 
   setResult(tab: OptimizeTabKey, result: TabResult): void {
@@ -140,7 +147,7 @@ export class OptimizeSessionService {
   }
 
   allResults(): Partial<Record<OptimizeTabKey, TabResult>> {
-    return this.cache();
+    return this.resolved();
   }
 
   /**
@@ -159,6 +166,10 @@ export class OptimizeSessionService {
    * primary value and saves the draft shortly after. Other AI candidates are kept for Regenerate.
    */
   updateField(tab: OptimizeTabKey, key: string, value: string): void {
+    if (key === 'brand') {
+      this.updateBrand(value);
+      return;
+    }
     const current = this.cache()[tab] ?? {};
     const existing = current[key];
     if (existing?.values?.[0] === value) return;
@@ -167,6 +178,22 @@ export class OptimizeSessionService {
       ...all,
       [tab]: { ...current, [key]: { values, confidence: existing?.confidence ?? 0, reason: existing?.reason ?? 'Entered by seller.' } },
     }));
+    this.scheduleSave();
+  }
+
+  /** A listing has one brand: an edit on General or any marketplace tab is saved in all of them. */
+  private updateBrand(value: string): void {
+    const all = this.cache();
+    const tabs = (['general', ...BRAND_TABS] as OptimizeTabKey[]).filter((t) => t === 'general' || all[t]);
+    if (tabs.every((t) => all[t]?.['brand']?.values?.[0] === value)) return;
+    const next = { ...all };
+    for (const t of tabs) {
+      const current = all[t] ?? {};
+      const existing = current['brand'];
+      const values = [value, ...(existing?.values ?? []).slice(1).filter((v) => v !== value)];
+      next[t] = { ...current, brand: { values, confidence: 100, reason: 'Entered by seller.' } };
+    }
+    this.cache.set(next);
     this.scheduleSave();
   }
 
@@ -446,7 +473,7 @@ export class OptimizeSessionService {
           ...fields,
           brand: values.length && current
             ? { ...current, values }
-            : { values: [''], confidence: 0, reason: 'Brand not set — add it in Profile.' },
+            : { values: [''], confidence: 0, reason: 'Brand not set — enter it on General, or set a default brand in Profile.' },
         };
       }
       return out;

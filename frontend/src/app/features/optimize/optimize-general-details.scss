@@ -386,3 +386,32 @@
   border: 1px solid #fdba74; border-radius: 12px; background: #fff7ed; color: #c2410c; font-size: 14px; font-weight: 700; text-decoration: none;
 }
 .sizes-box { padding: 12px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fcfcfd; }
+
+/* "Your default brand is X — apply it?" with a one-click fix (44px tap target). */
+.brand-apply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-apply__btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #ea580c;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.brand-apply__btn:hover {
+  background: #ffedd5;
+}
+
+.brand-apply__btn:focus-visible {
+  outline: 2px solid #ea580c;
+  outline-offset: 2px;
+}

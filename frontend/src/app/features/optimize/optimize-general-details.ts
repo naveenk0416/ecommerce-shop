@@ -20,7 +20,7 @@ import { RouterLink } from '@angular/router';
 import { VariantEditor } from './variants/variant-editor';
 import { NextCoinsNote } from './wallet/next-coins-note';
 import { hasRealVariants } from '../../config/size-presets';
-import { isMissingBrand, PROFILE_BRAND_LINK } from './brand.util';
+import { cleanSavedBrand, isMissingBrand, PROFILE_BRAND_LINK } from './brand.util';
 
 /** General-tab keys this form reads/writes in the session (AI content + seller-entered values). */
 type GeneralKey = 'productTitle' | 'category' | 'sku' | 'brand' | 'hsnCode' | 'description'
@@ -92,6 +92,17 @@ export class OptimizeGeneralDetails {
   /** Shown, not blocking: an empty or "Generic" brand gets listings rejected (Flipkart jewellery, …). */
   brandMissing = computed(() => this.hasDraft() && isMissingBrand(this.value('brand')));
   protected readonly profileBrand = PROFILE_BRAND_LINK;
+  /** The Profile default brand, offered as a one-click fix when this listing has none. */
+  defaultBrand = computed(() => {
+    const saved = cleanSavedBrand(this.auth.profile()?.defaultBrand);
+    return isMissingBrand(saved) ? '' : saved;
+  });
+
+  /** Fills Brand with the Profile default — General, Amazon, Flipkart and Meesho at once, no coins. */
+  applyDefaultBrand(): void {
+    const brand = this.defaultBrand();
+    if (brand) this.update('brand', brand);
+  }
   sellingPriceError = computed(() => {
     const n = parseAmountInput(this.value('sellingPrice'));
     if (n === null) return 'Enter your selling price.';

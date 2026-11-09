@@ -75,6 +75,18 @@ const first = (results: ListingSource['results'], tab: string, key: string): str
   return typeof v === 'string' ? v.trim() : '';
 };
 
+/**
+ * The listing's brand: General, else the Profile default, else the marketplace tab's. "Generic" and
+ * "N/A" never count. The same name in another case ("pure essentials" read off a photo) is written
+ * in the Profile's exact spelling — brand approvals are by exact name.
+ */
+export function listingBrand(general: string | undefined, saved: string | undefined, tab: string | undefined): string {
+  const real = (v: string | undefined) => { const b = cleanBrand(v); return b && !/^(generic|n\/?a)$/i.test(b) ? b : ''; };
+  const profile = real(saved);
+  const value = real(general) || profile || real(tab);
+  return profile && value.toLowerCase() === profile.toLowerCase() ? profile : value;
+}
+
 const normalize = (s: string) => s.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9%]+/g, ' ').trim();
 const stem = (w: string) => w.replace(/(ies)$/, 'y').replace(/(es|s)$/, '');
 const tokens = (s: string) => normalize(s).split(' ').filter((w) => w.length > 1).map(stem);
@@ -206,8 +218,9 @@ function knownValue(field: FieldKey, col: TemplateColumn, src: ListingSource, ma
       return col.number ? (bullets[col.number - 1] ?? '') : bullets.join('\n');
     }
     case 'keywords': return pick(first(r, tab, 'searchKeywords'), first(r, 'general', 'searchTags'));
-    // The brand saved in Profile always wins, exactly as saved (Flipkart approves brands by exact name).
-    case 'brand': return pick(cleanBrand(profile.brand), first(r, tab, 'brand'), first(r, 'general', 'brand'));
+    // Same order as the editor (brand.util resolveListingBrand): the brand typed on General, else the
+    // Profile default, else the marketplace tab's — exactly as typed (Flipkart approves brands by exact name).
+    case 'brand': return listingBrand(first(r, 'general', 'brand'), profile.brand, first(r, tab, 'brand'));
     case 'listing_status': return 'ACTIVE';
     // Flipkart's code is "seller"; fitted to the template's own dropdown spelling below.
     case 'fulfilment': return 'seller';
